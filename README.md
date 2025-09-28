@@ -3,15 +3,16 @@
 > Organize Markdown knowledge bases with confident, schema-driven front matter.
 
 `mdf` helps teams and solo note-takers keep Markdown collections consistent. Define the
-front matter schema you expect, scaffold new notes from templates, and audit existing files with a
-single CLI.
+front matter schema you expect, scaffold new notes from templates, audit and repair existing files,
+and even browse them with an interactive viewer — all from one CLI.
 
 ## Highlights
 
 - **Schema-first authoring** – enforce exactly the fields, defaults, and content rules you need.
 - **Frictionless scaffolding** – spin up ready-to-edit Markdown files in one command.
 - **Smart filtering** – slice notes by front matter attributes and render tailored output.
-- **Confident maintenance** – validate or auto-fix drifted notes before they reach your repo.
+- **Confident maintenance** – validate, update, or auto-fix drifted notes before they reach your repo.
+- **Interactive viewer** – explore documents in a local web UI with filters and virtual paths.
 
 ## Installation
 
@@ -35,6 +36,8 @@ Add the CLI to your package scripts or run it via `npx @stakme/mdf`.
    named template.
 3. **Surface the right notes:** explore your collection with `mdf list` filters, virtual-path
    scoping, and custom output formats.
+4. **Browse your notes:** start a local viewer with `mdf viewer <directory>` to navigate and read
+   documents in your browser.
 
 When you are ready to publish new notes, validate the collection with `mdf validate` or
 `mdf fix`.
@@ -47,6 +50,8 @@ When you are ready to publish new notes, validate the collection with `mdf valid
 | `mdf list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
 | `mdf validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
 | `mdf fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
+| `mdf update <files...>` | Update specific front matter keys on targeted files (explicit values or schema/config defaults). |
+| `mdf viewer <directory>` | Launch a local web viewer with navigation, filters, and virtual-path scoping. |
 | `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command. |
 
 Run any command with `--help` for the full option list.
@@ -62,9 +67,9 @@ import { defineConfig, z } from "@stakme/mdf/config";
 export default defineConfig({
         schema: z.object({
                 title: z.string(),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-                status: z.enum(["todo", "in-progress", "done"]).default("todo"),
+                created_at: z.iso.datetime().default(() => new Date().toISOString()),
+                updated_at: z.iso.datetime().default(() => new Date().toISOString()),
+                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
                 tags: z.array(z.string()).default(() => []),
         }),
 });
@@ -75,6 +80,8 @@ export default defineConfig({
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
 - `aliases` (optional) map friendly names to frequently used CLI command fragments for `mdf run`.
+ - `virtualPath` (optional) enables features like tree views and the viewer; set `param` to the field that holds paths.
+ - `idGenerator` (optional) chooses the auto ID format for filenames when not using `fileName` (`ulid` or `uuid`).
 
 ### Templates and overrides
 
@@ -151,6 +158,31 @@ mdf fix notes --fm status=todo --fm tags=backlog
 - `validate` reports each valid file and exits with code `0` when everything passes.
 - `fix` rewrites front matter safely, applying schema defaults and CLI overrides before writing.
 - Both commands honor the file extension and defaults defined in your config.
+
+### Update specific files
+
+Use `mdf update` when you want to change front matter on particular files without touching the rest of the collection:
+
+```bash
+# Set explicit values and let the schema/config provide defaults
+mdf update --fm "status=done" --fm updated_at ./docs/roadmap.md ./docs/intro.md
+```
+
+- Provide `--fm key=value` for explicit assignments.
+- Provide `--fm key` (no value) to ask `mdf` to fill that key from template/config defaults or the schema’s default.
+- The command validates the final front matter against your schema before writing.
+
+### Interactive viewer
+
+Explore your notes in a local web UI:
+
+```bash
+mdf viewer ./docs --vpath blog --filter "status=done" --port 4173
+```
+
+- Requires `virtualPath.param` in your config (for navigation).
+- Supports the same filter expressions as `mdf list`.
+- Prints the local URL on start (defaults to `http://127.0.0.1:4173`).
 
 ## Programmatic usage
 
