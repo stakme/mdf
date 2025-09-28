@@ -10,12 +10,12 @@ import {
 } from "./helpers";
 
 describe("markdfm new", () => {
-	it("populates required strings with empty values when not provided", async () => {
-		const tempDir = await setupWorkspace();
-		try {
-			await execa(nodeBinary, [cliPath, "new", "notes"], {
-				cwd: tempDir,
-			});
+        it("populates required strings with empty values when not provided", async () => {
+                const tempDir = await setupWorkspace();
+                try {
+                        await execa(nodeBinary, [cliPath, "new", "notes"], {
+                                cwd: tempDir,
+                        });
 
 			const notesDir = path.join(tempDir, "notes");
 			const entries = await fs.readdir(notesDir);
@@ -31,10 +31,11 @@ describe("markdfm new", () => {
 
                         expect(frontMatter.title).toBe("");
                         expect(frontMatter.description).toBe("");
+                        expect(frontMatter.author).toBe("");
                         expect(typeof frontMatter.created_at).toBe("string");
-			expect(Number.isNaN(Date.parse(frontMatter.created_at as string))).toBe(
-				false,
-			);
+                        expect(Number.isNaN(Date.parse(frontMatter.created_at as string))).toBe(
+                                false,
+                        );
 			expect(typeof frontMatter.updated_at).toBe("string");
 			expect(Number.isNaN(Date.parse(frontMatter.updated_at as string))).toBe(
 				false,
@@ -71,6 +72,7 @@ describe("markdfm new", () => {
                         const { frontMatter } = parseFrontMatter<{
                                 title: string;
                                 description: string;
+                                author: string;
                                 created_at: string;
                                 updated_at: string;
                                 tags: string[];
@@ -78,11 +80,12 @@ describe("markdfm new", () => {
 
                         expect(frontMatter.title).toBe("CLI Note");
                         expect(frontMatter.description).toBe("");
-			expect(typeof frontMatter.created_at).toBe("string");
-			expect(Number.isNaN(Date.parse(frontMatter.created_at))).toBe(false);
-			expect(frontMatter.tags).toEqual([]);
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
+                        expect(frontMatter.author).toBe("");
+                        expect(typeof frontMatter.created_at).toBe("string");
+                        expect(Number.isNaN(Date.parse(frontMatter.created_at))).toBe(false);
+                        expect(frontMatter.tags).toEqual([]);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
 
@@ -115,17 +118,50 @@ describe("markdfm new", () => {
 			}
 			const createdFile = path.join(notesDir, firstEntry);
 			const content = await fs.readFile(createdFile, "utf8");
-			const { frontMatter } = parseFrontMatter(content);
-			expect(typeof frontMatter.updated_at).toBe("string");
+                        const { frontMatter } = parseFrontMatter(content);
+                        expect(typeof frontMatter.updated_at).toBe("string");
 
                         expect(frontMatter.title).toBe("Explicit");
                         expect(frontMatter.description).toBe("");
-			expect(frontMatter.created_at).toBe(explicitCreatedAt);
-			expect(frontMatter.tags).toEqual([]);
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
-		}
-	});
+                        expect(frontMatter.author).toBe("");
+                        expect(frontMatter.created_at).toBe(explicitCreatedAt);
+                        expect(frontMatter.tags).toEqual([]);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
+        it("applies schema overrides from a local config file", async () => {
+                const tempDir = await setupWorkspace({
+                        localConfig: `import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                author: z.string().default("@stakme"),
+        }),
+});`,
+                });
+                try {
+                        await execa(nodeBinary, [cliPath, "new", "notes"], {
+                                cwd: tempDir,
+                        });
+
+                        const notesDir = path.join(tempDir, "notes");
+                        const entries = await fs.readdir(notesDir);
+                        const [firstEntry] = entries;
+                        if (!firstEntry) {
+                                throw new Error("Expected the command to create a file");
+                        }
+
+                        const createdFile = path.join(notesDir, firstEntry);
+                        const content = await fs.readFile(createdFile, "utf8");
+                        const { frontMatter } = parseFrontMatter(content);
+
+                        expect(frontMatter.author).toBe("@stakme");
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
 
 	it("parses array front matter from JSON input", async () => {
 		const tempDir = await setupWorkspace();
@@ -152,13 +188,14 @@ describe("markdfm new", () => {
 			}
 			const createdFile = path.join(notesDir, firstEntry);
 			const content = await fs.readFile(createdFile, "utf8");
-			const { frontMatter } = parseFrontMatter(content);
+                        const { frontMatter } = parseFrontMatter(content);
 
-			expect(frontMatter.tags).toEqual(["tag1", "tag2"]);
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
-		}
-	});
+                        expect(frontMatter.tags).toEqual(["tag1", "tag2"]);
+                        expect(frontMatter.author).toBe("");
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
 
 	it("collects repeated front matter flags into arrays", async () => {
 		const tempDir = await setupWorkspace();
@@ -187,11 +224,12 @@ describe("markdfm new", () => {
 			}
 			const createdFile = path.join(notesDir, firstEntry);
 			const content = await fs.readFile(createdFile, "utf8");
-			const { frontMatter } = parseFrontMatter(content);
+                        const { frontMatter } = parseFrontMatter(content);
 
-			expect(frontMatter.tags).toEqual(["tag1", "tag2"]);
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
-		}
-	});
+                        expect(frontMatter.tags).toEqual(["tag1", "tag2"]);
+                        expect(frontMatter.author).toBe("");
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
 });

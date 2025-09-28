@@ -12,21 +12,33 @@ const packageRequire = Module.createRequire(
 );
 
 const CONFIG_CANDIDATES = [
-	".config/markdfm.mts",
-	".config/markdfm.ts",
-	".config/markdfm.mjs",
-	".config/markdfm.js",
-	".config/markdfm.cjs",
-	".config/markdfm.json",
+        ".config/markdfm.mts",
+        ".config/markdfm.ts",
+        ".config/markdfm.mjs",
+        ".config/markdfm.js",
+        ".config/markdfm.cjs",
+        ".config/markdfm.json",
 ];
 
-export async function findConfigPath(baseDir: string): Promise<string | null> {
-	for (const relative of CONFIG_CANDIDATES) {
-		const candidate = path.resolve(baseDir, relative);
-		try {
-			await fs.access(candidate);
-			return candidate;
-		} catch (error) {
+const LOCAL_CONFIG_CANDIDATES = [
+        ".config/markdfm.local.mts",
+        ".config/markdfm.local.ts",
+        ".config/markdfm.local.mjs",
+        ".config/markdfm.local.js",
+        ".config/markdfm.local.cjs",
+        ".config/markdfm.local.json",
+];
+
+export async function findConfigPath(
+        baseDir: string,
+        candidates: readonly string[] = CONFIG_CANDIDATES,
+): Promise<string | null> {
+        for (const relative of candidates) {
+                const candidate = path.resolve(baseDir, relative);
+                try {
+                        await fs.access(candidate);
+                        return candidate;
+                } catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
 				throw error;
 			}
@@ -36,19 +48,36 @@ export async function findConfigPath(baseDir: string): Promise<string | null> {
 }
 
 export async function loadConfig(
-	baseDir: string,
+        baseDir: string,
 ): Promise<LoadedConfig | null> {
-	const configPath = await findConfigPath(baseDir);
-	if (!configPath) {
-		return null;
-	}
+        const configPath = await findConfigPath(baseDir, CONFIG_CANDIDATES);
+        if (!configPath) {
+                return null;
+        }
 
-	const rawConfig = await importConfig(configPath);
-	const normalized = normalizeConfig(rawConfig, configPath);
-	return {
-		...normalized,
-		path: configPath,
-	};
+        const rawConfig = await importConfig(configPath);
+        const normalized = normalizeConfig(rawConfig, configPath);
+        const localConfig = await loadLocalConfig(baseDir);
+        const mergedConfig = localConfig
+                ? mergeConfigs(normalized, localConfig.config, configPath, localConfig.path)
+                : normalized;
+        return {
+                ...mergedConfig,
+                path: configPath,
+        };
+}
+
+async function loadLocalConfig(
+        baseDir: string,
+): Promise<{ config: MarkdfmConfig; path: string } | null> {
+        const localPath = await findConfigPath(baseDir, LOCAL_CONFIG_CANDIDATES);
+        if (!localPath) {
+                return null;
+        }
+
+        const rawConfig = await importConfig(localPath);
+        const normalized = normalizeConfig(rawConfig, localPath);
+        return { config: normalized, path: localPath };
 }
 
 async function importConfig(configPath: string): Promise<unknown> {
@@ -126,9 +155,9 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 }
 
 function normalizeConfig(value: unknown, configPath: string): MarkdfmConfig {
-	if (!value || typeof value !== "object") {
-		throw new Error(`markdfm config at ${configPath} must export an object`);
-	}
+        if (!value || typeof value !== "object") {
+                throw new Error(`markdfm config at ${configPath} must export an object`);
+        }
 
 	const maybeSchema = (value as Record<string, unknown>).schema;
 	if (!isZodType(maybeSchema)) {
@@ -137,7 +166,48 @@ function normalizeConfig(value: unknown, configPath: string): MarkdfmConfig {
 		);
 	}
 
-	return value as MarkdfmConfig;
+        return value as MarkdfmConfig;
+}
+
+function mergeConfigs(
+        base: MarkdfmConfig,
+        override: MarkdfmConfig,
+        baseConfigPath: string,
+        localConfigPath: string,
+): MarkdfmConfig {
+        const schema = mergeSchemas(
+                base.schema,
+                override.schema,
+                baseConfigPath,
+                localConfigPath,
+        );
+        return {
+                ...base,
+                schema,
+                defaults: override.defaults ?? base.defaults,
+                content: override.content ?? base.content,
+                fileName: override.fileName ?? base.fileName,
+                extension: override.extension ?? base.extension,
+        };
+}
+
+function mergeSchemas(
+        baseSchema: z.ZodTypeAny,
+        overrideSchema: z.ZodTypeAny,
+        baseConfigPath: string,
+        localConfigPath: string,
+): z.ZodTypeAny {
+        if (baseSchema instanceof z.ZodObject && overrideSchema instanceof z.ZodObject) {
+                return baseSchema.merge(overrideSchema);
+        }
+
+        if (!(overrideSchema instanceof z.ZodObject)) {
+                return overrideSchema;
+        }
+
+        throw new Error(
+                `markdfm local config at ${localConfigPath} must provide a Zod object schema to extend ${baseConfigPath}`,
+        );
 }
 
 function isZodType(value: unknown): value is z.ZodTypeAny {

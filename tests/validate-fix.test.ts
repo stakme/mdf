@@ -16,6 +16,7 @@ async function createInvalidNote(baseDir: string): Promise<string> {
         const now = new Date().toISOString();
         const content = `---\n` +
                 `title: Missing Description\n` +
+                `author: test-user\n` +
                 `created_at: ${now}\n` +
                 `updated_at: ${now}\n` +
                 `tags: []\n` +
@@ -34,6 +35,7 @@ async function createNoteMissingCreatedAt(baseDir: string): Promise<string> {
         const content = `---\n` +
                 `title: Missing Created At\n` +
                 `description: Some description\n` +
+                `author: test-user\n` +
                 `updated_at: ${now}\n` +
                 `tags: []\n` +
                 `---\n` +
@@ -116,6 +118,7 @@ describe("markdfm fix", () => {
                         const { frontMatter } = parseFrontMatter<{
                                 title: string;
                                 description: string;
+                                author: string;
                                 created_at: string;
                                 updated_at: string;
                                 tags: string[];

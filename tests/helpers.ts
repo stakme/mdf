@@ -10,7 +10,9 @@ export const cliPath = path.join(projectRoot, "dist", "cli.mjs");
 export const nodeBinary =
         process.execPath ?? "/Users/stakme/.nvm/versions/node/v24.9.0/bin/node";
 
-export async function setupWorkspace(): Promise<string> {
+export async function setupWorkspace(options?: {
+        localConfig?: string;
+}): Promise<string> {
         const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
         const configDir = path.join(tempDir, ".config");
         await fs.mkdir(configDir, { recursive: true });
@@ -22,12 +24,18 @@ export default defineConfig({
         schema: z.object({
                 title: z.string(),
                 description: z.string(),
+                author: z.string(),
                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                 tags: z.array(z.string()).default(() => []),
         }),
 });`;
         await fs.writeFile(configFile, configSource, "utf8");
+
+        if (options?.localConfig) {
+                const localConfigFile = path.join(configDir, "markdfm.local.mts");
+                await fs.writeFile(localConfigFile, options.localConfig, "utf8");
+        }
 
         return tempDir;
 }
