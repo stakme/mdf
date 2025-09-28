@@ -25,7 +25,7 @@ export default defineConfig({
 			name: "default",
 			glob: "**",
 			schema: z.object({
-				title: z.string().min(1),
+				title: z.string(),
 				vpath: z.string().optional(),
 				status: z.enum(["todo", "in_progress", "done"]).default("todo"),
 				author: z.string().optional(),
@@ -40,6 +40,9 @@ export default defineConfig({
 	templates: {
 		default: {
 			schema: "default",
+			frontmatter: {
+				title: "",
+			},
 			body: ({ title }) => `# ${title}
 
 ## What I need
