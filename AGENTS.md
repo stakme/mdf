@@ -18,6 +18,13 @@
    - `npm run build` to confirm bundling with tsdown stays stable.
    - `npm test` to ensure all specs—including new ones—pass against the built output.
 6. If the TODO workflow expects the front matter `status` to change (e.g., to `done`), make that adjustment before handoff.
+7. Close the TODO via the CLI once everything is ready, for example:
+
+```
+npx @stakme/markdfm run close ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
+
+Updated ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
+```
 
 ## Coding Notes
 - Follow existing logging and error patterns—surface user-facing issues through `MarkdfmError` subclasses and catch them in the CLI for polite messaging.

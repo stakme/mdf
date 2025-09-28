@@ -1,6 +1,12 @@
 import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
+	aliases: {
+		todo: `list --filter "status=todo" ./TODO`,
+		new_bug: `new ./TODO --template bug_report`,
+		close: `update --fm "status=done" --fm updated_at`,
+	},
+
 	schema: [
 		{
 			name: "default",
@@ -65,10 +71,5 @@ Logs, screenshots, or notes.
 	virtualPath: {
 		param: "vpath",
 		separator: "/",
-	},
-
-	aliases: {
-		todo: `list --filter "status=todo" ./TODO`,
-		new_bug: `new ./TODO --template bug_report`,
 	},
 });
