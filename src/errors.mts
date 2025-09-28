@@ -11,7 +11,9 @@ export type MarkdfmErrorCode =
         | "INVALID_QUERY_FILTER"
         | "TEMPLATE_NOT_FOUND"
         | "INVALID_UPDATE_INPUT"
-        | "DEFAULT_VALUE_UNAVAILABLE";
+        | "DEFAULT_VALUE_UNAVAILABLE"
+        | "VIRTUAL_PATH_NOT_CONFIGURED"
+        | "INVALID_VIRTUAL_PATH_VALUE";
 
 export class MarkdfmError extends Error {
         constructor(

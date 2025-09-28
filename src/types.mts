@@ -25,6 +25,15 @@ export interface TemplateDefinition<TData> {
                 | ((context: TemplateBodyContext<TData>) => string | Promise<string>);
 }
 
+export interface VirtualPathConfig {
+        param: string;
+        separator?: string;
+}
+
+export interface LoadedVirtualPathConfig extends VirtualPathConfig {
+        separator: string;
+}
+
 export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         name: string;
         glob?: string;
@@ -49,6 +58,7 @@ export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         extension?: string;
         templates?: Record<string, TemplateDefinition<z.infer<TSchema>>>;
         defaultTemplate?: string;
+        virtualPath?: VirtualPathConfig;
 }
 
 export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
@@ -61,4 +71,5 @@ export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
         defaultSchema: string;
         getSchemaForRelativePath(relativePath: string): LoadedSchema<TSchema>;
         path: string;
+        virtualPath?: LoadedVirtualPathConfig;
 }

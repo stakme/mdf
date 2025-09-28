@@ -1,8 +1,8 @@
-import { promises as fs } from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { readMarkdownDocument } from "../front-matter.mts";
+import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 
 export interface QueryCommandOptions {
         cwd: string;
@@ -40,7 +40,7 @@ export async function runQueryCommand(
         }
 
         const extension = normalizeExtension(config.extension ?? ".md");
-        const files = await collectFiles(resolvedDirectory, extension);
+        const files = await collectMarkdownFiles(resolvedDirectory, extension);
         if (!files.length) {
                 throw new MarkdfmError(
                         "NO_MATCHING_FILES",
@@ -276,29 +276,6 @@ function formatValue(value: unknown): string {
                 }
         }
         return String(value);
-}
-
-async function collectFiles(directory: string, extension: string): Promise<string[]> {
-        const results: string[] = [];
-        async function walk(current: string): Promise<void> {
-                const entries = await fs.readdir(current, { withFileTypes: true });
-                for (const entry of entries) {
-                        const fullPath = path.join(current, entry.name);
-                        if (entry.isDirectory()) {
-                                await walk(fullPath);
-                                continue;
-                        }
-                        if (entry.isFile() && fullPath.endsWith(extension)) {
-                                results.push(fullPath);
-                        }
-                }
-        }
-        await walk(directory);
-        return results.sort();
-}
-
-function normalizeExtension(extension: string): string {
-        return extension.startsWith(".") ? extension : `.${extension}`;
 }
 
 function formatDisplayPath(filePath: string, cwd: string): string {

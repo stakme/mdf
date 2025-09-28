@@ -7,6 +7,7 @@ export default defineConfig({
                         glob: "**",
                         schema: z.object({
                                 title: z.string(),
+                                vpath: z.string().default(""),
                                 status: z.enum(["todo", "in_progress", "done"]).default("todo"),
                                 author: z.string(),
                                 tags: z.array(z.string()).default(() => []),
@@ -28,4 +29,8 @@ export default defineConfig({
                 },
         },
         defaultTemplate: "default",
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
 });

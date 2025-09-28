@@ -5,7 +5,12 @@ import { pathToFileURL } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 import { defineConfig, z } from "./index.mts";
-import type { LoadedConfig, LoadedSchema, MarkdfmConfig } from "./types.mts";
+import type {
+        LoadedConfig,
+        LoadedSchema,
+        LoadedVirtualPathConfig,
+        MarkdfmConfig,
+} from "./types.mts";
 
 const packageRequire = Module.createRequire(
 	new URL("../package.json", import.meta.url),
@@ -152,9 +157,10 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 }
 
 interface NormalizedConfig
-        extends Omit<MarkdfmConfig, "schema" | "defaultSchema"> {
+        extends Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath"> {
         schemas: readonly LoadedSchema[];
         defaultSchema: string;
+        virtualPath?: LoadedVirtualPathConfig;
 }
 
 function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
@@ -186,14 +192,67 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
                 configPath,
         );
 
+        const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
+
         const clone = { ...record } as Record<string, unknown>;
         delete clone.schema;
         delete clone.defaultSchema;
+        delete clone.virtualPath;
 
         return {
-                ...(clone as Omit<MarkdfmConfig, "schema" | "defaultSchema">),
+                ...(clone as Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath">),
                 schemas: definitions,
                 defaultSchema: defaultName,
+                virtualPath,
+        };
+}
+
+function normalizeVirtualPath(
+        input: unknown,
+        configPath: string,
+): LoadedVirtualPathConfig | undefined {
+        if (input === undefined) {
+                return undefined;
+        }
+
+        if (!input || typeof input !== "object") {
+                throw new Error(
+                        `markdfm config at ${configPath} must define "virtualPath" as an object when provided`,
+                );
+        }
+
+        const record = input as Record<string, unknown>;
+        const param = record.param;
+        if (typeof param !== "string" || !param.trim()) {
+                throw new Error(
+                        `markdfm config at ${configPath} must define virtualPath.param as a non-empty string`,
+                );
+        }
+
+        const separatorInput = record.separator;
+        if (separatorInput === undefined) {
+                return {
+                        param: param.trim(),
+                        separator: "/",
+                };
+        }
+
+        if (typeof separatorInput !== "string") {
+                throw new Error(
+                        `markdfm config at ${configPath} must define virtualPath.separator as a string when provided`,
+                );
+        }
+
+        const separator = separatorInput.trim();
+        if (!separator) {
+                throw new Error(
+                        `markdfm config at ${configPath} must define virtualPath.separator as a non-empty string when provided`,
+                );
+        }
+
+        return {
+                param: param.trim(),
+                separator,
         };
 }
 
@@ -221,6 +280,7 @@ function mergeConfigs(
                 extension: override.extension ?? base.extension,
                 templates: mergeTemplates(base.templates, override.templates),
                 defaultTemplate: override.defaultTemplate ?? base.defaultTemplate,
+                virtualPath: override.virtualPath ?? base.virtualPath,
         };
 }
 

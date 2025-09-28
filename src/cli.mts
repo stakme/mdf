@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
+import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
 import { runQueryCommand } from "./commands/query.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
@@ -86,6 +87,25 @@ async function bootstrap(): Promise<void> {
                                         }
                                 }
                                 process.exitCode = 1;
+                        } catch (error) {
+                                handleError(error);
+                        }
+                });
+
+        program
+                .command("list")
+                .description("List Markdown files using virtual paths")
+                .argument("<directory>", "Directory containing Markdown files to list")
+                .action(async (directory: string) => {
+                        try {
+                                const result = await runListCommand({
+                                        cwd: process.cwd(),
+                                        directory,
+                                });
+
+                                for (const line of result.tree) {
+                                        console.log(line);
+                                }
                         } catch (error) {
                                 handleError(error);
                         }
