@@ -13,6 +13,7 @@ export default defineConfig({
 		title: z.string(),
 		created_at: z.string().datetime().default(() => new Date().toISOString()),
 		updated_at: z.string().datetime().default(() => new Date().toISOString()),
+		tags: z.array(z.string()).default(() => []),
 	}),
 });
 ```
@@ -26,9 +27,11 @@ Use the CLI to scaffold new Markdown files with valid front matter:
 
 ```bash
 markdfm new notes
-markdfm new notes --fm title="Release Plan" --fm created_at="2025-09-27"
+markdfm new notes --fm title="Release Plan" --fm tags=["release","planning"]
+markdfm new notes --fm title="Release Plan" --fm tags=release --fm tags=planning
 ```
 
-The command validates all provided fields using your schema, fills in a
-`created_at` timestamp when the schema requires it, and writes a Markdown file
-with front matter to the target directory.
+The command validates all provided fields using your schema, applies any
+defaults you define, and writes a Markdown file with front matter to the target
+directory. Array fields accept either a JSON-like literal or multiple
+`--fm key=value` flags to accumulate values.

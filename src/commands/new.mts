@@ -251,17 +251,21 @@ function ensureRequiredStringFields(
 function isRequiredField(schema: z.ZodTypeAny): boolean {
 	let current: z.ZodTypeAny | undefined = schema;
 	while (current) {
-		const def: {
-			typeName?: string;
-			innerType?: z.ZodTypeAny;
-			schema?: z.ZodTypeAny;
-		} | undefined = (current as unknown as {
-			_def?: {
-				typeName?: string;
-				innerType?: z.ZodTypeAny;
-				schema?: z.ZodTypeAny;
-			};
-		})._def;
+		const def:
+			| {
+					typeName?: string;
+					innerType?: z.ZodTypeAny;
+					schema?: z.ZodTypeAny;
+			  }
+			| undefined = (
+			current as unknown as {
+				_def?: {
+					typeName?: string;
+					innerType?: z.ZodTypeAny;
+					schema?: z.ZodTypeAny;
+				};
+			}
+		)._def;
 		const typeName: string | undefined = def?.typeName;
 		if (!typeName) {
 			return true;
@@ -315,9 +319,37 @@ function parseFrontMatterInputs(inputs: string[]): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	for (const raw of inputs) {
 		const { key, value } = parseFrontMatterInput(raw);
-		result[key] = value;
+		mergeFrontMatterValue(result, key, value);
 	}
 	return result;
+}
+
+function mergeFrontMatterValue(
+	target: Record<string, unknown>,
+	key: string,
+	value: unknown,
+): void {
+	const current = target[key];
+	if (current === undefined) {
+		target[key] = value;
+		return;
+	}
+
+	if (Array.isArray(current)) {
+		if (Array.isArray(value)) {
+			current.push(...value);
+		} else {
+			current.push(value);
+		}
+		return;
+	}
+
+	if (Array.isArray(value)) {
+		target[key] = [current, ...value];
+		return;
+	}
+
+	target[key] = [current, value];
 }
 
 function parseFrontMatterInput(input: string): { key: string; value: unknown } {
