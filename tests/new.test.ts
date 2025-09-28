@@ -1,16 +1,13 @@
 import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { execa } from "execa";
 import { describe, expect, it } from "vitest";
-import YAML from "yaml";
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(currentDir, "..");
-const cliPath = path.join(projectRoot, "dist", "cli.mjs");
-const nodeBinary =
-	process.execPath ?? "/Users/stakme/.nvm/versions/node/v24.9.0/bin/node";
+import {
+        cliPath,
+        nodeBinary,
+        parseFrontMatter,
+        setupWorkspace,
+} from "./helpers";
 
 describe("markdfm new", () => {
 	it("populates required strings with empty values when not provided", async () => {
@@ -32,8 +29,9 @@ describe("markdfm new", () => {
 			const content = await fs.readFile(createdFile, "utf8");
 			const { frontMatter } = parseFrontMatter(content);
 
-			expect(frontMatter.title).toBe("");
-			expect(typeof frontMatter.created_at).toBe("string");
+                        expect(frontMatter.title).toBe("");
+                        expect(frontMatter.description).toBe("");
+                        expect(typeof frontMatter.created_at).toBe("string");
 			expect(Number.isNaN(Date.parse(frontMatter.created_at as string))).toBe(
 				false,
 			);
@@ -70,14 +68,16 @@ describe("markdfm new", () => {
 			const createdFile = path.join(notesDir, firstEntry);
 
 			const content = await fs.readFile(createdFile, "utf8");
-			const { frontMatter } = parseFrontMatter<{
-				title: string;
-				created_at: string;
-				updated_at: string;
-				tags: string[];
-			}>(content);
+                        const { frontMatter } = parseFrontMatter<{
+                                title: string;
+                                description: string;
+                                created_at: string;
+                                updated_at: string;
+                                tags: string[];
+                        }>(content);
 
-			expect(frontMatter.title).toBe("CLI Note");
+                        expect(frontMatter.title).toBe("CLI Note");
+                        expect(frontMatter.description).toBe("");
 			expect(typeof frontMatter.created_at).toBe("string");
 			expect(Number.isNaN(Date.parse(frontMatter.created_at))).toBe(false);
 			expect(frontMatter.tags).toEqual([]);
@@ -118,7 +118,8 @@ describe("markdfm new", () => {
 			const { frontMatter } = parseFrontMatter(content);
 			expect(typeof frontMatter.updated_at).toBe("string");
 
-			expect(frontMatter.title).toBe("Explicit");
+                        expect(frontMatter.title).toBe("Explicit");
+                        expect(frontMatter.description).toBe("");
 			expect(frontMatter.created_at).toBe(explicitCreatedAt);
 			expect(frontMatter.tags).toEqual([]);
 		} finally {
@@ -194,39 +195,3 @@ describe("markdfm new", () => {
 		}
 	});
 });
-
-async function setupWorkspace(): Promise<string> {
-	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
-	const configDir = path.join(tempDir, ".config");
-	await fs.mkdir(configDir, { recursive: true });
-
-	const configFile = path.join(configDir, "markdfm.mts");
-	const configSource = `import { defineConfig, z } from "markdfm/config";
-
-export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-                tags: z.array(z.string()).default(() => []),
-        }),
-});`;
-	await fs.writeFile(configFile, configSource, "utf8");
-
-	return tempDir;
-}
-
-function parseFrontMatter<T extends Record<string, unknown>>(
-	content: string,
-): {
-	frontMatter: T;
-	body: string;
-} {
-	const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-	if (!match) {
-		throw new Error("Front matter not found");
-	}
-	const frontMatter = YAML.parse(match[1] ?? "");
-	const body = match[2] ?? "";
-	return { frontMatter, body };
-}

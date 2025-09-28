@@ -4,6 +4,8 @@ import path from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import { loadConfig } from "../config.mts";
+import { MarkdfmError } from "../errors.mts";
+import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
 import type { LoadedConfig } from "../types.mts";
 
 export interface NewCommandOptions {
@@ -175,10 +177,10 @@ async function buildInitialFrontMatter(
 	now: Date,
 ): Promise<Record<string, unknown>> {
 	const defaults = await resolveDefaults(config, now);
-	const cliValues = parseFrontMatterInputs(inputs);
-	const combined = { ...defaults, ...cliValues };
-	ensureRequiredStringFields(config, combined);
-	return combined;
+        const cliValues = parseFrontMatterInputs(inputs);
+        const combined = { ...defaults, ...cliValues };
+        ensureRequiredStringFields(config, combined);
+        return combined;
 }
 
 async function resolveDefaults(
@@ -315,109 +317,9 @@ function generateUuidV7(now: Date): string {
 	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function parseFrontMatterInputs(inputs: string[]): Record<string, unknown> {
-	const result: Record<string, unknown> = {};
-	for (const raw of inputs) {
-		const { key, value } = parseFrontMatterInput(raw);
-		mergeFrontMatterValue(result, key, value);
-	}
-	return result;
-}
-
-function mergeFrontMatterValue(
-	target: Record<string, unknown>,
-	key: string,
-	value: unknown,
-): void {
-	const current = target[key];
-	if (current === undefined) {
-		target[key] = value;
-		return;
-	}
-
-	if (Array.isArray(current)) {
-		if (Array.isArray(value)) {
-			current.push(...value);
-		} else {
-			current.push(value);
-		}
-		return;
-	}
-
-	if (Array.isArray(value)) {
-		target[key] = [current, ...value];
-		return;
-	}
-
-	target[key] = [current, value];
-}
-
-function parseFrontMatterInput(input: string): { key: string; value: unknown } {
-	const separatorIndex = input.indexOf("=");
-	if (separatorIndex === -1) {
-		throw new MarkdfmError(
-			"INVALID_FRONT_MATTER",
-			`Front matter must be provided as key=value, received: ${input}`,
-		);
-	}
-
-	const key = input.slice(0, separatorIndex).trim();
-	const rawValue = input.slice(separatorIndex + 1).trim();
-	if (!key) {
-		throw new MarkdfmError(
-			"INVALID_FRONT_MATTER",
-			`Front matter key cannot be empty: ${input}`,
-		);
-	}
-
-	const value = coerceFrontMatterValue(rawValue);
-	return { key, value };
-}
-
-function coerceFrontMatterValue(rawValue: string): unknown {
-	const trimmed = stripWrappingQuotes(rawValue.trim());
-	if (!trimmed.length) {
-		return "";
-	}
-
-	if (/^(true|false)$/i.test(trimmed)) {
-		return trimmed.toLowerCase() === "true";
-	}
-
-	if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
-		const asNumber = Number(trimmed);
-		if (!Number.isNaN(asNumber)) {
-			return asNumber;
-		}
-	}
-
-	if (
-		(trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-		(trimmed.startsWith("[") && trimmed.endsWith("]"))
-	) {
-		try {
-			return JSON.parse(trimmed);
-		} catch {
-			return trimmed;
-		}
-	}
-
-	return trimmed;
-}
-
-function stripWrappingQuotes(value: string): string {
-	if (
-		(value.startsWith('"') && value.endsWith('"')) ||
-		(value.startsWith("'") && value.endsWith("'"))
-	) {
-		return value.slice(1, -1);
-	}
-	return value;
-}
-
 async function parseFrontMatter(
-	config: LoadedConfig,
-	candidate: Record<string, unknown>,
+        config: LoadedConfig,
+        candidate: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
 	try {
 		const result = await config.schema.parseAsync(candidate);
@@ -438,26 +340,8 @@ function normalizeExtension(extension: string): string {
 }
 
 function appendExtensionIfMissing(fileName: string, extension: string): string {
-	if (fileName.endsWith(extension)) {
-		return fileName;
-	}
-	return `${fileName}${extension}`;
+        if (fileName.endsWith(extension)) {
+                return fileName;
+        }
+        return `${fileName}${extension}`;
 }
-
-export class MarkdfmError extends Error {
-	constructor(
-		public readonly code: MarkdfmErrorCode,
-		message: string,
-	) {
-		super(message);
-		this.name = "MarkdfmError";
-	}
-}
-
-type MarkdfmErrorCode =
-	| "CONFIG_NOT_FOUND"
-	| "SCHEMA_VALIDATION"
-	| "INVALID_FRONT_MATTER"
-	| "INVALID_FILE_NAME"
-	| "INVALID_CONTENT"
-	| "FILE_EXISTS";

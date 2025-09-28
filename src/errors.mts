@@ -1,0 +1,20 @@
+export type MarkdfmErrorCode =
+        | "CONFIG_NOT_FOUND"
+        | "SCHEMA_VALIDATION"
+        | "INVALID_FRONT_MATTER"
+        | "INVALID_FILE_NAME"
+        | "INVALID_CONTENT"
+        | "FILE_EXISTS"
+        | "FRONT_MATTER_NOT_FOUND"
+        | "FRONT_MATTER_PARSE"
+        | "NO_MATCHING_FILES";
+
+export class MarkdfmError extends Error {
+        constructor(
+                public readonly code: MarkdfmErrorCode,
+                message: string,
+        ) {
+                super(message);
+                this.name = "MarkdfmError";
+        }
+}
