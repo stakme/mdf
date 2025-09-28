@@ -62,6 +62,7 @@ export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         defaultTemplate?: string;
         virtualPath?: VirtualPathConfig;
         idGenerator?: IdGeneratorName;
+        aliases?: Record<string, string>;
 }
 
 export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>

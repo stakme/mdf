@@ -158,11 +158,12 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 }
 
 interface NormalizedConfig
-        extends Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath"> {
+        extends Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath" | "aliases"> {
         schemas: readonly LoadedSchema[];
         defaultSchema: string;
         virtualPath?: LoadedVirtualPathConfig;
         idGenerator?: IdGeneratorName;
+        aliases?: Record<string, string>;
 }
 
 function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
@@ -196,20 +197,67 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 
         const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
         const idGenerator = normalizeIdGenerator(record.idGenerator, configPath);
+        const aliases = normalizeAliases(record.aliases, configPath);
 
         const clone = { ...record } as Record<string, unknown>;
         delete clone.schema;
         delete clone.defaultSchema;
         delete clone.virtualPath;
         delete clone.idGenerator;
+        delete clone.aliases;
 
         return {
-                ...(clone as Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath">),
+                ...(clone as Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath" | "aliases">),
                 schemas: definitions,
                 defaultSchema: defaultName,
                 virtualPath,
                 idGenerator,
+                aliases,
         };
+}
+
+function normalizeAliases(
+        input: unknown,
+        configPath: string,
+): Record<string, string> | undefined {
+        if (input === undefined) {
+                return undefined;
+        }
+
+        if (!input || typeof input !== "object" || Array.isArray(input)) {
+                throw new Error(
+                        `markdfm config at ${configPath} must define "aliases" as an object mapping strings to strings`,
+                );
+        }
+
+        const entries = Object.entries(input as Record<string, unknown>);
+        const normalized: Record<string, string> = {};
+
+        for (const [key, value] of entries) {
+                const aliasName = key.trim();
+                if (!aliasName) {
+                        throw new Error(
+                                `markdfm config at ${configPath} must define aliases with non-empty names`,
+                        );
+                }
+
+                if (typeof value !== "string") {
+                        throw new Error(
+                                `markdfm config at ${configPath} must define alias "${aliasName}" as a string`,
+                        );
+                }
+
+                const command = value.trim();
+                if (!command) {
+                        throw new Error(
+                                `markdfm config at ${configPath} must define alias "${aliasName}" with a non-empty command`,
+                        );
+                }
+
+                normalized[aliasName] = command;
+        }
+
+        return normalized;
 }
 
 function normalizeVirtualPath(
@@ -304,7 +352,23 @@ function mergeConfigs(
                 defaultTemplate: override.defaultTemplate ?? base.defaultTemplate,
                 virtualPath: override.virtualPath ?? base.virtualPath,
                 idGenerator: override.idGenerator ?? base.idGenerator,
+                aliases: mergeAliases(base.aliases, override.aliases),
         };
+}
+
+function mergeAliases(
+        baseAliases: Record<string, string> | undefined,
+        overrideAliases: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+        if (!baseAliases) {
+                return overrideAliases;
+        }
+
+        if (!overrideAliases) {
+                return baseAliases;
+        }
+
+        return { ...baseAliases, ...overrideAliases };
 }
 
 function mergeTemplates(
@@ -382,6 +446,7 @@ function finalizeConfig(
                 },
                 path: configPath,
                 idGenerator: config.idGenerator ?? "ulid",
+                aliases: config.aliases ? { ...config.aliases } : undefined,
         };
 }
 

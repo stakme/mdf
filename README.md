@@ -47,6 +47,7 @@ When you are ready to publish new notes, validate the collection with `markdfm v
 | `markdfm list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
 | `markdfm validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
 | `markdfm fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
+| `markdfm run <alias> [args...]` | Execute a configured alias that expands to another `markdfm` command. |
 
 Run any command with `--help` for the full option list.
 
@@ -73,6 +74,7 @@ export default defineConfig({
 - `defaults` sets automatic fallback values for fields you omit when creating new notes.
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
+- `aliases` (optional) map friendly names to frequently used CLI command fragments for `markdfm run`.
 
 ### Templates and overrides
 
@@ -106,6 +108,36 @@ markdfm list notes \
 - Target nested front matter fields with dot notation, such as `project.status`.
 - Supply `--format` to bypass the tree and render each match with `{{field}}` placeholders. Use
   helpers like `{{tags:, }}` to join arrays or `{{paths.relativePath}}` for the file location.
+
+### Aliases and shortcuts
+
+Store your favorite command combinations in the config and run them with a short name:
+
+```ts
+import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                status: z.enum(["todo", "in_progress", "done"]),
+                vpath: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        aliases: {
+                todo: 'list --filter "status=todo" ./TODO',
+        },
+});
+```
+
+```bash
+markdfm run todo
+```
+
+`markdfm run` expands the alias value into a fresh CLI invocation, so all built-in commands and
+flags work as if you typed them manually. Aliases can reference other aliases, and the CLI detects
+cycles to prevent infinite recursion.
 
 ## Keep notes trustworthy
 

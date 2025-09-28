@@ -14,7 +14,10 @@ export type MarkdfmErrorCode =
         | "INVALID_UPDATE_INPUT"
         | "DEFAULT_VALUE_UNAVAILABLE"
         | "VIRTUAL_PATH_NOT_CONFIGURED"
-        | "INVALID_VIRTUAL_PATH_VALUE";
+        | "INVALID_VIRTUAL_PATH_VALUE"
+        | "ALIAS_NOT_FOUND"
+        | "ALIAS_CYCLE"
+        | "INVALID_ALIAS_COMMAND";
 
 export class MarkdfmError extends Error {
         constructor(

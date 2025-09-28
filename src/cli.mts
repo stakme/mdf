@@ -6,19 +6,31 @@ import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
 import { runUpdateCommand } from "./commands/update.mts";
+import { prepareRunCommand } from "./commands/run.mts";
 import { MarkdfmError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
-	const program = new Command();
-	const version = await readPackageVersion().catch(() => "0.0.0");
+        const version = await readPackageVersion().catch(() => "0.0.0");
+        const program = createProgram(version);
 
-	program
-		.name("markdfm")
-		.description(
-			"Lightweight utility to organize Markdown files with front matter",
-		)
-		.version(version)
-		.showHelpAfterError();
+        try {
+                await program.parseAsync(process.argv);
+        } catch (error) {
+                handleError(error);
+        }
+}
+
+function createProgram(version: string): Command {
+        const program = new Command();
+
+        program
+                .name("markdfm")
+                .description(
+                        "Lightweight utility to organize Markdown files with front matter",
+                )
+                .version(version)
+                .showHelpAfterError()
+                .enablePositionalOptions();
 
         program
                 .command("new")
@@ -209,11 +221,63 @@ async function bootstrap(): Promise<void> {
                         }
                 });
 
-        try {
-                await program.parseAsync(process.argv);
-        } catch (error) {
-                handleError(error);
-        }
+        program
+                .command("run")
+                .description("Execute a configured alias command")
+                .argument("<alias>", "Alias name defined in the config file")
+                .argument("[args...]", "Additional arguments appended to the alias")
+                .allowUnknownOption()
+                .passThroughOptions()
+                .action(async (aliasName: string, args: string[] = []) => {
+                        const extras = Array.isArray(args) ? args : [];
+                        const previousStack = process.env.MARKDFM_ALIAS_STACK;
+                        const delimiter = "\u001F";
+                        const visited = previousStack
+                                ? previousStack
+                                          .split(delimiter)
+                                          .map((entry) => entry.trim())
+                                          .filter((entry) => entry.length > 0)
+                                : [];
+
+                        if (visited.includes(aliasName)) {
+                                handleError(
+                                        new MarkdfmError(
+                                                "ALIAS_CYCLE",
+                                                `Detected a cycle while resolving alias "${aliasName}"`,
+                                        ),
+                                );
+                                return;
+                        }
+
+                        process.env.MARKDFM_ALIAS_STACK = [...visited, aliasName].join(
+                                delimiter,
+                        );
+
+                        try {
+                                const result = await prepareRunCommand({
+                                        cwd: process.cwd(),
+                                        alias: aliasName,
+                                        extraArgs: extras,
+                                });
+
+                                const aliasProgram = createProgram(version);
+                                await aliasProgram.parseAsync([
+                                        process.argv[0] ?? "node",
+                                        process.argv[1] ?? "markdfm",
+                                        ...result.argv,
+                                ]);
+                        } catch (error) {
+                                handleError(error);
+                        } finally {
+                                if (previousStack === undefined) {
+                                        delete process.env.MARKDFM_ALIAS_STACK;
+                                } else {
+                                        process.env.MARKDFM_ALIAS_STACK = previousStack;
+                                }
+                        }
+                });
+
+        return program;
 }
 
 function collectFrontMatter(value: string, previous: string[]): string[] {
