@@ -33,4 +33,8 @@ export default defineConfig({
 		param: "vpath",
 		separator: "/",
 	},
+
+	aliases: {
+		todo: `list --filter "status=todo" ./TODO`,
+	},
 });
