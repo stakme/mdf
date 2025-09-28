@@ -1,5 +1,7 @@
 import type { z } from "zod";
 
+export type IdGeneratorName = "uuid" | "ulid";
+
 export interface DefaultsContext {
 	now: Date;
 }
@@ -59,6 +61,7 @@ export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         templates?: Record<string, TemplateDefinition<z.infer<TSchema>>>;
         defaultTemplate?: string;
         virtualPath?: VirtualPathConfig;
+        idGenerator?: IdGeneratorName;
 }
 
 export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
@@ -72,4 +75,5 @@ export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
         getSchemaForRelativePath(relativePath: string): LoadedSchema<TSchema>;
         path: string;
         virtualPath?: LoadedVirtualPathConfig;
+        idGenerator: IdGeneratorName;
 }

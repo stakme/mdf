@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { defineConfig, z } from "./index.mts";
 import type {
+        IdGeneratorName,
         LoadedConfig,
         LoadedSchema,
         LoadedVirtualPathConfig,
@@ -161,6 +162,7 @@ interface NormalizedConfig
         schemas: readonly LoadedSchema[];
         defaultSchema: string;
         virtualPath?: LoadedVirtualPathConfig;
+        idGenerator?: IdGeneratorName;
 }
 
 function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
@@ -193,17 +195,20 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
         );
 
         const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
+        const idGenerator = normalizeIdGenerator(record.idGenerator, configPath);
 
         const clone = { ...record } as Record<string, unknown>;
         delete clone.schema;
         delete clone.defaultSchema;
         delete clone.virtualPath;
+        delete clone.idGenerator;
 
         return {
                 ...(clone as Omit<MarkdfmConfig, "schema" | "defaultSchema" | "virtualPath">),
                 schemas: definitions,
                 defaultSchema: defaultName,
                 virtualPath,
+                idGenerator,
         };
 }
 
@@ -256,6 +261,23 @@ function normalizeVirtualPath(
         };
 }
 
+function normalizeIdGenerator(
+        input: unknown,
+        configPath: string,
+): IdGeneratorName | undefined {
+        if (input === undefined) {
+                return undefined;
+        }
+
+        if (input === "uuid" || input === "ulid") {
+                return input;
+        }
+
+        throw new Error(
+                `markdfm config at ${configPath} must define "idGenerator" as either "ulid" or "uuid" when provided`,
+        );
+}
+
 function mergeConfigs(
         base: NormalizedConfig,
         override: NormalizedConfig,
@@ -281,6 +303,7 @@ function mergeConfigs(
                 templates: mergeTemplates(base.templates, override.templates),
                 defaultTemplate: override.defaultTemplate ?? base.defaultTemplate,
                 virtualPath: override.virtualPath ?? base.virtualPath,
+                idGenerator: override.idGenerator ?? base.idGenerator,
         };
 }
 
@@ -358,6 +381,7 @@ function finalizeConfig(
                         return selector.select(relativePath);
                 },
                 path: configPath,
+                idGenerator: config.idGenerator ?? "ulid",
         };
 }
 

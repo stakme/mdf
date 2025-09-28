@@ -8,6 +8,7 @@ import { MarkdfmError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
 import type {
         DefaultsValue,
+        IdGeneratorName,
         LoadedConfig,
         TemplateBodyContext,
         TemplateDefinition,
@@ -124,13 +125,13 @@ async function determineFileName(params: {
 		return appendExtensionIfMissing(provided, extension);
 	}
 
-	for (let attempt = 0; attempt < 5; attempt += 1) {
-		const candidate = `${generateUuidV7(now)}${extension}`;
-		const candidatePath = path.join(directory, candidate);
-		const exists = await pathExists(candidatePath);
-		if (!exists) {
-			return candidate;
-		}
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+                const candidate = `${generateId(now, config.idGenerator)}${extension}`;
+                const candidatePath = path.join(directory, candidate);
+                const exists = await pathExists(candidatePath);
+                if (!exists) {
+                        return candidate;
+                }
 	}
 
 	throw new MarkdfmError(
@@ -367,10 +368,17 @@ function isRequiredField(schema: z.ZodTypeAny): boolean {
 	return true;
 }
 
+function generateId(now: Date, strategy: IdGeneratorName): string {
+        if (strategy === "uuid") {
+                return generateUuidV7(now);
+        }
+        return generateUlid(now);
+}
+
 function generateUuidV7(now: Date): string {
-	// Mask the timestamp to 48 bits for simplicity
-	// It works until year 10889
-	const ts48 = BigInt(now.getTime()) & ((1n << 48n) - 1n);
+        // Mask the timestamp to 48 bits for simplicity
+        // It works until year 10889
+        const ts48 = BigInt(now.getTime()) & ((1n << 48n) - 1n);
 
 	const buffer = new Uint8Array(16);
 	buffer[0] = Number((ts48 >> 40n) & 0xffn);
@@ -391,7 +399,34 @@ function generateUuidV7(now: Date): string {
 		hex += byte.toString(16).padStart(2, "0");
 	}
 
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+const CROCKFORD32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+function generateUlid(now: Date): string {
+        const time = BigInt(now.getTime()) & ((1n << 48n) - 1n);
+        const timePart = encodeUlidSection(time, 10);
+
+        const random = randomBytes(10);
+        let randomValue = 0n;
+        for (const byte of random) {
+                randomValue = (randomValue << 8n) | BigInt(byte);
+        }
+        const randomPart = encodeUlidSection(randomValue, 16);
+
+        return `${timePart}${randomPart}`;
+}
+
+function encodeUlidSection(value: bigint, length: number): string {
+        let result = "";
+        let current = value;
+        for (let index = 0; index < length; index += 1) {
+                const charIndex = Number(current % 32n);
+                result = `${CROCKFORD32[charIndex]}${result}`;
+                current /= 32n;
+        }
+        return result;
 }
 
 async function parseFrontMatter(
