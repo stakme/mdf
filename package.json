@@ -40,7 +40,6 @@
 		"front matter",
 		"notes"
 	],
-	"license": "MIT",
 	"dependencies": {
 		"commander": "^14.0.1",
 		"yaml": "^2.8.1",
