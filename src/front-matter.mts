@@ -48,7 +48,7 @@ export function serializeMarkdownDocument(
         body: string,
 ): string {
         const frontMatterBlock = YAML.stringify(frontMatter, { lineWidth: 0 }).trimEnd();
-        const frontMatterSection = `---\n${frontMatterBlock}\n---\n\n`;
+        const frontMatterSection = `---\n${frontMatterBlock}\n---\n`;
         const normalizedBody = ensureTrailingNewline(body);
         return frontMatterSection + normalizedBody;
 }

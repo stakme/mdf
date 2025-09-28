@@ -45,6 +45,26 @@ async function createNoteMissingCreatedAt(baseDir: string): Promise<string> {
         return notePath;
 }
 
+async function createInvalidNoteWithoutBlankLine(baseDir: string): Promise<string> {
+        const notesDir = path.join(baseDir, "notes");
+        await fs.mkdir(notesDir, { recursive: true });
+        const notePath = path.join(notesDir, "missing-description-no-blank-line.md");
+        const now = new Date().toISOString();
+        const content = [
+                "---",
+                "title: Missing Description",
+                "author: test-user",
+                `created_at: ${now}`,
+                `updated_at: ${now}`,
+                "tags: []",
+                "---",
+                "# Some content.",
+                "",
+        ].join("\n");
+        await fs.writeFile(notePath, content, "utf8");
+        return notePath;
+}
+
 describe("markdfm validate", () => {
         it("reports files missing required fields", async () => {
                 const tempDir = await setupWorkspace();
@@ -136,6 +156,35 @@ describe("markdfm fix", () => {
                         expect(lines[1]).toBe("- ./notes/missing-description.md");
                         expect(lines).toHaveLength(2);
                         expect(validateResult.stderr).toBe("");
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
+        it("does not add a blank line after front matter when fixing", async () => {
+                const tempDir = await setupWorkspace();
+                try {
+                        const invalidFile = await createInvalidNoteWithoutBlankLine(tempDir);
+
+                        const fixResult = await execa(
+                                nodeBinary,
+                                [
+                                        cliPath,
+                                        "fix",
+                                        "--fm",
+                                        'description="TODO: Add description here"',
+                                        "notes",
+                                ],
+                                {
+                                        cwd: tempDir,
+                                },
+                        );
+
+                        expect(fixResult.exitCode).toBe(0);
+
+                        const content = await fs.readFile(invalidFile, "utf8");
+                        const { body } = parseFrontMatter(content);
+                        expect(body.startsWith("#")).toBe(true);
                 } finally {
                         await fs.rm(tempDir, { recursive: true, force: true });
                 }
