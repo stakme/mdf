@@ -8,18 +8,20 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(currentDir, "..");
 export const cliPath = path.join(projectRoot, "dist", "cli.mjs");
 export const nodeBinary =
-        process.execPath ?? "/Users/stakme/.nvm/versions/node/v24.9.0/bin/node";
+	process.execPath ?? "/Users/stakme/.nvm/versions/node/v24.9.0/bin/node";
 
 export async function setupWorkspace(options?: {
-        localConfig?: string;
-        config?: string;
+	localConfig?: string;
+	config?: string;
 }): Promise<string> {
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
-        const configDir = path.join(tempDir, ".config");
-        await fs.mkdir(configDir, { recursive: true });
+	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
+	const configDir = path.join(tempDir, ".config");
+	await fs.mkdir(configDir, { recursive: true });
 
-        const configFile = path.join(configDir, "markdfm.mts");
-        const configSource = options?.config ?? `import { defineConfig, z } from "markdfm/config";
+	const configFile = path.join(configDir, "markdfm.mts");
+	const configSource =
+		options?.config ??
+		`import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -45,27 +47,27 @@ export default defineConfig({
                 },
         },
 });`;
-        await fs.writeFile(configFile, configSource, "utf8");
+	await fs.writeFile(configFile, configSource, "utf8");
 
-        if (options?.localConfig) {
-                const localConfigFile = path.join(configDir, "markdfm.local.mts");
-                await fs.writeFile(localConfigFile, options.localConfig, "utf8");
-        }
+	if (options?.localConfig) {
+		const localConfigFile = path.join(configDir, "markdfm.local.mts");
+		await fs.writeFile(localConfigFile, options.localConfig, "utf8");
+	}
 
-        return tempDir;
+	return tempDir;
 }
 
 export function parseFrontMatter<T extends Record<string, unknown>>(
-        content: string,
+	content: string,
 ): {
-        frontMatter: T;
-        body: string;
+	frontMatter: T;
+	body: string;
 } {
-        const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-        if (!match) {
-                throw new Error("Front matter not found");
-        }
-        const frontMatter = YAML.parse(match[1] ?? "");
-        const body = match[2] ?? "";
-        return { frontMatter, body };
+	const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+	if (!match) {
+		throw new Error("Front matter not found");
+	}
+	const frontMatter = YAML.parse(match[1] ?? "");
+	const body = match[2] ?? "";
+	return { frontMatter, body };
 }

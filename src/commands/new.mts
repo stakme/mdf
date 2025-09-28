@@ -7,19 +7,19 @@ import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
 import type {
-        DefaultsValue,
-        IdGeneratorName,
-        LoadedConfig,
-        TemplateBodyContext,
-        TemplateDefinition,
+	DefaultsValue,
+	IdGeneratorName,
+	LoadedConfig,
+	TemplateBodyContext,
+	TemplateDefinition,
 } from "../types.mts";
 
 export interface NewCommandOptions {
-        cwd: string;
-        directory: string;
-        frontMatterInputs: string[];
-        now?: Date;
-        template?: string;
+	cwd: string;
+	directory: string;
+	frontMatterInputs: string[];
+	now?: Date;
+	template?: string;
 }
 
 export interface NewCommandResult {
@@ -28,52 +28,55 @@ export interface NewCommandResult {
 }
 
 export async function runNewCommand(
-        options: NewCommandOptions,
+	options: NewCommandOptions,
 ): Promise<NewCommandResult> {
-        const now = options.now ?? new Date();
-        const resolvedDirectory = path.resolve(options.cwd, options.directory);
-        const config = await loadConfig(options.cwd);
+	const now = options.now ?? new Date();
+	const resolvedDirectory = path.resolve(options.cwd, options.directory);
+	const config = await loadConfig(options.cwd);
 
-        if (!config) {
-                throw new MarkdfmError(
-                        "CONFIG_NOT_FOUND",
-                        "Could not find a markdfm config file. Create one at .config/markdfm.mts",
-                );
-        }
+	if (!config) {
+		throw new MarkdfmError(
+			"CONFIG_NOT_FOUND",
+			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+		);
+	}
 
-        const extension = normalizeExtension(config.extension ?? ".md");
-        const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
-        const placeholderFile = path.join(relativeDirectory, `__markdfm__${extension}`);
-        const schemaEntry = config.getSchemaForRelativePath(placeholderFile);
+	const extension = normalizeExtension(config.extension ?? ".md");
+	const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
+	const placeholderFile = path.join(
+		relativeDirectory,
+		`__markdfm__${extension}`,
+	);
+	const schemaEntry = config.getSchemaForRelativePath(placeholderFile);
 
-        const template = await resolveTemplate(config, options.template);
-        const baseData = await buildInitialFrontMatter(
-                config,
-                schemaEntry.schema,
-                options.frontMatterInputs,
-                now,
-                template,
-        );
-        const parsed = await parseFrontMatter(schemaEntry.schema, baseData);
+	const template = await resolveTemplate(config, options.template);
+	const baseData = await buildInitialFrontMatter(
+		config,
+		schemaEntry.schema,
+		options.frontMatterInputs,
+		now,
+		template,
+	);
+	const parsed = await parseFrontMatter(schemaEntry.schema, baseData);
 
-        const filePath = await writeMarkdownFile({
-                config,
-                data: parsed,
-                directory: resolvedDirectory,
-                now,
-                template,
-        });
-        return { filePath, frontMatter: parsed };
+	const filePath = await writeMarkdownFile({
+		config,
+		data: parsed,
+		directory: resolvedDirectory,
+		now,
+		template,
+	});
+	return { filePath, frontMatter: parsed };
 }
 
 async function writeMarkdownFile(params: {
-        config: LoadedConfig;
-        data: Record<string, unknown>;
-        directory: string;
-        now: Date;
-        template?: TemplateDefinition<Record<string, unknown>>;
+	config: LoadedConfig;
+	data: Record<string, unknown>;
+	directory: string;
+	now: Date;
+	template?: TemplateDefinition<Record<string, unknown>>;
 }): Promise<string> {
-        const { config, data, directory, now, template } = params;
+	const { config, data, directory, now, template } = params;
 
 	await fs.mkdir(directory, { recursive: true });
 
@@ -90,7 +93,7 @@ async function writeMarkdownFile(params: {
 	await ensureUniquePath(fullPath);
 
 	const frontMatterBlock = YAML.stringify(data, { lineWidth: 0 }).trimEnd();
-        const content = await resolveContent(config, template, data, now);
+	const content = await resolveContent(config, template, data, now);
 
 	const frontMatterSection = `---\n${frontMatterBlock}\n---\n\n`;
 	const bodySection = content ? ensureTrailingNewline(content) : "";
@@ -125,13 +128,13 @@ async function determineFileName(params: {
 		return appendExtensionIfMissing(provided, extension);
 	}
 
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-                const candidate = `${generateId(now, config.idGenerator)}${extension}`;
-                const candidatePath = path.join(directory, candidate);
-                const exists = await pathExists(candidatePath);
-                if (!exists) {
-                        return candidate;
-                }
+	for (let attempt = 0; attempt < 5; attempt += 1) {
+		const candidate = `${generateId(now, config.idGenerator)}${extension}`;
+		const candidatePath = path.join(directory, candidate);
+		const exists = await pathExists(candidatePath);
+		if (!exists) {
+			return candidate;
+		}
 	}
 
 	throw new MarkdfmError(
@@ -166,115 +169,118 @@ async function pathExists(filePath: string): Promise<boolean> {
 }
 
 async function resolveContent(
-        config: LoadedConfig,
-        template: TemplateDefinition<Record<string, unknown>> | undefined,
-        data: Record<string, unknown>,
-        now: Date,
+	config: LoadedConfig,
+	template: TemplateDefinition<Record<string, unknown>> | undefined,
+	data: Record<string, unknown>,
+	now: Date,
 ): Promise<string> {
-        if (template?.body !== undefined) {
-                return resolveTemplateBody(template.body, data, now);
-        }
+	if (template?.body !== undefined) {
+		return resolveTemplateBody(template.body, data, now);
+	}
 
-        if (!config.content) {
-                return "";
-        }
+	if (!config.content) {
+		return "";
+	}
 
-        if (typeof config.content === "string") {
-                return config.content;
-        }
+	if (typeof config.content === "string") {
+		return config.content;
+	}
 
-        const result = await config.content({ data, now });
-        if (typeof result !== "string") {
-                throw new MarkdfmError(
-                        "INVALID_CONTENT",
-                        "Config content() must return a string",
-                );
-        }
-        return result;
+	const result = await config.content({ data, now });
+	if (typeof result !== "string") {
+		throw new MarkdfmError(
+			"INVALID_CONTENT",
+			"Config content() must return a string",
+		);
+	}
+	return result;
 }
 
 async function resolveTemplate(
-        config: LoadedConfig,
-        templateName?: string,
+	config: LoadedConfig,
+	templateName?: string,
 ): Promise<TemplateDefinition<Record<string, unknown>> | undefined> {
-        const resolvedName = templateName ?? config.defaultTemplate;
+	const resolvedName = templateName ?? config.defaultTemplate;
 
-        if (!resolvedName) {
-                return undefined;
-        }
+	if (!resolvedName) {
+		return undefined;
+	}
 
-        const collection = config.templates;
-        const template = collection?.[resolvedName];
-        if (!template) {
-                throw new MarkdfmError(
-                        "TEMPLATE_NOT_FOUND",
-                        `Template "${resolvedName}" not found in ${config.path}`,
-                );
-        }
+	const collection = config.templates;
+	const template = collection?.[resolvedName];
+	if (!template) {
+		throw new MarkdfmError(
+			"TEMPLATE_NOT_FOUND",
+			`Template "${resolvedName}" not found in ${config.path}`,
+		);
+	}
 
-        return template as TemplateDefinition<Record<string, unknown>>;
+	return template as TemplateDefinition<Record<string, unknown>>;
 }
 
 async function resolveTemplateBody(
-        body: NonNullable<TemplateDefinition<Record<string, unknown>>["body"]>,
-        data: Record<string, unknown>,
-        now: Date,
+	body: NonNullable<TemplateDefinition<Record<string, unknown>>["body"]>,
+	data: Record<string, unknown>,
+	now: Date,
 ): Promise<string> {
-        if (typeof body === "string") {
-                return body;
-        }
+	if (typeof body === "string") {
+		return body;
+	}
 
-        const context = Object.assign({ now, data }, data) as TemplateBodyContext<
-                Record<string, unknown>
-        >;
-        const result = await body(context);
-        if (typeof result !== "string") {
-                throw new MarkdfmError(
-                        "INVALID_CONTENT",
-                        "Template body must return a string",
-                );
-        }
-        return result;
+	const context = Object.assign({ now, data }, data) as TemplateBodyContext<
+		Record<string, unknown>
+	>;
+	const result = await body(context);
+	if (typeof result !== "string") {
+		throw new MarkdfmError(
+			"INVALID_CONTENT",
+			"Template body must return a string",
+		);
+	}
+	return result;
 }
 
 async function buildInitialFrontMatter(
-        config: LoadedConfig,
-        schema: z.ZodTypeAny,
-        inputs: string[],
-        now: Date,
-        template?: TemplateDefinition<Record<string, unknown>>,
+	config: LoadedConfig,
+	schema: z.ZodTypeAny,
+	inputs: string[],
+	now: Date,
+	template?: TemplateDefinition<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
-        const defaults = await resolveDefaults(config, now, template);
-        const cliValues = parseFrontMatterInputs(inputs);
-        const combined = { ...defaults, ...cliValues };
-        ensureRequiredStringFields(schema, combined);
-        return combined;
+	const defaults = await resolveDefaults(config, now, template);
+	const cliValues = parseFrontMatterInputs(inputs);
+	const combined = { ...defaults, ...cliValues };
+	ensureRequiredStringFields(schema, combined);
+	return combined;
 }
 
 async function resolveDefaults(
-        config: LoadedConfig,
-        now: Date,
-        template?: TemplateDefinition<Record<string, unknown>>,
+	config: LoadedConfig,
+	now: Date,
+	template?: TemplateDefinition<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
-        const configDefaults = await resolveDefaultsValue(config.defaults, now);
-        const templateDefaults = await resolveDefaultsValue(template?.frontmatter, now);
-        return { ...configDefaults, ...templateDefaults };
+	const configDefaults = await resolveDefaultsValue(config.defaults, now);
+	const templateDefaults = await resolveDefaultsValue(
+		template?.frontmatter,
+		now,
+	);
+	return { ...configDefaults, ...templateDefaults };
 }
 
 async function resolveDefaultsValue<TValue>(
-        value: DefaultsValue<TValue> | undefined,
-        now: Date,
+	value: DefaultsValue<TValue> | undefined,
+	now: Date,
 ): Promise<Record<string, unknown>> {
-        if (!value) {
-                return {};
-        }
+	if (!value) {
+		return {};
+	}
 
-        if (typeof value === "function") {
-                const result = await value({ now });
-                return result ? { ...(result as Record<string, unknown>) } : {};
-        }
+	if (typeof value === "function") {
+		const result = await value({ now });
+		return result ? { ...(result as Record<string, unknown>) } : {};
+	}
 
-        return { ...(value as Record<string, unknown>) };
+	return { ...(value as Record<string, unknown>) };
 }
 
 function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
@@ -304,10 +310,10 @@ function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
 }
 
 function ensureRequiredStringFields(
-        schema: z.ZodTypeAny,
-        frontMatter: Record<string, unknown>,
+	schema: z.ZodTypeAny,
+	frontMatter: Record<string, unknown>,
 ): void {
-        const baseSchema = unwrapSchema(schema);
+	const baseSchema = unwrapSchema(schema);
 	if (!(baseSchema instanceof z.ZodObject)) {
 		return;
 	}
@@ -369,16 +375,16 @@ function isRequiredField(schema: z.ZodTypeAny): boolean {
 }
 
 function generateId(now: Date, strategy: IdGeneratorName): string {
-        if (strategy === "uuid") {
-                return generateUuidV7(now);
-        }
-        return generateUlid(now);
+	if (strategy === "uuid") {
+		return generateUuidV7(now);
+	}
+	return generateUlid(now);
 }
 
 function generateUuidV7(now: Date): string {
-        // Mask the timestamp to 48 bits for simplicity
-        // It works until year 10889
-        const ts48 = BigInt(now.getTime()) & ((1n << 48n) - 1n);
+	// Mask the timestamp to 48 bits for simplicity
+	// It works until year 10889
+	const ts48 = BigInt(now.getTime()) & ((1n << 48n) - 1n);
 
 	const buffer = new Uint8Array(16);
 	buffer[0] = Number((ts48 >> 40n) & 0xffn);
@@ -399,44 +405,44 @@ function generateUuidV7(now: Date): string {
 		hex += byte.toString(16).padStart(2, "0");
 	}
 
-        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 const CROCKFORD32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 function generateUlid(now: Date): string {
-        const time = BigInt(now.getTime()) & ((1n << 48n) - 1n);
-        const timePart = encodeUlidSection(time, 10);
+	const time = BigInt(now.getTime()) & ((1n << 48n) - 1n);
+	const timePart = encodeUlidSection(time, 10);
 
-        const random = randomBytes(10);
-        let randomValue = 0n;
-        for (const byte of random) {
-                randomValue = (randomValue << 8n) | BigInt(byte);
-        }
-        const randomPart = encodeUlidSection(randomValue, 16);
+	const random = randomBytes(10);
+	let randomValue = 0n;
+	for (const byte of random) {
+		randomValue = (randomValue << 8n) | BigInt(byte);
+	}
+	const randomPart = encodeUlidSection(randomValue, 16);
 
-        return `${timePart}${randomPart}`;
+	return `${timePart}${randomPart}`;
 }
 
 function encodeUlidSection(value: bigint, length: number): string {
-        let result = "";
-        let current = value;
-        for (let index = 0; index < length; index += 1) {
-                const charIndex = Number(current % 32n);
-                result = `${CROCKFORD32[charIndex]}${result}`;
-                current /= 32n;
-        }
-        return result;
+	let result = "";
+	let current = value;
+	for (let index = 0; index < length; index += 1) {
+		const charIndex = Number(current % 32n);
+		result = `${CROCKFORD32[charIndex]}${result}`;
+		current /= 32n;
+	}
+	return result;
 }
 
 async function parseFrontMatter(
-        schema: z.ZodTypeAny,
-        candidate: Record<string, unknown>,
+	schema: z.ZodTypeAny,
+	candidate: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-        try {
-                const result = await schema.parseAsync(candidate);
-                return result as Record<string, unknown>;
-        } catch (error) {
+	try {
+		const result = await schema.parseAsync(candidate);
+		return result as Record<string, unknown>;
+	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new MarkdfmError("SCHEMA_VALIDATION", error.message);
 		}
@@ -452,8 +458,8 @@ function normalizeExtension(extension: string): string {
 }
 
 function appendExtensionIfMissing(fileName: string, extension: string): string {
-        if (fileName.endsWith(extension)) {
-                return fileName;
-        }
-        return `${fileName}${extension}`;
+	if (fileName.endsWith(extension)) {
+		return fileName;
+	}
+	return `${fileName}${extension}`;
 }

@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("markdfm list", () => {
-        it("renders a virtual path tree for markdown files", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("renders a virtual path tree for markdown files", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -24,51 +24,51 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "TODO");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "TODO");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+		const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
 
-                await fs.writeFile(
-                        path.join(notesDir, "todo-a.md"),
-                        `---\ntitle: Feature work\nvpath: backlog/feature\n${sharedFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "todo-a.md"),
+			`---\ntitle: Feature work\nvpath: backlog/feature\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "todo-b.md"),
-                        `---\ntitle: Planning\nvpath: backlog\n${sharedFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "todo-b.md"),
+			`---\ntitle: Planning\nvpath: backlog\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "bug.md"),
-                        `---\ntitle: Fix bug\nvpath: bug_reports\n${sharedFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "bug.md"),
+			`---\ntitle: Fix bug\nvpath: bug_reports\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        const { stdout } = await execa(nodeBinary, [cliPath, "list", "TODO"], {
-                                cwd: tempDir,
-                        });
+		try {
+			const { stdout } = await execa(nodeBinary, [cliPath, "list", "TODO"], {
+				cwd: tempDir,
+			});
 
-                        const lines = stdout.trim().split("\n");
-                        expect(lines).toEqual([
-                                "├── backlog",
-                                "│   ├── feature",
-                                "│   │   └── Feature work (./TODO/todo-a.md)",
-                                "│   └── Planning (./TODO/todo-b.md)",
-                                "└── bug_reports",
-                                "    └── Fix bug (./TODO/bug.md)",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"├── backlog",
+				"│   ├── feature",
+				"│   │   └── Feature work (./TODO/todo-a.md)",
+				"│   └── Planning (./TODO/todo-b.md)",
+				"└── bug_reports",
+				"    └── Fix bug (./TODO/bug.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("filters entries by virtual path prefix", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("filters entries by virtual path prefix", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -86,46 +86,46 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "TODO");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "TODO");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+		const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
 
-                await fs.writeFile(
-                        path.join(notesDir, "todo-a.md"),
-                        `---\ntitle: Feature work\nvpath: backlog/feature\n${sharedFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "todo-a.md"),
+			`---\ntitle: Feature work\nvpath: backlog/feature\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "todo-b.md"),
-                        `---\ntitle: Planning\nvpath: backlog\n${sharedFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "todo-b.md"),
+			`---\ntitle: Planning\nvpath: backlog\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        const { stdout } = await execa(
-                                nodeBinary,
-                                [cliPath, "list", "--vpath", "backlog/feature", "TODO"],
-                                {
-                                        cwd: tempDir,
-                                },
-                        );
+		try {
+			const { stdout } = await execa(
+				nodeBinary,
+				[cliPath, "list", "--vpath", "backlog/feature", "TODO"],
+				{
+					cwd: tempDir,
+				},
+			);
 
-                        const lines = stdout.trim().split("\n");
-                        expect(lines).toEqual([
-                                "└── backlog",
-                                "    └── feature",
-                                "        └── Feature work (./TODO/todo-a.md)",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"└── backlog",
+				"    └── feature",
+				"        └── Feature work (./TODO/todo-a.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("places files without a virtual path at the root level", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("places files without a virtual path at the root level", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -142,40 +142,40 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "notes");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                await fs.writeFile(
-                        path.join(notesDir, "with.md"),
-                        `---\ntitle: With Path\nvpath: backlog\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "with.md"),
+			`---\ntitle: With Path\nvpath: backlog\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "root.md"),
-                        `---\ntitle: Root Path\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "root.md"),
+			`---\ntitle: Root Path\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        const { stdout } = await execa(nodeBinary, [cliPath, "list", "notes"], {
-                                cwd: tempDir,
-                        });
+		try {
+			const { stdout } = await execa(nodeBinary, [cliPath, "list", "notes"], {
+				cwd: tempDir,
+			});
 
-                        const lines = stdout.trim().split("\n");
-                        expect(lines).toEqual([
-                                "├── backlog",
-                                "│   └── With Path (./notes/with.md)",
-                                "└── Root Path (./notes/root.md)",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"├── backlog",
+				"│   └── With Path (./notes/with.md)",
+				"└── Root Path (./notes/root.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("filters entries using front matter values", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("filters entries using front matter values", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -193,46 +193,46 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "TODO");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "TODO");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                const baseFrontMatter = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+		const baseFrontMatter = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
 
-                await fs.writeFile(
-                        path.join(notesDir, "todo-task.md"),
-                        `---\ntitle: Todo Task\nvpath: backlog/todo\nstatus: todo\n${baseFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "todo-task.md"),
+			`---\ntitle: Todo Task\nvpath: backlog/todo\nstatus: todo\n${baseFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "done-task.md"),
-                        `---\ntitle: Done Task\nvpath: backlog/done\nstatus: done\n${baseFrontMatter}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "done-task.md"),
+			`---\ntitle: Done Task\nvpath: backlog/done\nstatus: done\n${baseFrontMatter}\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        const { stdout } = await execa(
-                                nodeBinary,
-                                [cliPath, "list", "--filter", "status=todo", "TODO"],
-                                {
-                                        cwd: tempDir,
-                                },
-                        );
+		try {
+			const { stdout } = await execa(
+				nodeBinary,
+				[cliPath, "list", "--filter", "status=todo", "TODO"],
+				{
+					cwd: tempDir,
+				},
+			);
 
-                        const lines = stdout.trim().split("\n");
-                        expect(lines).toEqual([
-                                "└── backlog",
-                                "    └── todo",
-                                "        └── Todo Task (./TODO/todo-task.md)",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"└── backlog",
+				"    └── todo",
+				"        └── Todo Task (./TODO/todo-task.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("supports loose, prefix, and suffix filter operators", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("supports loose, prefix, and suffix filter operators", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -251,125 +251,127 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "TODO");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "TODO");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                const shared = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+		const shared = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
 
-                await fs.writeFile(
-                        path.join(notesDir, "feature-task.md"),
-                        `---\ntitle: Feature Task\nvpath: backlog/feature\nstatus: todo\ncategory: enhancements\n${shared}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "feature-task.md"),
+			`---\ntitle: Feature Task\nvpath: backlog/feature\nstatus: todo\ncategory: enhancements\n${shared}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "feature-doc.md"),
-                        `---\ntitle: Feature Document\nvpath: backlog/docs\nstatus: done\ncategory: enhancements\n${shared}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "feature-doc.md"),
+			`---\ntitle: Feature Document\nvpath: backlog/docs\nstatus: done\ncategory: enhancements\n${shared}\n---\n`,
+			"utf8",
+		);
 
-                await fs.writeFile(
-                        path.join(notesDir, "bug-task.md"),
-                        `---\ntitle: Bug Task\nvpath: bugs\nstatus: todo\ncategory: fixes\n${shared}\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "bug-task.md"),
+			`---\ntitle: Bug Task\nvpath: bugs\nstatus: todo\ncategory: fixes\n${shared}\n---\n`,
+			"utf8",
+		);
 
-                const formatTemplate = "{{title}}|{{status}}";
+		const formatTemplate = "{{title}}|{{status}}";
 
-                try {
-                        const loose = await execa(
-                                nodeBinary,
-                                [
-                                        cliPath,
-                                        "list",
-                                        "--filter",
-                                        "title~=feature",
-                                        "--format",
-                                        formatTemplate,
-                                        "TODO",
-                                ],
-                                { cwd: tempDir },
-                        );
+		try {
+			const loose = await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"list",
+					"--filter",
+					"title~=feature",
+					"--format",
+					formatTemplate,
+					"TODO",
+				],
+				{ cwd: tempDir },
+			);
 
-                        const looseLines = loose.stdout.trim().split("\n").filter(Boolean).sort();
-                        expect(looseLines).toEqual([
-                                "Feature Document|done",
-                                "Feature Task|todo",
-                        ]);
+			const looseLines = loose.stdout.trim().split("\n").filter(Boolean).sort();
+			expect(looseLines).toEqual([
+				"Feature Document|done",
+				"Feature Task|todo",
+			]);
 
-                        const prefix = await execa(
-                                nodeBinary,
-                                [
-                                        cliPath,
-                                        "list",
-                                        "--filter",
-                                        "status^=to",
-                                        "--format",
-                                        formatTemplate,
-                                        "TODO",
-                                ],
-                                { cwd: tempDir },
-                        );
+			const prefix = await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"list",
+					"--filter",
+					"status^=to",
+					"--format",
+					formatTemplate,
+					"TODO",
+				],
+				{ cwd: tempDir },
+			);
 
-                        const prefixLines = prefix.stdout.trim().split("\n").filter(Boolean).sort();
-                        expect(prefixLines).toEqual([
-                                "Bug Task|todo",
-                                "Feature Task|todo",
-                        ]);
+			const prefixLines = prefix.stdout
+				.trim()
+				.split("\n")
+				.filter(Boolean)
+				.sort();
+			expect(prefixLines).toEqual(["Bug Task|todo", "Feature Task|todo"]);
 
-                        const suffix = await execa(
-                                nodeBinary,
-                                [
-                                        cliPath,
-                                        "list",
-                                        "--filter",
-                                        "title$=task",
-                                        "--format",
-                                        formatTemplate,
-                                        "TODO",
-                                ],
-                                { cwd: tempDir },
-                        );
+			const suffix = await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"list",
+					"--filter",
+					"title$=task",
+					"--format",
+					formatTemplate,
+					"TODO",
+				],
+				{ cwd: tempDir },
+			);
 
-                        const suffixLines = suffix.stdout.trim().split("\n").filter(Boolean).sort();
-                        expect(suffixLines).toEqual([
-                                "Bug Task|todo",
-                                "Feature Task|todo",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const suffixLines = suffix.stdout
+				.trim()
+				.split("\n")
+				.filter(Boolean)
+				.sort();
+			expect(suffixLines).toEqual(["Bug Task|todo", "Feature Task|todo"]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("fails when virtual path configuration is missing", async () => {
-                const tempDir = await setupWorkspace();
-                const notesDir = path.join(tempDir, "notes");
-                await fs.mkdir(notesDir, { recursive: true });
+	it("fails when virtual path configuration is missing", async () => {
+		const tempDir = await setupWorkspace();
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                await fs.writeFile(
-                        path.join(notesDir, "note.md"),
-                        `---\ntitle: Lone Note\nauthor: tester\ndescription: Sample\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\ntags: []\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "note.md"),
+			`---\ntitle: Lone Note\nauthor: tester\ndescription: Sample\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\ntags: []\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        await expect(
-                                execa(nodeBinary, [cliPath, "list", "notes"], {
-                                        cwd: tempDir,
-                                        reject: true,
-                                }),
-                        ).rejects.toMatchObject({
-                                exitCode: 1,
-                                stderr: expect.stringContaining("Virtual path configuration not found"),
-                        });
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+		try {
+			await expect(
+				execa(nodeBinary, [cliPath, "list", "notes"], {
+					cwd: tempDir,
+					reject: true,
+				}),
+			).rejects.toMatchObject({
+				exitCode: 1,
+				stderr: expect.stringContaining("Virtual path configuration not found"),
+			});
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("fails when a markdown file is missing the virtual path field", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("fails when a markdown file is missing the virtual path field", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -386,30 +388,30 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const notesDir = path.join(tempDir, "notes");
-                await fs.mkdir(notesDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
 
-                await fs.writeFile(
-                        path.join(notesDir, "note.md"),
-                        `---\ntitle: Lone Note\nvpath:\n  - backlog\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
-                        "utf8",
-                );
+		await fs.writeFile(
+			path.join(notesDir, "note.md"),
+			`---\ntitle: Lone Note\nvpath:\n  - backlog\nauthor: tester\nstatus: todo\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
 
-                try {
-                        await expect(
-                                execa(nodeBinary, [cliPath, "list", "notes"], {
-                                        cwd: tempDir,
-                                        reject: true,
-                                }),
-                        ).rejects.toMatchObject({
-                                exitCode: 1,
-                                stderr: expect.stringContaining(
-                                        'Front matter field "vpath" must be a string',
-                                ),
-                        });
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+		try {
+			await expect(
+				execa(nodeBinary, [cliPath, "list", "notes"], {
+					cwd: tempDir,
+					reject: true,
+				}),
+			).rejects.toMatchObject({
+				exitCode: 1,
+				stderr: expect.stringContaining(
+					'Front matter field "vpath" must be a string',
+				),
+			});
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

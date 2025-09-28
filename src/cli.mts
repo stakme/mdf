@@ -4,303 +4,300 @@ import path from "node:path";
 import { Command } from "commander";
 import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
-import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
-import { runUpdateCommand } from "./commands/update.mts";
 import { prepareRunCommand } from "./commands/run.mts";
+import { runUpdateCommand } from "./commands/update.mts";
+import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
 import { MarkdfmError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
-        const version = await readPackageVersion().catch(() => "0.0.0");
-        const program = createProgram(version);
+	const version = await readPackageVersion().catch(() => "0.0.0");
+	const program = createProgram(version);
 
-        try {
-                await program.parseAsync(process.argv);
-        } catch (error) {
-                handleError(error);
-        }
+	try {
+		await program.parseAsync(process.argv);
+	} catch (error) {
+		handleError(error);
+	}
 }
 
 function createProgram(version: string): Command {
-        const program = new Command();
+	const program = new Command();
 
-        program
-                .name("markdfm")
-                .description(
-                        "Lightweight utility to organize Markdown files with front matter",
-                )
-                .version(version)
-                .showHelpAfterError()
-                .enablePositionalOptions();
+	program
+		.name("markdfm")
+		.description(
+			"Lightweight utility to organize Markdown files with front matter",
+		)
+		.version(version)
+		.showHelpAfterError()
+		.enablePositionalOptions();
 
-        program
-                .command("new")
-                .description(
-                        "Create a new Markdown file populated with validated front matter",
-                )
-                .option(
-                        "-f, --fm <key=value>",
-                        "Front matter entry",
-                        collectFrontMatter,
-                        [] as string[],
-                )
-                .option("--template <name>", "Template name defined in the config file")
-                .argument("<directory>", "Target directory for the Markdown file")
-                .action(async (directory: string, command: { fm?: string[]; template?: string }) => {
-                        try {
-                                const fmInputs = command.fm ?? [];
-                                const result = await runNewCommand({
-                                        cwd: process.cwd(),
-                                        directory,
-                                        frontMatterInputs: fmInputs,
-                                        template: command.template,
-                                });
+	program
+		.command("new")
+		.description(
+			"Create a new Markdown file populated with validated front matter",
+		)
+		.option(
+			"-f, --fm <key=value>",
+			"Front matter entry",
+			collectFrontMatter,
+			[] as string[],
+		)
+		.option("--template <name>", "Template name defined in the config file")
+		.argument("<directory>", "Target directory for the Markdown file")
+		.action(
+			async (
+				directory: string,
+				command: { fm?: string[]; template?: string },
+			) => {
+				try {
+					const fmInputs = command.fm ?? [];
+					const result = await runNewCommand({
+						cwd: process.cwd(),
+						directory,
+						frontMatterInputs: fmInputs,
+						template: command.template,
+					});
 
-                                const relative =
-                                        path.relative(process.cwd(), result.filePath) ||
-                                        path.basename(result.filePath);
-                                console.log(`Created ${relative}`);
-                        } catch (error) {
-                                handleError(error);
-                        }
-                });
+					const relative =
+						path.relative(process.cwd(), result.filePath) ||
+						path.basename(result.filePath);
+					console.log(`Created ${relative}`);
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
 
-        program
-                .command("validate")
-                .description(
-                        "Validate existing Markdown files against the configured schema",
-                )
-                .argument("<directory>", "Directory containing Markdown files to validate")
-                .action(async (directory: string) => {
-                        try {
-                                const result = await runValidateCommand({
-                                        cwd: process.cwd(),
-                                        directory,
-                                });
+	program
+		.command("validate")
+		.description(
+			"Validate existing Markdown files against the configured schema",
+		)
+		.argument("<directory>", "Directory containing Markdown files to validate")
+		.action(async (directory: string) => {
+			try {
+				const result = await runValidateCommand({
+					cwd: process.cwd(),
+					directory,
+				});
 
-                                if (result.invalid.length === 0) {
-                                        const files = result.checkedFiles.map(formatDisplayPath);
-                                        const count = files.length;
-                                        const summary =
-                                                count === 1
-                                                        ? "1 file is valid"
-                                                        : `${count} files are valid`;
-                                        console.log(summary);
-                                        for (const file of files) {
-                                                console.log(`- ${file}`);
-                                        }
-                                        return;
-                                }
+				if (result.invalid.length === 0) {
+					const files = result.checkedFiles.map(formatDisplayPath);
+					const count = files.length;
+					const summary =
+						count === 1 ? "1 file is valid" : `${count} files are valid`;
+					console.log(summary);
+					for (const file of files) {
+						console.log(`- ${file}`);
+					}
+					return;
+				}
 
-                                for (const entry of result.invalid) {
-                                        const displayPath = formatDisplayPath(entry.filePath);
-                                        for (const message of entry.messages) {
-                                                console.error(`${displayPath}: ${message}`);
-                                        }
-                                }
-                                process.exitCode = 1;
-                        } catch (error) {
-                                handleError(error);
-                        }
-                });
+				for (const entry of result.invalid) {
+					const displayPath = formatDisplayPath(entry.filePath);
+					for (const message of entry.messages) {
+						console.error(`${displayPath}: ${message}`);
+					}
+				}
+				process.exitCode = 1;
+			} catch (error) {
+				handleError(error);
+			}
+		});
 
-        program
-                .command("list")
-                .description("List Markdown files using virtual paths")
-                .option("--vpath <prefix>", "Filter entries by virtual path prefix")
-                .option(
-                        "-f, --filter <expression>",
-                        "Filter expression supporting =, ~=, ^=, $= operators",
-                        collectFilters,
-                        [] as string[],
-                )
-                .option(
-                        "--format <template>",
-                        "Output template using {{field}} placeholders",
-                )
-                .argument("<directory>", "Directory containing Markdown files to list")
-                .action(
-                        async (
-                                directory: string,
-                                command: { vpath?: string; filter?: string[]; format?: string },
-                        ) => {
-                        try {
-                                const filters = command.filter ?? [];
-                                const result = await runListCommand({
-                                        cwd: process.cwd(),
-                                        directory,
-                                        virtualPathPrefix: command.vpath,
-                                        filters,
-                                        format: command.format,
-                                });
+	program
+		.command("list")
+		.description("List Markdown files using virtual paths")
+		.option("--vpath <prefix>", "Filter entries by virtual path prefix")
+		.option(
+			"-f, --filter <expression>",
+			"Filter expression supporting =, ~=, ^=, $= operators",
+			collectFilters,
+			[] as string[],
+		)
+		.option(
+			"--format <template>",
+			"Output template using {{field}} placeholders",
+		)
+		.argument("<directory>", "Directory containing Markdown files to list")
+		.action(
+			async (
+				directory: string,
+				command: { vpath?: string; filter?: string[]; format?: string },
+			) => {
+				try {
+					const filters = command.filter ?? [];
+					const result = await runListCommand({
+						cwd: process.cwd(),
+						directory,
+						virtualPathPrefix: command.vpath,
+						filters,
+						format: command.format,
+					});
 
-                                for (const line of result.lines) {
-                                        console.log(line);
-                                }
-                        } catch (error) {
-                                handleError(error);
-                        }
-                },
-                );
+					for (const line of result.lines) {
+						console.log(line);
+					}
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
 
-        program
-                .command("fix")
-                .description(
-                        "Update Markdown files to satisfy the configured schema",
-                )
-                .option(
-                        "-f, --fm <key=value>",
-                        "Default front matter value used to fill missing fields",
-                        collectFrontMatter,
-                        [] as string[],
-                )
-                .argument(
-                        "<directory>",
-                        "Directory containing Markdown files to update",
-                )
-                .action(async (directory: string, command: { fm?: string[] }) => {
-                        try {
-                                const defaults = command.fm ?? [];
-                                const result = await runFixCommand({
-                                        cwd: process.cwd(),
-                                        directory,
-                                        frontMatterInputs: defaults,
-                                });
+	program
+		.command("fix")
+		.description("Update Markdown files to satisfy the configured schema")
+		.option(
+			"-f, --fm <key=value>",
+			"Default front matter value used to fill missing fields",
+			collectFrontMatter,
+			[] as string[],
+		)
+		.argument("<directory>", "Directory containing Markdown files to update")
+		.action(async (directory: string, command: { fm?: string[] }) => {
+			try {
+				const defaults = command.fm ?? [];
+				const result = await runFixCommand({
+					cwd: process.cwd(),
+					directory,
+					frontMatterInputs: defaults,
+				});
 
-                                for (const filePath of result.updated) {
-                                        console.log(`Updated ${formatDisplayPath(filePath)}`);
-                                }
+				for (const filePath of result.updated) {
+					console.log(`Updated ${formatDisplayPath(filePath)}`);
+				}
 
-                                if (result.skipped.length > 0) {
-                                        for (const entry of result.skipped) {
-                                                const displayPath = formatDisplayPath(entry.filePath);
-                                                for (const message of entry.messages) {
-                                                        console.error(`${displayPath}: ${message}`);
-                                                }
-                                        }
-                                        process.exitCode = 1;
-                                }
-                        } catch (error) {
-                                handleError(error);
-                        }
-                });
+				if (result.skipped.length > 0) {
+					for (const entry of result.skipped) {
+						const displayPath = formatDisplayPath(entry.filePath);
+						for (const message of entry.messages) {
+							console.error(`${displayPath}: ${message}`);
+						}
+					}
+					process.exitCode = 1;
+				}
+			} catch (error) {
+				handleError(error);
+			}
+		});
 
-        program
-                .command("update")
-                .description("Update front matter fields on specific Markdown files")
-                .option(
-                        "-f, --fm <entry>",
-                        "Front matter update; omit =value to use defaults",
-                        collectFrontMatter,
-                        [] as string[],
-                )
-                .argument("<files...>", "Markdown files to update")
-                .action(async (files: string[], command: { fm?: string[] }) => {
-                        try {
-                                const fmInputs = command.fm ?? [];
-                                const result = await runUpdateCommand({
-                                        cwd: process.cwd(),
-                                        files,
-                                        frontMatterInputs: fmInputs,
-                                });
+	program
+		.command("update")
+		.description("Update front matter fields on specific Markdown files")
+		.option(
+			"-f, --fm <entry>",
+			"Front matter update; omit =value to use defaults",
+			collectFrontMatter,
+			[] as string[],
+		)
+		.argument("<files...>", "Markdown files to update")
+		.action(async (files: string[], command: { fm?: string[] }) => {
+			try {
+				const fmInputs = command.fm ?? [];
+				const result = await runUpdateCommand({
+					cwd: process.cwd(),
+					files,
+					frontMatterInputs: fmInputs,
+				});
 
-                                for (const filePath of result.updated) {
-                                        console.log(`Updated ${formatDisplayPath(filePath)}`);
-                                }
+				for (const filePath of result.updated) {
+					console.log(`Updated ${formatDisplayPath(filePath)}`);
+				}
 
-                                if (result.skipped.length > 0) {
-                                        for (const entry of result.skipped) {
-                                                const displayPath = formatDisplayPath(entry.filePath);
-                                                for (const message of entry.messages) {
-                                                        console.error(`${displayPath}: ${message}`);
-                                                }
-                                        }
-                                        process.exitCode = 1;
-                                }
-                        } catch (error) {
-                                handleError(error);
-                        }
-                });
+				if (result.skipped.length > 0) {
+					for (const entry of result.skipped) {
+						const displayPath = formatDisplayPath(entry.filePath);
+						for (const message of entry.messages) {
+							console.error(`${displayPath}: ${message}`);
+						}
+					}
+					process.exitCode = 1;
+				}
+			} catch (error) {
+				handleError(error);
+			}
+		});
 
-        program
-                .command("run")
-                .description("Execute a configured alias command")
-                .argument("<alias>", "Alias name defined in the config file")
-                .argument("[args...]", "Additional arguments appended to the alias")
-                .allowUnknownOption()
-                .passThroughOptions()
-                .action(async (aliasName: string, args: string[] = []) => {
-                        const extras = Array.isArray(args) ? args : [];
-                        const previousStack = process.env.MARKDFM_ALIAS_STACK;
-                        const delimiter = "\u001F";
-                        const visited = previousStack
-                                ? previousStack
-                                          .split(delimiter)
-                                          .map((entry) => entry.trim())
-                                          .filter((entry) => entry.length > 0)
-                                : [];
+	program
+		.command("run")
+		.description("Execute a configured alias command")
+		.argument("<alias>", "Alias name defined in the config file")
+		.argument("[args...]", "Additional arguments appended to the alias")
+		.allowUnknownOption()
+		.passThroughOptions()
+		.action(async (aliasName: string, args: string[] = []) => {
+			const extras = Array.isArray(args) ? args : [];
+			const previousStack = process.env.MARKDFM_ALIAS_STACK;
+			const delimiter = "\u001F";
+			const visited = previousStack
+				? previousStack
+						.split(delimiter)
+						.map((entry) => entry.trim())
+						.filter((entry) => entry.length > 0)
+				: [];
 
-                        if (visited.includes(aliasName)) {
-                                handleError(
-                                        new MarkdfmError(
-                                                "ALIAS_CYCLE",
-                                                `Detected a cycle while resolving alias "${aliasName}"`,
-                                        ),
-                                );
-                                return;
-                        }
+			if (visited.includes(aliasName)) {
+				handleError(
+					new MarkdfmError(
+						"ALIAS_CYCLE",
+						`Detected a cycle while resolving alias "${aliasName}"`,
+					),
+				);
+				return;
+			}
 
-                        process.env.MARKDFM_ALIAS_STACK = [...visited, aliasName].join(
-                                delimiter,
-                        );
+			process.env.MARKDFM_ALIAS_STACK = [...visited, aliasName].join(delimiter);
 
-                        try {
-                                const result = await prepareRunCommand({
-                                        cwd: process.cwd(),
-                                        alias: aliasName,
-                                        extraArgs: extras,
-                                });
+			try {
+				const result = await prepareRunCommand({
+					cwd: process.cwd(),
+					alias: aliasName,
+					extraArgs: extras,
+				});
 
-                                const aliasProgram = createProgram(version);
-                                await aliasProgram.parseAsync([
-                                        process.argv[0] ?? "node",
-                                        process.argv[1] ?? "markdfm",
-                                        ...result.argv,
-                                ]);
-                        } catch (error) {
-                                handleError(error);
-                        } finally {
-                                if (previousStack === undefined) {
-                                        delete process.env.MARKDFM_ALIAS_STACK;
-                                } else {
-                                        process.env.MARKDFM_ALIAS_STACK = previousStack;
-                                }
-                        }
-                });
+				const aliasProgram = createProgram(version);
+				await aliasProgram.parseAsync([
+					process.argv[0] ?? "node",
+					process.argv[1] ?? "markdfm",
+					...result.argv,
+				]);
+			} catch (error) {
+				handleError(error);
+			} finally {
+				if (previousStack === undefined) {
+					delete process.env.MARKDFM_ALIAS_STACK;
+				} else {
+					process.env.MARKDFM_ALIAS_STACK = previousStack;
+				}
+			}
+		});
 
-        return program;
+	return program;
 }
 
 function collectFrontMatter(value: string, previous: string[]): string[] {
-        return [...previous, value];
+	return [...previous, value];
 }
 
 function collectFilters(value: string, previous: string[]): string[] {
-        return [...previous, value];
+	return [...previous, value];
 }
 
 function formatDisplayPath(filePath: string): string {
-        const relative = path.relative(process.cwd(), filePath) || path.basename(filePath);
-        if (relative.startsWith("..")) {
-                return relative;
-        }
-        return relative.startsWith(".") ? relative : `./${relative}`;
+	const relative =
+		path.relative(process.cwd(), filePath) || path.basename(filePath);
+	if (relative.startsWith("..")) {
+		return relative;
+	}
+	return relative.startsWith(".") ? relative : `./${relative}`;
 }
 
 async function readPackageVersion(): Promise<string> {
-        const packageJsonPath = new URL("../package.json", import.meta.url);
-        const raw = await readFile(packageJsonPath, "utf8");
-        const pkg = JSON.parse(raw) as { version?: string };
-        return typeof pkg.version === "string" ? pkg.version : "0.0.0";
+	const packageJsonPath = new URL("../package.json", import.meta.url);
+	const raw = await readFile(packageJsonPath, "utf8");
+	const pkg = JSON.parse(raw) as { version?: string };
+	return typeof pkg.version === "string" ? pkg.version : "0.0.0";
 }
 
 function handleError(error: unknown): never {

@@ -3,10 +3,10 @@ import type { MarkdfmConfig } from "./types.mts";
 
 export { z };
 export type {
-        MarkdfmConfig,
-        SchemaDefinition,
-        VirtualPathConfig,
-        LoadedVirtualPathConfig,
+	LoadedVirtualPathConfig,
+	MarkdfmConfig,
+	SchemaDefinition,
+	VirtualPathConfig,
 } from "./types.mts";
 
 export function defineConfig<TSchema extends z.ZodTypeAny>(

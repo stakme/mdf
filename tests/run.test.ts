@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("markdfm run", () => {
-        it("executes a configured alias with quoted arguments", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("executes a configured alias with quoted arguments", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -23,35 +23,35 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
-                const todoDir = path.join(tempDir, "TODO");
-                await fs.mkdir(todoDir, { recursive: true });
+		const tempDir = await setupWorkspace({ config: configSource });
+		const todoDir = path.join(tempDir, "TODO");
+		await fs.mkdir(todoDir, { recursive: true });
 
-                const sharedFrontMatter = `status: todo\ntitle: Feature\nvpath: backlog/feature`;
-                await fs.writeFile(
-                        path.join(todoDir, "feature.md"),
-                        `---\n${sharedFrontMatter}\n---\nBody`,
-                        "utf8",
-                );
+		const sharedFrontMatter = `status: todo\ntitle: Feature\nvpath: backlog/feature`;
+		await fs.writeFile(
+			path.join(todoDir, "feature.md"),
+			`---\n${sharedFrontMatter}\n---\nBody`,
+			"utf8",
+		);
 
-                try {
-                        const { stdout } = await execa(nodeBinary, [cliPath, "run", "todo"], {
-                                cwd: tempDir,
-                        });
+		try {
+			const { stdout } = await execa(nodeBinary, [cliPath, "run", "todo"], {
+				cwd: tempDir,
+			});
 
-                        const lines = stdout.trim().split("\n");
-                        expect(lines).toEqual([
-                                "└── backlog",
-                                "    └── feature",
-                                "        └── Feature (./TODO/feature.md)",
-                        ]);
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"└── backlog",
+				"    └── feature",
+				"        └── Feature (./TODO/feature.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("informs the user when an alias is not defined", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("informs the user when an alias is not defined", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -59,25 +59,25 @@ export default defineConfig({
         }),
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
+		const tempDir = await setupWorkspace({ config: configSource });
 
-                try {
-                        const result = await execa(nodeBinary, [cliPath, "run", "missing"], {
-                                cwd: tempDir,
-                                reject: false,
-                        });
+		try {
+			const result = await execa(nodeBinary, [cliPath, "run", "missing"], {
+				cwd: tempDir,
+				reject: false,
+			});
 
-                        expect(result.exitCode).toBe(1);
-                        expect(result.stderr.trim()).toContain(
-                                'Alias "missing" not found in .config/markdfm.mts',
-                        );
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.trim()).toContain(
+				'Alias "missing" not found in .config/markdfm.mts',
+			);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 
-        it("reports alias cycles to prevent infinite recursion", async () => {
-                const configSource = `import { defineConfig, z } from "markdfm/config";
+	it("reports alias cycles to prevent infinite recursion", async () => {
+		const configSource = `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -88,20 +88,20 @@ export default defineConfig({
         },
 });`;
 
-                const tempDir = await setupWorkspace({ config: configSource });
+		const tempDir = await setupWorkspace({ config: configSource });
 
-                try {
-                        const result = await execa(nodeBinary, [cliPath, "run", "loop"], {
-                                cwd: tempDir,
-                                reject: false,
-                        });
+		try {
+			const result = await execa(nodeBinary, [cliPath, "run", "loop"], {
+				cwd: tempDir,
+				reject: false,
+			});
 
-                        expect(result.exitCode).toBe(1);
-                        expect(result.stderr.trim()).toContain(
-                                'Detected a cycle while resolving alias "loop"',
-                        );
-                } finally {
-                        await fs.rm(tempDir, { recursive: true, force: true });
-                }
-        });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.trim()).toContain(
+				'Detected a cycle while resolving alias "loop"',
+			);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });
