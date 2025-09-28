@@ -65,7 +65,11 @@ describe("markdfm new", () => {
 			const createdFile = path.join(notesDir, firstEntry);
 
 			const content = await fs.readFile(createdFile, "utf8");
-			const { frontMatter } = parseFrontMatter<{ title: string; created_at: string }>(content);
+			const { frontMatter } = parseFrontMatter<{
+				title: string;
+				created_at: string;
+				updated_at: string;
+			}>(content);
 
 			expect(frontMatter.title).toBe("CLI Note");
 			expect(typeof frontMatter.created_at).toBe("string");
@@ -105,6 +109,7 @@ describe("markdfm new", () => {
 				const createdFile = path.join(notesDir, firstEntry);
 				const content = await fs.readFile(createdFile, "utf8");
 				const { frontMatter } = parseFrontMatter(content);
+				expect(typeof frontMatter.updated_at).toBe("string");
 
 				expect(frontMatter.title).toBe("Explicit");
 				expect(frontMatter.created_at).toBe(explicitCreatedAt);

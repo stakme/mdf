@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
@@ -107,7 +107,7 @@ async function determineFileName(params: {
 	}
 
 	for (let attempt = 0; attempt < 5; attempt += 1) {
-		const candidate = `${randomUUID()}${extension}`;
+		const candidate = `${generateUuidV7(now)}${extension}`;
 		const candidatePath = path.join(directory, candidate);
 		const exists = await pathExists(candidatePath);
 		if (!exists) {
@@ -282,6 +282,33 @@ function isRequiredField(schema: z.ZodTypeAny): boolean {
 		}
 	}
 	return true;
+}
+
+function generateUuidV7(now: Date): string {
+	// Mask the timestamp to 48 bits for simplicity
+	// It works until year 10889
+	const ts48 = BigInt(now.getTime()) & ((1n << 48n) - 1n);
+
+	const buffer = new Uint8Array(16);
+	buffer[0] = Number((ts48 >> 40n) & 0xffn);
+	buffer[1] = Number((ts48 >> 32n) & 0xffn);
+	buffer[2] = Number((ts48 >> 24n) & 0xffn);
+	buffer[3] = Number((ts48 >> 16n) & 0xffn);
+	buffer[4] = Number((ts48 >> 8n) & 0xffn);
+	buffer[5] = Number(ts48 & 0xffn);
+
+	const random = randomBytes(10);
+	buffer.set(random, 6);
+
+	buffer[6] = (buffer[6] & 0x0f) | 0x70;
+	buffer[8] = (buffer[8] & 0x3f) | 0x80;
+
+	let hex = "";
+	for (const byte of buffer) {
+		hex += byte.toString(16).padStart(2, "0");
+	}
+
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function parseFrontMatterInputs(inputs: string[]): Record<string, unknown> {
