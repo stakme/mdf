@@ -1,4 +1,4 @@
-import { defineConfig, z } from "markdfm/config";
+import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
 	schema: [
