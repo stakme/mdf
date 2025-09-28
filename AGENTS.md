@@ -5,6 +5,7 @@
 - Source lives under `src/` (ESM, `.mts` modules); Vitest specs in `tests/` mirror CLI behavior.
 - Build outputs land in `dist/` via `tsdown`; scripts in `scripts/` adjust post-build details (e.g., CLI shebang).
 - Task briefs arrive as Markdown files inside `TODO/`, each with front matter describing status, authorship, and intent.
+- Keep `README.md` user-facing; record developer or process notes in `AGENTS.md`, TODO briefs, or other internal docs instead.
 
 ## Working a TODO Request
 1. Read the newest Markdown brief in `TODO/` to capture goals, constraints, and desired UX.

@@ -37,7 +37,8 @@
 		"prepare": "npm run build",
 		"prepublishOnly": "npm run build",
 		"test": "npm run build && vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"publish:local": "node ./scripts/publish.mjs"
 	},
 	"keywords": [
 		"markdown",

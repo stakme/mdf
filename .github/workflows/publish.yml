@@ -1,0 +1,32 @@
+name: Publish Package to npmjs
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@stakme'
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - name: Publish to npm
+        env:
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          TAG_ARGS=()
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            TAG_ARGS+=(--tag next)
+          fi
+          npm publish --provenance --access public "${TAG_ARGS[@]}"
