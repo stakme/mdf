@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 async function loadModule() {
-	return import("../site/src/lib/viewerMeta.ts");
+	return import("../src/viewer/meta.mts");
 }
 
 beforeEach(() => {

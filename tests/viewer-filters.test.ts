@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 async function loadModule() {
-	return import("../site/src/lib/viewerFilters.ts");
+	return import("../src/viewer/filters.mts");
 }
 
 afterEach(() => {

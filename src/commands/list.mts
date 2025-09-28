@@ -8,6 +8,10 @@ import {
 	parseFilterExpression,
 	resolveFilterPath,
 } from "../utils/filters.mts";
+import {
+	formatDisplayPath,
+	formatRelativePath,
+} from "../utils/path-format.mts";
 
 export interface ListCommandOptions {
 	cwd: string;
@@ -359,17 +363,4 @@ function formatValue(value: unknown): string {
 		}
 	}
 	return String(value);
-}
-
-function formatDisplayPath(filePath: string, cwd: string): string {
-	const relative = path.relative(cwd, filePath) || path.basename(filePath);
-	if (relative.startsWith("..")) {
-		return relative;
-	}
-	return relative.startsWith(".") ? relative : `./${relative}`;
-}
-
-function formatRelativePath(filePath: string, cwd: string): string {
-	const relative = path.relative(cwd, filePath) || path.basename(filePath);
-	return relative;
 }

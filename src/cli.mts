@@ -7,6 +7,7 @@ import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
 import { runUpdateCommand } from "./commands/update.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
+import { runViewerCommand } from "./commands/viewer.mts";
 import { MdfError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
@@ -183,6 +184,50 @@ function createProgram(version: string): Command {
 		});
 
 	program
+		.command("viewer")
+		.description("Start an interactive web viewer for Markdown files")
+		.option("--vpath <prefix>", "Filter entries by virtual path prefix")
+		.option(
+			"-f, --filter <expression>",
+			"Filter expression supporting =, ~=, ^=, $= operators",
+			collectFilters,
+			[] as string[],
+		)
+		.option(
+			"--port <number>",
+			"Port to bind the viewer server (defaults to 4173)",
+		)
+		.option("--host <hostname>", "Hostname to bind the viewer server")
+		.argument("<directory>", "Directory containing Markdown files to render")
+		.action(
+			async (
+				directory: string,
+				command: {
+					vpath?: string;
+					filter?: string[];
+					port?: string;
+					host?: string;
+				},
+			) => {
+				try {
+					const filters = command.filter ?? [];
+					const port =
+						command.port === undefined ? undefined : parsePort(command.port);
+					await runViewerCommand({
+						cwd: process.cwd(),
+						directory,
+						filters,
+						virtualPathPrefix: command.vpath,
+						port,
+						host: command.host,
+					});
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
+
+	program
 		.command("update")
 		.description("Update front matter fields on specific Markdown files")
 		.option(
@@ -282,6 +327,17 @@ function collectFrontMatter(value: string, previous: string[]): string[] {
 
 function collectFilters(value: string, previous: string[]): string[] {
 	return [...previous, value];
+}
+
+function parsePort(raw: string): number {
+	const value = Number.parseInt(raw, 10);
+	if (!Number.isSafeInteger(value) || value < 1 || value > 65535) {
+		throw new MdfError(
+			"INVALID_VIEWER_PORT",
+			`Viewer port must be an integer between 1 and 65535. Received "${raw}"`,
+		);
+	}
+	return value;
 }
 
 function formatDisplayPath(filePath: string): string {

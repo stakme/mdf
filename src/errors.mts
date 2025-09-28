@@ -17,7 +17,9 @@ export type MdfErrorCode =
 	| "INVALID_VIRTUAL_PATH_VALUE"
 	| "ALIAS_NOT_FOUND"
 	| "ALIAS_CYCLE"
-	| "INVALID_ALIAS_COMMAND";
+	| "INVALID_ALIAS_COMMAND"
+	| "VIEWER_NO_DOCUMENTS"
+	| "INVALID_VIEWER_PORT";
 
 export class MdfError extends Error {
 	constructor(
