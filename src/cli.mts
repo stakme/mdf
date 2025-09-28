@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
 import { runNewCommand } from "./commands/new.mts";
+import { runQueryCommand } from "./commands/query.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
 import { MarkdfmError } from "./errors.mts";
 
@@ -129,6 +130,43 @@ async function bootstrap(): Promise<void> {
                         }
                 });
 
+        program
+                .command("query")
+                .description("Query Markdown files by front matter values")
+                .option(
+                        "-f, --filter <expression>",
+                        "Filter expression in the form field: value",
+                        collectFilters,
+                        [] as string[],
+                )
+                .option(
+                        "--format <template>",
+                        "Output template using {{field}} placeholders",
+                )
+                .argument("<directory>", "Directory containing Markdown files to query")
+                .action(
+                        async (
+                                directory: string,
+                                command: { filter?: string[]; format?: string },
+                        ) => {
+                                try {
+                                        const filters = command.filter ?? [];
+                                        const result = await runQueryCommand({
+                                                cwd: process.cwd(),
+                                                directory,
+                                                filters,
+                                                format: command.format,
+                                        });
+
+                                        for (const match of result.matches) {
+                                                console.log(match.output);
+                                        }
+                                } catch (error) {
+                                        handleError(error);
+                                }
+                        },
+                );
+
 	try {
 		await program.parseAsync(process.argv);
 	} catch (error) {
@@ -137,6 +175,10 @@ async function bootstrap(): Promise<void> {
 }
 
 function collectFrontMatter(value: string, previous: string[]): string[] {
+        return [...previous, value];
+}
+
+function collectFilters(value: string, previous: string[]): string[] {
         return [...previous, value];
 }
 
