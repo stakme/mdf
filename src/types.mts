@@ -43,10 +43,12 @@ export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 	schema: TSchema;
 }
 
+export type AnySchemaDefinition = SchemaDefinition<z.ZodTypeAny>;
+
 export type SchemaConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> =
 	| TSchema
 	| SchemaDefinition<TSchema>
-	| readonly SchemaDefinition<TSchema>[];
+	| readonly AnySchemaDefinition[];
 
 export interface MdfConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 	schema: SchemaConfig<TSchema>;
