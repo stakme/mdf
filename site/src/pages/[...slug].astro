@@ -3,32 +3,77 @@ import { getCollection } from "astro:content";
 // biome-ignore lint/correctness/noUnusedImports: Used within Astro template markup
 import DocsLayout from "../layouts/DocsLayout.astro";
 import { entryMatchesViewerFilters } from "../lib/viewerFilters";
+import { buildViewerEntry } from "../lib/viewerMeta";
+
+const loadEntries = async () => {
+	const rawEntries = await getCollection("pages");
+	return rawEntries
+		.filter((entry) => entryMatchesViewerFilters(entry.data))
+		.map((entry) => {
+			const meta = buildViewerEntry(entry);
+			const routePath = meta.routePath || meta.virtualPath || entry.slug;
+			return { entry, meta, routePath };
+		});
+}
+
+export async function getStaticPaths() {
+	const entries = await loadEntries();
+	const seen = new Set<string>();
+	const paths: Array<{ params: { slug: string[] } }> = [];
+
+	for (const { entry, meta, routePath } of entries) {
+		if (meta.draft) {
+			continue;
+		}
+
+		const preferred = normalizePath(routePath);
+		const fallback = normalizePath(entry.slug);
+		const slugValue = preferred || fallback;
+		if (!slugValue || seen.has(slugValue)) {
+			continue;
+		}
+		seen.add(slugValue);
+		const segments = slugValue
+			.split("/")
+			.filter((segment) => segment.length > 0);
+		paths.push({ params: { slug: segments } });
+	}
+
+	return paths;
+}
 
 const slugParam = Astro.params.slug ?? "";
 const requestPath = Array.isArray(slugParam) ? slugParam.join("/") : slugParam;
 
-const entries = (await getCollection("pages")).filter((entry) =>
-	entryMatchesViewerFilters(entry.data),
-);
-const normalize = (value: string | undefined, fallback: string) =>
-	(value ?? fallback).replace(/^\/+|\/+$/g, "");
-const entry = entries.find(
-	(item) => normalize(item.data.vpath, item.slug) === requestPath,
-);
+const entries = await loadEntries();
 
-if (!entry) {
+const resolved = entries.find(({ entry, meta }) => {
+	const candidates = [meta.routePath, meta.virtualPath, entry.slug]
+		.filter(Boolean)
+		.map((value) => normalizePath(value as string));
+	return candidates.includes(requestPath);
+});
+
+if (!resolved) {
 	return Astro.redirect("/", 302);
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
-const { Content } = await entry.render();
+const { Content } = await resolved.entry.render();
 // biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
-const pageTitle = entry.data.title ?? requestPath;
+const pageTitle = resolved.meta.title ?? requestPath;
 // biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
-const pageDescription = entry.data.description ?? undefined;
+const pageDescription = resolved.meta.description ?? undefined;
+// biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
+const pageMeta = resolved.meta;
+
+
+function normalizePath(value: string) {
+	return value.replace(/^\/+|\/+$/g, "");
+}
 ---
 
-<DocsLayout title={pageTitle} description={pageDescription}>
+<DocsLayout title={pageTitle} description={pageDescription} metadata={pageMeta}>
   <article class="prose">
     <Content />
   </article>

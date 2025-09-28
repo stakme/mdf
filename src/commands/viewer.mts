@@ -6,6 +6,7 @@ import {
 import { constants as fsConstants } from "node:fs";
 import { access } from "node:fs/promises";
 import path from "node:path";
+import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
 import { parseFilterExpression } from "../utils/filters.mts";
 
@@ -50,6 +51,14 @@ export async function runViewerCommand(
 		...process.env,
 		MDF_DOCS_DIR: docsDir,
 	};
+
+	const config = await loadConfig(options.cwd);
+	if (config?.virtualPath) {
+		env.MDF_VIRTUAL_PATH_PARAM = config.virtualPath.param;
+		if (config.virtualPath.separator) {
+			env.MDF_VIRTUAL_PATH_SEPARATOR = config.virtualPath.separator;
+		}
+	}
 
 	if (parsedFilters.length > 0) {
 		env.MDF_FILTERS = JSON.stringify(parsedFilters);

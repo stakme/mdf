@@ -8,20 +8,14 @@ const docsDir = process.env.MDF_DOCS_DIR
 	? path.resolve(process.env.MDF_DOCS_DIR)
 	: fileURLToPath(new URL("../../docs", import.meta.url));
 
+const frontMatterSchema = z.record(z.unknown());
+
 export const collections = {
 	pages: defineCollection({
 		loader: glob({
 			base: docsDir,
 			pattern: "**/*.{md,mdx}",
 		}),
-		schema: z.object({
-			title: z.string().min(1),
-			description: z.string().optional(),
-			date: z.string().optional(),
-			tags: z.array(z.string()).default([]),
-			draft: z.boolean().default(false),
-			vpath: z.string().optional(),
-			status: z.string().optional(),
-		}),
+		schema: frontMatterSchema,
 	}),
 };

@@ -6,7 +6,13 @@ import type { SpawnFunction } from "../src/commands/viewer.mts";
 import { runViewerCommand } from "../src/commands/viewer.mts";
 import { MdfError } from "../src/errors.mts";
 
-async function createWorkspace(): Promise<string> {
+interface WorkspaceOptions {
+	withConfig?: boolean;
+}
+
+async function createWorkspace(
+	options: WorkspaceOptions = {},
+): Promise<string> {
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "mdf-viewer-test-"));
 	await fs.mkdir(path.join(root, "site"), { recursive: true });
 	await fs.writeFile(
@@ -20,6 +26,28 @@ async function createWorkspace(): Promise<string> {
 		"---\ntitle: Test\n---\n",
 		"utf8",
 	);
+
+	if (options.withConfig) {
+		await fs.mkdir(path.join(root, ".config"), { recursive: true });
+		await fs.writeFile(
+			path.join(root, ".config", "mdf.mts"),
+			[
+				'import { defineConfig, z } from "@stakme/mdf/config";',
+				"",
+				"export default defineConfig({",
+				"\tschema: z.object({",
+				"\t\ttitle: z.string(),",
+				"\t\tcustomPath: z.string().optional(),",
+				"\t}),",
+				"\tvirtualPath: {",
+				'\t\tparam: "customPath",',
+				'\t\tseparator: "::",',
+				"\t},",
+				"});",
+			].join("\n"),
+			"utf8",
+		);
+	}
 	return root;
 }
 
@@ -151,6 +179,38 @@ describe("runViewerCommand", () => {
 			{ path: ["status"], operator: "exact", value: "todo" },
 			{ path: ["tags"], operator: "loose", value: "feature" },
 		]);
+
+		await fs.rm(root, { recursive: true, force: true });
+	});
+
+	it("forwards virtual path settings from the config to the viewer", async () => {
+		const root = await createWorkspace({ withConfig: true });
+		const spawnCalls: Array<{ options: { env?: NodeJS.ProcessEnv } }> = [];
+
+		const spawnStub: SpawnFunction = (_command, _args, options) => {
+			spawnCalls.push({ options });
+			return {
+				on(event, handler) {
+					if (event === "exit") {
+						setImmediate(() => {
+							handler(0, null);
+						});
+					}
+					return this;
+				},
+			} as unknown as ReturnType<SpawnFunction>;
+		};
+
+		await runViewerCommand({
+			cwd: root,
+			directory: "docs",
+			spawnImpl: spawnStub,
+		});
+
+		expect(spawnCalls).toHaveLength(1);
+		const env = spawnCalls[0]?.options.env ?? {};
+		expect(env.MDF_VIRTUAL_PATH_PARAM).toBe("customPath");
+		expect(env.MDF_VIRTUAL_PATH_SEPARATOR).toBe("::");
 
 		await fs.rm(root, { recursive: true, force: true });
 	});

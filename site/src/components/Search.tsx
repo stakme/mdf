@@ -13,6 +13,9 @@ export interface SearchItem {
 	description?: string;
 	tags?: string[];
 	vpath?: string;
+	author?: string;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export default function Search({
@@ -36,6 +39,15 @@ export default function Search({
 				];
 				if (item.tags) {
 					haystacks.push(...item.tags);
+				}
+				if (item.author) {
+					haystacks.push(item.author);
+				}
+				if (item.createdAt) {
+					haystacks.push(item.createdAt);
+				}
+				if (item.updatedAt) {
+					haystacks.push(item.updatedAt);
 				}
 				return haystacks.some((value) =>
 					value.toLowerCase().includes(normalized),
@@ -70,6 +82,13 @@ export default function Search({
 							{item.vpath && (
 								<span className="text-xs text-neutral-400 dark:text-neutral-500">
 									{item.vpath}
+								</span>
+							)}
+							{(item.author || item.createdAt || item.updatedAt) && (
+								<span className="text-xs text-neutral-400 dark:text-neutral-500">
+									{[item.author, item.createdAt, item.updatedAt]
+										.filter(Boolean)
+										.join(" • ")}
 								</span>
 							)}
 						</div>

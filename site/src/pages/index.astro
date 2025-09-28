@@ -5,26 +5,28 @@ import PageShell from "../components/PageShell.astro";
 // biome-ignore lint/correctness/noUnusedImports: Component is referenced within the Astro template markup
 import Search from "../components/Search.tsx";
 import { entryMatchesViewerFilters } from "../lib/viewerFilters";
+import { buildViewerEntry } from "../lib/viewerMeta";
 
 const entries = (await getCollection("pages"))
 	.filter((entry) => entryMatchesViewerFilters(entry.data))
-	.filter((entry) => !entry.data.draft)
 	.map((entry) => {
-		const routePath = (entry.data.vpath ?? entry.slug).replace(
-			/^\/+|\/+$/g,
-			"",
-		);
-		return { entry, routePath };
+		const meta = buildViewerEntry(entry);
+		const routePath = meta.routePath || meta.virtualPath || entry.slug;
+		return { entry, meta, routePath };
 	})
+	.filter(({ meta }) => !meta.draft)
 	.sort((a, b) => a.routePath.localeCompare(b.routePath));
 
 // biome-ignore lint/correctness/noUnusedVariables: Value is consumed within the Astro template markup
-const searchItems = entries.map(({ entry, routePath }) => ({
-	title: entry.data.title,
-	description: entry.data.description ?? "",
+const searchItems = entries.map(({ meta, routePath }) => ({
+	title: meta.title,
+	description: meta.description ?? "",
 	path: `/${routePath}`,
-	tags: entry.data.tags ?? [],
-	vpath: entry.data.vpath ?? entry.slug,
+	tags: meta.tags,
+	vpath: meta.virtualPath,
+	author: meta.author,
+	createdAt: meta.createdAt,
+	updatedAt: meta.updatedAt,
 }));
 ---
 
@@ -34,22 +36,37 @@ const searchItems = entries.map(({ entry, routePath }) => ({
     <Search client:only="react" items={searchItems} />
   </div>
   <ul class="mt-8 space-y-4">
-    {entries.map(({ entry, routePath }) => (
+    {entries.map(({ meta, routePath }) => (
       <li class="rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600">
         <div class="flex flex-col gap-2">
           <a class="text-lg font-medium hover:underline" href={`/${routePath}`}>
-            {entry.data.title}
+            {meta.title}
           </a>
-          {entry.data.description && (
+          {meta.description && (
             <p class="text-sm text-neutral-600 dark:text-neutral-400">
-              {entry.data.description}
+              {meta.description}
             </p>
           )}
           <div class="flex flex-wrap gap-2 text-xs text-neutral-500 dark:text-neutral-400">
             <span class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900">
-              {(entry.data.vpath ?? entry.slug) || routePath}
+              {meta.virtualPath || routePath}
             </span>
-            {entry.data.tags?.map((tag) => (
+            {meta.author && (
+              <span class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900">
+                Author: {meta.author}
+              </span>
+            )}
+            {meta.createdAt && (
+              <span class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900">
+                Created: {meta.createdAt}
+              </span>
+            )}
+            {meta.updatedAt && (
+              <span class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900">
+                Updated: {meta.updatedAt}
+              </span>
+            )}
+            {meta.tags.map((tag) => (
               <span
                 class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900"
                 >{tag}</span
