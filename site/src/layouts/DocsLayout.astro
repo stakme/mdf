@@ -1,0 +1,27 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: Component is referenced within the Astro template markup
+import PageShell from "../components/PageShell.astro";
+
+type DocsLayoutProps = {
+	title?: string;
+	description?: string;
+};
+
+// biome-ignore lint/correctness/noUnusedVariables: Props are consumed in the Astro template markup
+const props = Astro.props as DocsLayoutProps;
+---
+<PageShell title={props.title}>
+  <div class="flex flex-col gap-4">
+    {props.title && (
+      <h1 class="text-3xl font-semibold tracking-tight">{props.title}</h1>
+    )}
+    {props.description && (
+      <p class="max-w-3xl text-base text-neutral-600 dark:text-neutral-400">
+        {props.description}
+      </p>
+    )}
+  </div>
+  <div class="mt-6">
+    <slot />
+  </div>
+</PageShell>

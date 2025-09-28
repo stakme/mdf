@@ -45,6 +45,7 @@ When you are ready to publish new notes, validate the collection with `mdf valid
 | --- | --- |
 | `mdf new <directory>` | Scaffold Markdown files that match your schema and optional template defaults. |
 | `mdf list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
+| `mdf viewer [options]` | Launch the interactive web viewer backed by your Markdown collection. |
 | `mdf validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
 | `mdf fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
 | `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command. |

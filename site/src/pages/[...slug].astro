@@ -1,0 +1,32 @@
+---
+import { getCollection } from "astro:content";
+// biome-ignore lint/correctness/noUnusedImports: Used within Astro template markup
+import DocsLayout from "../layouts/DocsLayout.astro";
+
+const slugParam = Astro.params.slug ?? "";
+const requestPath = Array.isArray(slugParam) ? slugParam.join("/") : slugParam;
+
+const entries = await getCollection("pages");
+const normalize = (value: string | undefined, fallback: string) =>
+	(value ?? fallback).replace(/^\/+|\/+$/g, "");
+const entry = entries.find(
+	(item) => normalize(item.data.vpath, item.slug) === requestPath,
+);
+
+if (!entry) {
+	return Astro.redirect("/", 302);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
+const { Content } = await entry.render();
+// biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
+const pageTitle = entry.data.title ?? requestPath;
+// biome-ignore lint/correctness/noUnusedVariables: Rendered in the template markup
+const pageDescription = entry.data.description ?? undefined;
+---
+
+<DocsLayout title={pageTitle} description={pageDescription}>
+  <article class="prose">
+    <Content />
+  </article>
+</DocsLayout>
