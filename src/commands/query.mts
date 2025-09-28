@@ -3,6 +3,11 @@ import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { readMarkdownDocument } from "../front-matter.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
+import {
+        matchesParsedFilter,
+        parseFilterExpression,
+        resolveFilterPath,
+} from "../utils/filters.mts";
 
 export interface QueryCommandOptions {
         cwd: string;
@@ -20,11 +25,6 @@ export interface QueryMatch {
         displayPath: string;
         frontMatter: Record<string, unknown>;
         output: string;
-}
-
-interface ParsedFilter {
-        path: string[];
-        value: unknown;
 }
 
 export async function runQueryCommand(
@@ -48,13 +48,13 @@ export async function runQueryCommand(
                 );
         }
 
-        const parsedFilters = options.filters.map(parseFilter);
+        const parsedFilters = options.filters.map(parseFilterExpression);
         const template = options.format ?? "{{title}}";
         const matches: QueryMatch[] = [];
 
         for (const filePath of files) {
                 const document = await readMarkdownDocument(filePath);
-                if (!parsedFilters.every((filter) => matchesFilter(document.frontMatter, filter))) {
+                if (!parsedFilters.every((filter) => matchesParsedFilter(document.frontMatter, filter))) {
                         continue;
                 }
 
@@ -78,97 +78,6 @@ export async function runQueryCommand(
         }
 
         return { matches };
-}
-
-function parseFilter(raw: string): ParsedFilter {
-        const match = raw.match(/^(.*?)\s*:\s*(.*)$/u);
-        if (!match) {
-                throw new MarkdfmError(
-                        "INVALID_QUERY_FILTER",
-                        `Invalid filter expression: ${raw}`,
-                );
-        }
-
-        const [, keyPart, valuePart] = match;
-        const key = keyPart?.trim();
-        if (!key) {
-                        throw new MarkdfmError(
-                                "INVALID_QUERY_FILTER",
-                                `Invalid filter expression: ${raw}`,
-                        );
-        }
-
-        const value = parseFilterValue(valuePart ?? "");
-        return { path: key.split("."), value };
-}
-
-function parseFilterValue(raw: string): unknown {
-        const trimmed = raw.trim();
-        if (!trimmed) {
-                return "";
-        }
-
-        const firstChar = trimmed[0];
-        const lastChar = trimmed.at(-1);
-        if ((firstChar === '"' && lastChar === '"') || (firstChar === "'" && lastChar === "'")) {
-                return trimmed.slice(1, -1);
-        }
-
-        if (/^-?\d+(?:\.\d+)?$/u.test(trimmed)) {
-                return Number(trimmed);
-        }
-
-        if (/^(true|false)$/iu.test(trimmed)) {
-                return trimmed.toLowerCase() === "true";
-        }
-
-        return trimmed;
-}
-
-function matchesFilter(
-        frontMatter: Record<string, unknown>,
-        filter: ParsedFilter,
-): boolean {
-        const value = resolvePath(frontMatter, filter.path);
-        if (value === undefined) {
-                return false;
-        }
-
-        if (Array.isArray(value)) {
-                return value.some((entry) => compareValues(entry, filter.value));
-        }
-
-        return compareValues(value, filter.value);
-}
-
-function compareValues(candidate: unknown, expected: unknown): boolean {
-        if (candidate === expected) {
-                return true;
-        }
-
-        if (typeof candidate === "string" && typeof expected === "string") {
-                return candidate.toLowerCase() === expected.toLowerCase();
-        }
-
-        return false;
-}
-
-function resolvePath(source: Record<string, unknown>, pathParts: string[]): unknown {
-        let current: unknown = source;
-        for (const segment of pathParts) {
-                if (!segment) {
-                        return undefined;
-                }
-                if (!isRecord(current)) {
-                        return undefined;
-                }
-                current = current[segment];
-        }
-        return current;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-        return typeof value === "object" && value !== null;
 }
 
 function renderTemplate(
@@ -238,7 +147,7 @@ function resolveTemplatePath(
         if (segments[0] === "f" && segments.length > 1) {
                         segments.shift();
         }
-        return resolvePath(frontMatter, segments);
+        return resolveFilterPath(frontMatter, segments);
 }
 
 function parseTemplateExpression(expression: string): { path: string; separator: string | null } {

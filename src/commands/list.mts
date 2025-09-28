@@ -3,10 +3,16 @@ import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { readMarkdownDocument } from "../front-matter.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
+import {
+        matchesParsedFilter,
+        parseFilterExpression,
+} from "../utils/filters.mts";
 
 export interface ListCommandOptions {
         cwd: string;
         directory: string;
+        virtualPathPrefix?: string;
+        filters?: readonly string[];
 }
 
 export interface ListCommandResult {
@@ -15,7 +21,7 @@ export interface ListCommandResult {
 
 interface VirtualPathEntry {
         segments: readonly string[];
-        fileName: string;
+        label: string;
 }
 
 interface DirectoryNode {
@@ -60,10 +66,21 @@ export async function runListCommand(
                 );
         }
 
+        const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
+        const prefixSegments = options.virtualPathPrefix
+                ? splitVirtualPath(options.virtualPathPrefix, config.virtualPath.separator)
+                : undefined;
+
         const entries: VirtualPathEntry[] = [];
         for (const filePath of files) {
                 const document = await readMarkdownDocument(filePath);
-                const rawVirtualPath = document.frontMatter[config.virtualPath.param];
+                const frontMatter = document.frontMatter;
+
+                if (!parsedFilters.every((filter) => matchesParsedFilter(frontMatter, filter))) {
+                        continue;
+                }
+
+                const rawVirtualPath = frontMatter[config.virtualPath.param];
 
                 let segments: string[];
                 if (rawVirtualPath === undefined || rawVirtualPath === null) {
@@ -77,8 +94,17 @@ export async function runListCommand(
                         );
                 }
 
+                if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
+                        continue;
+                }
+
                 const fileName = path.basename(filePath);
-                entries.push({ segments, fileName });
+                const displayPath = formatDisplayPath(filePath, options.cwd);
+                const titleValue = frontMatter.title;
+                const title = typeof titleValue === "string" ? titleValue.trim() : "";
+                const labelBase = title.length > 0 ? title : fileName;
+                const label = `${labelBase} (${displayPath})`;
+                entries.push({ segments, label });
         }
 
         const tree = buildTree(entries);
@@ -122,7 +148,7 @@ function buildTree(entries: VirtualPathEntry[]): string[] {
                         current = next;
                 }
 
-                const fileNode: FileNode = { type: "file", name: entry.fileName };
+                const fileNode: FileNode = { type: "file", name: entry.label };
                 current.children.push(fileNode);
         }
 
@@ -158,6 +184,18 @@ function sortNodes(nodes: TreeNode[]): TreeNode[] {
                 }
                 return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
         });
+}
+
+function segmentsStartsWith(segments: readonly string[], prefix: readonly string[]): boolean {
+        if (prefix.length === 0) {
+                return true;
+        }
+
+        if (segments.length < prefix.length) {
+                return false;
+        }
+
+        return prefix.every((segment, index) => segments[index] === segment);
 }
 
 function formatDisplayPath(filePath: string, cwd: string): string {

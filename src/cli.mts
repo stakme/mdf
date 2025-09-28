@@ -95,12 +95,22 @@ async function bootstrap(): Promise<void> {
         program
                 .command("list")
                 .description("List Markdown files using virtual paths")
+                .option("--vpath <prefix>", "Filter entries by virtual path prefix")
+                .option(
+                        "-f, --filter <expression>",
+                        "Filter expression in the form field=value",
+                        collectFilters,
+                        [] as string[],
+                )
                 .argument("<directory>", "Directory containing Markdown files to list")
-                .action(async (directory: string) => {
+                .action(async (directory: string, command: { vpath?: string; filter?: string[] }) => {
                         try {
+                                const filters = command.filter ?? [];
                                 const result = await runListCommand({
                                         cwd: process.cwd(),
                                         directory,
+                                        virtualPathPrefix: command.vpath,
+                                        filters,
                                 });
 
                                 for (const line of result.tree) {

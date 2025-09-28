@@ -57,10 +57,67 @@ export default defineConfig({
                         expect(lines).toEqual([
                                 "├── backlog",
                                 "│   ├── feature",
-                                "│   │   └── todo-a.md",
-                                "│   └── todo-b.md",
+                                "│   │   └── Feature work (./TODO/todo-a.md)",
+                                "│   └── Planning (./TODO/todo-b.md)",
                                 "└── bug_reports",
-                                "    └── bug.md",
+                                "    └── Fix bug (./TODO/bug.md)",
+                        ]);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
+        it("filters entries by virtual path prefix", async () => {
+                const configSource = `import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                author: z.string(),
+                tags: z.array(z.string()).default(() => []),
+                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+                const tempDir = await setupWorkspace({ config: configSource });
+                const notesDir = path.join(tempDir, "TODO");
+                await fs.mkdir(notesDir, { recursive: true });
+
+                const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+
+                await fs.writeFile(
+                        path.join(notesDir, "todo-a.md"),
+                        `---\ntitle: Feature work\nvpath: backlog/feature\n${sharedFrontMatter}\n---\n`,
+                        "utf8",
+                );
+
+                await fs.writeFile(
+                        path.join(notesDir, "todo-b.md"),
+                        `---\ntitle: Planning\nvpath: backlog\n${sharedFrontMatter}\n---\n`,
+                        "utf8",
+                );
+
+                try {
+                        const { stdout } = await execa(
+                                nodeBinary,
+                                [cliPath, "list", "--vpath", "backlog/feature", "TODO"],
+                                {
+                                        cwd: tempDir,
+                                },
+                        );
+
+                        const lines = stdout.trim().split("\n");
+                        expect(lines).toEqual([
+                                "└── backlog",
+                                "    └── feature",
+                                "        └── Feature work (./TODO/todo-a.md)",
                         ]);
                 } finally {
                         await fs.rm(tempDir, { recursive: true, force: true });
@@ -109,8 +166,65 @@ export default defineConfig({
                         const lines = stdout.trim().split("\n");
                         expect(lines).toEqual([
                                 "├── backlog",
-                                "│   └── with.md",
-                                "└── root.md",
+                                "│   └── With Path (./notes/with.md)",
+                                "└── Root Path (./notes/root.md)",
+                        ]);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
+        it("filters entries using front matter values", async () => {
+                const configSource = `import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                author: z.string(),
+                tags: z.array(z.string()).default(() => []),
+                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+                const tempDir = await setupWorkspace({ config: configSource });
+                const notesDir = path.join(tempDir, "TODO");
+                await fs.mkdir(notesDir, { recursive: true });
+
+                const baseFrontMatter = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+
+                await fs.writeFile(
+                        path.join(notesDir, "todo-task.md"),
+                        `---\ntitle: Todo Task\nvpath: backlog/todo\nstatus: todo\n${baseFrontMatter}\n---\n`,
+                        "utf8",
+                );
+
+                await fs.writeFile(
+                        path.join(notesDir, "done-task.md"),
+                        `---\ntitle: Done Task\nvpath: backlog/done\nstatus: done\n${baseFrontMatter}\n---\n`,
+                        "utf8",
+                );
+
+                try {
+                        const { stdout } = await execa(
+                                nodeBinary,
+                                [cliPath, "list", "--filter", "status=todo", "TODO"],
+                                {
+                                        cwd: tempDir,
+                                },
+                        );
+
+                        const lines = stdout.trim().split("\n");
+                        expect(lines).toEqual([
+                                "└── backlog",
+                                "    └── todo",
+                                "        └── Todo Task (./TODO/todo-task.md)",
                         ]);
                 } finally {
                         await fs.rm(tempDir, { recursive: true, force: true });

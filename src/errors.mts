@@ -8,6 +8,7 @@ export type MarkdfmErrorCode =
         | "FRONT_MATTER_NOT_FOUND"
         | "FRONT_MATTER_PARSE"
         | "NO_MATCHING_FILES"
+        | "INVALID_FILTER_EXPRESSION"
         | "INVALID_QUERY_FILTER"
         | "TEMPLATE_NOT_FOUND"
         | "INVALID_UPDATE_INPUT"
