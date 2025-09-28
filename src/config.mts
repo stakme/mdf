@@ -17,11 +17,6 @@ const packageRequire = Module.createRequire(
 	new URL("../package.json", import.meta.url),
 );
 
-const CONFIG_MODULE_SPECIFIERS = new Set([
-	"markdfm/config",
-	"@stakme/markdfm/config",
-]);
-
 const CONFIG_CANDIDATES = [
 	".config/markdfm.mts",
 	".config/markdfm.ts",
@@ -429,7 +424,7 @@ function isZodType(value: unknown): value is z.ZodTypeAny {
 function createResolver(configFile: string) {
 	const localRequire = Module.createRequire(configFile);
 	return function resolve(request: string) {
-		if (CONFIG_MODULE_SPECIFIERS.has(request)) {
+		if (request === "@stakme/markdfm/config") {
 			return { defineConfig, z };
 		}
 
