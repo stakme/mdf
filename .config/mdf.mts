@@ -25,10 +25,10 @@ export default defineConfig({
 			name: "default",
 			glob: "**",
 			schema: z.object({
-				title: z.string(),
+				title: z.string().min(1),
 				vpath: z.string().optional(),
 				status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-				author: z.string(),
+				author: z.string().optional(),
 				tags: z.array(z.string()).default(() => []),
 				created_at: z.iso.datetime().default(() => new Date().toISOString()),
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
