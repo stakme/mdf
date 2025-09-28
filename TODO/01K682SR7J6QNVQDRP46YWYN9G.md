@@ -1,11 +1,11 @@
 ---
 title: "@biomejs/biome"
 vpath: backlog/development
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-28T11:54:44.360Z
-updated_at: 2025-09-28T11:54:44.361Z
+updated_at: 2025-09-28T12:20:02Z
 ---
 
 # @biomejs/biome

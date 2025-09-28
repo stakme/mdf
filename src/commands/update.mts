@@ -246,10 +246,11 @@ async function resolveSchemaDefaults(params: {
 		throw new MarkdfmError("SCHEMA_VALIDATION", message);
 	}
 
+	const parseData = parseResult.data as Record<string, unknown>;
 	const defaults = new Map<string, unknown>();
 	for (const key of params.missingKeys) {
-		if (Object.hasOwn(parseResult.data, key)) {
-			defaults.set(key, (parseResult.data as Record<string, unknown>)[key]);
+		if (Object.hasOwn(parseData, key)) {
+			defaults.set(key, parseData[key]);
 		}
 	}
 	return defaults;

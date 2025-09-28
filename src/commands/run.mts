@@ -64,17 +64,17 @@ function parseAliasCommand(command: string): string[] {
 	const tokens: string[] = [];
 	let current = "";
 	let quote: '"' | "'" | null = null;
-	let escape = false;
+	let isEscaping = false;
 
 	for (const char of command) {
-		if (escape) {
+		if (isEscaping) {
 			current += char;
-			escape = false;
+			isEscaping = false;
 			continue;
 		}
 
 		if (char === "\\" && quote !== "'") {
-			escape = true;
+			isEscaping = true;
 			continue;
 		}
 
@@ -110,7 +110,7 @@ function parseAliasCommand(command: string): string[] {
 		);
 	}
 
-	if (escape) {
+	if (isEscaping) {
 		current += "\\";
 	}
 

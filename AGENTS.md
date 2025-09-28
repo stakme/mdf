@@ -12,6 +12,7 @@
 3. Implement the behavior in TypeScript. Maintain the ESM style (`.mts`, top-level `await` only where already used) and reuse shared helpers from `src/utils/`.
 4. Update or add Vitest coverage under `tests/`. Each feature change should have assertions for the happy path plus relevant edge cases or error conditions.
 5. Run quality gates locally:
+   - `npx @biomejs/biome check --fix` to keep formatting and lint rules in sync.
    - `npm run check` for TypeScript type safety.
    - `npm run build` to confirm bundling with tsdown stays stable.
    - `npm test` to ensure all specs—including new ones—pass against the built output.
@@ -30,6 +31,7 @@
 
 ## Deliverables Checklist
 - [ ] Implementation linked to the TODO goals.
+- [ ] `npx @biomejs/biome check --fix` completes without findings.
 - [ ] Updated tests covering new behavior and failure modes.
 - [ ] All npm scripts (`check`, `build`, `test`) succeed locally.
 - [ ] Relevant documentation (README, code comments) refreshed when features alter existing guidance.
