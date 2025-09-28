@@ -7,9 +7,8 @@ export default defineConfig({
 		close: `update --fm "status=done" --fm updated_at`,
 	},
 
-	schema: [
-		{
-			name: "docs",
+	schema: {
+		docs: {
 			glob: "docs/**",
 			schema: z.object({
 				title: z.string().min(1),
@@ -21,8 +20,7 @@ export default defineConfig({
 				author: z.string().optional(),
 			}),
 		},
-		{
-			name: "default",
+		default: {
 			glob: "**",
 			schema: z.object({
 				title: z.string(),
@@ -34,7 +32,7 @@ export default defineConfig({
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
 			}),
 		},
-	],
+	},
 	defaultSchema: "default",
 
 	templates: {

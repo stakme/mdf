@@ -543,12 +543,18 @@ function normalizeSchemaDefinitions(
 	}
 
 	if (input && typeof input === "object") {
-		const entry = normalizeSchemaEntry(input, configPath);
-		return finalizeSchemaEntries([entry], defaultSchema, configPath);
+		const record = input as Record<string, unknown>;
+		if ("name" in record) {
+			const entry = normalizeSchemaEntry(record, configPath);
+			return finalizeSchemaEntries([entry], defaultSchema, configPath);
+		}
+
+		const entries = normalizeSchemaRecordEntries(record, configPath);
+		return finalizeSchemaEntries(entries, defaultSchema, configPath);
 	}
 
 	throw new Error(
-		`mdf config at ${configPath} must define "schema" as a Zod schema or an array of schema definitions`,
+		`mdf config at ${configPath} must define "schema" as a Zod schema, an array of schema definitions, or an object mapping schema names to definitions`,
 	);
 }
 
@@ -587,6 +593,69 @@ function normalizeSchemaEntry(
 
 	return {
 		name,
+		schema,
+		glob: typeof glob === "string" ? glob : undefined,
+	};
+}
+
+function normalizeSchemaRecordEntries(
+	entries: Record<string, unknown>,
+	configPath: string,
+): readonly LoadedSchema[] {
+	const names = Object.keys(entries);
+	if (names.length === 0) {
+		throw new Error(
+			`mdf config at ${configPath} must define at least one schema entry`,
+		);
+	}
+
+	return names.map((rawName) =>
+		normalizeSchemaRecordEntry(rawName, entries[rawName], configPath),
+	);
+}
+
+function normalizeSchemaRecordEntry(
+	name: string,
+	entry: unknown,
+	configPath: string,
+): LoadedSchema {
+	const trimmedName = name.trim();
+	if (!trimmedName) {
+		throw new Error(
+			`mdf config at ${configPath} must define schema entries with non-empty names`,
+		);
+	}
+
+	if (isZodType(entry)) {
+		return {
+			name: trimmedName,
+			schema: entry,
+		};
+	}
+
+	if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+		throw new Error(
+			`Schema entry "${trimmedName}" in ${configPath} must be defined as a Zod schema or an object`,
+		);
+	}
+
+	const record = entry as Record<string, unknown>;
+	const schema = record.schema;
+	if (!isZodType(schema)) {
+		throw new Error(
+			`Schema entry "${trimmedName}" in ${configPath} must include a Zod schema under the "schema" key`,
+		);
+	}
+
+	const glob = record.glob;
+	if (glob !== undefined && (typeof glob !== "string" || !glob.trim())) {
+		throw new Error(
+			`Schema entry "${trimmedName}" in ${configPath} must define "glob" as a non-empty string when provided`,
+		);
+	}
+
+	return {
+		name: trimmedName,
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 	};
