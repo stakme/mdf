@@ -188,7 +188,23 @@ function mergeConfigs(
                 content: override.content ?? base.content,
                 fileName: override.fileName ?? base.fileName,
                 extension: override.extension ?? base.extension,
+                templates: mergeTemplates(base.templates, override.templates),
         };
+}
+
+function mergeTemplates(
+        baseTemplates: MarkdfmConfig["templates"],
+        overrideTemplates: MarkdfmConfig["templates"],
+): MarkdfmConfig["templates"] {
+        if (!baseTemplates) {
+                return overrideTemplates;
+        }
+
+        if (!overrideTemplates) {
+                return baseTemplates;
+        }
+
+        return { ...baseTemplates, ...overrideTemplates };
 }
 
 function mergeSchemas(

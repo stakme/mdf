@@ -29,12 +29,18 @@ Use the CLI to scaffold new Markdown files with valid front matter:
 markdfm new notes
 markdfm new notes --fm title="Release Plan" --fm tags=["release","planning"]
 markdfm new notes --fm title="Release Plan" --fm tags=release --fm tags=planning
+markdfm new notes --template default
 ```
 
 The command validates all provided fields using your schema, applies any
 defaults you define, and writes a Markdown file with front matter to the target
 directory. Array fields accept either a JSON-like literal or multiple
 `--fm key=value` flags to accumulate values.
+
+Define named templates in `.config/markdfm.mts` to bundle front matter defaults
+and body content for common note types. Pass `--template <name>` to apply the
+template's front matter overrides and body generator while still allowing CLI
+overrides for any field.
 
 ## Querying notes
 

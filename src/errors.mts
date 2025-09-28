@@ -8,7 +8,8 @@ export type MarkdfmErrorCode =
         | "FRONT_MATTER_NOT_FOUND"
         | "FRONT_MATTER_PARSE"
         | "NO_MATCHING_FILES"
-        | "INVALID_QUERY_FILTER";
+        | "INVALID_QUERY_FILTER"
+        | "TEMPLATE_NOT_FOUND";
 
 export class MarkdfmError extends Error {
         constructor(

@@ -6,13 +6,14 @@ import { z } from "zod";
 import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
-import type { LoadedConfig } from "../types.mts";
+import type { DefaultsValue, LoadedConfig, TemplateDefinition } from "../types.mts";
 
 export interface NewCommandOptions {
-	cwd: string;
-	directory: string;
-	frontMatterInputs: string[];
-	now?: Date;
+        cwd: string;
+        directory: string;
+        frontMatterInputs: string[];
+        now?: Date;
+        template?: string;
 }
 
 export interface NewCommandResult {
@@ -21,42 +22,46 @@ export interface NewCommandResult {
 }
 
 export async function runNewCommand(
-	options: NewCommandOptions,
+        options: NewCommandOptions,
 ): Promise<NewCommandResult> {
-	const now = options.now ?? new Date();
-	const resolvedDirectory = path.resolve(options.cwd, options.directory);
-	const config = await loadConfig(options.cwd);
+        const now = options.now ?? new Date();
+        const resolvedDirectory = path.resolve(options.cwd, options.directory);
+        const config = await loadConfig(options.cwd);
 
-	if (!config) {
-		throw new MarkdfmError(
-			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
-		);
-	}
+        if (!config) {
+                throw new MarkdfmError(
+                        "CONFIG_NOT_FOUND",
+                        "Could not find a markdfm config file. Create one at .config/markdfm.mts",
+                );
+        }
 
-	const baseData = await buildInitialFrontMatter(
-		config,
-		options.frontMatterInputs,
-		now,
-	);
-	const parsed = await parseFrontMatter(config, baseData);
+        const template = await resolveTemplate(config, options.template);
+        const baseData = await buildInitialFrontMatter(
+                config,
+                options.frontMatterInputs,
+                now,
+                template,
+        );
+        const parsed = await parseFrontMatter(config, baseData);
 
-	const filePath = await writeMarkdownFile({
-		config,
-		data: parsed,
-		directory: resolvedDirectory,
-		now,
-	});
-	return { filePath, frontMatter: parsed };
+        const filePath = await writeMarkdownFile({
+                config,
+                data: parsed,
+                directory: resolvedDirectory,
+                now,
+                template,
+        });
+        return { filePath, frontMatter: parsed };
 }
 
 async function writeMarkdownFile(params: {
-	config: LoadedConfig;
-	data: Record<string, unknown>;
-	directory: string;
-	now: Date;
+        config: LoadedConfig;
+        data: Record<string, unknown>;
+        directory: string;
+        now: Date;
+        template?: TemplateDefinition<Record<string, unknown>>;
 }): Promise<string> {
-	const { config, data, directory, now } = params;
+        const { config, data, directory, now, template } = params;
 
 	await fs.mkdir(directory, { recursive: true });
 
@@ -73,7 +78,7 @@ async function writeMarkdownFile(params: {
 	await ensureUniquePath(fullPath);
 
 	const frontMatterBlock = YAML.stringify(data, { lineWidth: 0 }).trimEnd();
-	const content = await resolveContent(config, data, now);
+        const content = await resolveContent(config, template, data, now);
 
 	const frontMatterSection = `---\n${frontMatterBlock}\n---\n\n`;
 	const bodySection = content ? ensureTrailingNewline(content) : "";
@@ -149,34 +154,80 @@ async function pathExists(filePath: string): Promise<boolean> {
 }
 
 async function resolveContent(
-	config: LoadedConfig,
-	data: unknown,
-	now: Date,
+        config: LoadedConfig,
+        template: TemplateDefinition<Record<string, unknown>> | undefined,
+        data: unknown,
+        now: Date,
 ): Promise<string> {
-	if (!config.content) {
-		return "";
-	}
+        if (template?.body !== undefined) {
+                return resolveTemplateBody(template.body, data, now);
+        }
 
-	if (typeof config.content === "string") {
-		return config.content;
-	}
+        if (!config.content) {
+                return "";
+        }
 
-	const result = await config.content({ data, now });
-	if (typeof result !== "string") {
-		throw new MarkdfmError(
-			"INVALID_CONTENT",
-			"Config content() must return a string",
-		);
-	}
-	return result;
+        if (typeof config.content === "string") {
+                return config.content;
+        }
+
+        const result = await config.content({ data, now });
+        if (typeof result !== "string") {
+                throw new MarkdfmError(
+                        "INVALID_CONTENT",
+                        "Config content() must return a string",
+                );
+        }
+        return result;
+}
+
+async function resolveTemplate(
+        config: LoadedConfig,
+        templateName?: string,
+): Promise<TemplateDefinition<Record<string, unknown>> | undefined> {
+        if (!templateName) {
+                return undefined;
+        }
+
+        const collection = config.templates;
+        const template = collection?.[templateName];
+        if (!template) {
+                throw new MarkdfmError(
+                        "TEMPLATE_NOT_FOUND",
+                        `Template "${templateName}" not found in ${config.path}`,
+                );
+        }
+
+        return template as TemplateDefinition<Record<string, unknown>>;
+}
+
+async function resolveTemplateBody(
+        body: TemplateDefinition<Record<string, unknown>>["body"],
+        data: unknown,
+        now: Date,
+): Promise<string> {
+        if (typeof body === "string") {
+                return body;
+        }
+
+        const context = Object.assign({ now, data }, data as Record<string, unknown>);
+        const result = await body(context);
+        if (typeof result !== "string") {
+                throw new MarkdfmError(
+                        "INVALID_CONTENT",
+                        "Template body must return a string",
+                );
+        }
+        return result;
 }
 
 async function buildInitialFrontMatter(
-	config: LoadedConfig,
-	inputs: string[],
-	now: Date,
+        config: LoadedConfig,
+        inputs: string[],
+        now: Date,
+        template?: TemplateDefinition<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
-	const defaults = await resolveDefaults(config, now);
+        const defaults = await resolveDefaults(config, now, template);
         const cliValues = parseFrontMatterInputs(inputs);
         const combined = { ...defaults, ...cliValues };
         ensureRequiredStringFields(config, combined);
@@ -184,19 +235,29 @@ async function buildInitialFrontMatter(
 }
 
 async function resolveDefaults(
-	config: LoadedConfig,
-	now: Date,
+        config: LoadedConfig,
+        now: Date,
+        template?: TemplateDefinition<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
-	if (!config.defaults) {
-		return {};
-	}
+        const configDefaults = await resolveDefaultsValue(config.defaults, now);
+        const templateDefaults = await resolveDefaultsValue(template?.frontmatter, now);
+        return { ...configDefaults, ...templateDefaults };
+}
 
-	if (typeof config.defaults === "function") {
-		const result = await config.defaults({ now });
-		return result ? { ...result } : {};
-	}
+async function resolveDefaultsValue<TValue>(
+        value: DefaultsValue<TValue> | undefined,
+        now: Date,
+): Promise<Record<string, unknown>> {
+        if (!value) {
+                return {};
+        }
 
-	return { ...config.defaults };
+        if (typeof value === "function") {
+                const result = await value({ now });
+                return result ? { ...(result as Record<string, unknown>) } : {};
+        }
+
+        return { ...(value as Record<string, unknown>) };
 }
 
 function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {

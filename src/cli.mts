@@ -30,14 +30,16 @@ async function bootstrap(): Promise<void> {
                         collectFrontMatter,
                         [] as string[],
                 )
+                .option("--template <name>", "Template name defined in the config file")
                 .argument("<directory>", "Target directory for the Markdown file")
-                .action(async (directory: string, command: { fm?: string[] }) => {
+                .action(async (directory: string, command: { fm?: string[]; template?: string }) => {
                         try {
                                 const fmInputs = command.fm ?? [];
                                 const result = await runNewCommand({
                                         cwd: process.cwd(),
                                         directory,
                                         frontMatterInputs: fmInputs,
+                                        template: command.template,
                                 });
 
                                 const relative =

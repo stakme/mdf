@@ -8,4 +8,14 @@ export default defineConfig({
                 tags: z.array(z.string()).default(() => []),
                 created_at: z.iso.datetime().default(() => new Date().toISOString()),
         }),
+        templates: {
+                default: {
+                        body: ({ title }) => `# ${title}
+
+## What I need
+
+## So I will create...
+`,
+                },
+        },
 });

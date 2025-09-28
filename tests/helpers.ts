@@ -29,6 +29,20 @@ export default defineConfig({
                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                 tags: z.array(z.string()).default(() => []),
         }),
+        templates: {
+                default: {
+                        frontmatter: {
+                                title: "[New Note] Title goes here",
+                                description: "Describe your note here",
+                        },
+                        body: ({ title, description }) =>
+                                "# " +
+                                title +
+                                "\\n\\n" +
+                                description +
+                                "\\n\\n## What I need\\n\\n## So I will create...",
+                },
+        },
 });`;
         await fs.writeFile(configFile, configSource, "utf8");
 

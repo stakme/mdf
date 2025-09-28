@@ -197,11 +197,11 @@ export default defineConfig({
                 }
         });
 
-	it("collects repeated front matter flags into arrays", async () => {
-		const tempDir = await setupWorkspace();
-		try {
-			await execa(
-				nodeBinary,
+        it("collects repeated front matter flags into arrays", async () => {
+                const tempDir = await setupWorkspace();
+                try {
+                        await execa(
+                                nodeBinary,
 				[
 					cliPath,
 					"new",
@@ -228,6 +228,34 @@ export default defineConfig({
 
                         expect(frontMatter.tags).toEqual(["tag1", "tag2"]);
                         expect(frontMatter.author).toBe("");
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
+        it("applies template defaults and body when requested", async () => {
+                const tempDir = await setupWorkspace();
+                try {
+                        await execa(
+                                nodeBinary,
+                                [cliPath, "new", "notes", "--template", "default"],
+                                { cwd: tempDir },
+                        );
+
+                        const notesDir = path.join(tempDir, "notes");
+                        const entries = await fs.readdir(notesDir);
+                        const [firstEntry] = entries;
+                        if (!firstEntry) {
+                                throw new Error("Expected the command to create a file");
+                        }
+
+                        const createdFile = path.join(notesDir, firstEntry);
+                        const content = await fs.readFile(createdFile, "utf8");
+                        const { frontMatter, body } = parseFrontMatter(content);
+
+                        expect(frontMatter.title).toBe("[New Note] Title goes here");
+                        expect(frontMatter.description).toBe("Describe your note here");
+                        expect(body).toBe(`\n# [New Note] Title goes here\n\nDescribe your note here\n\n## What I need\n\n## So I will create...\n`);
                 } finally {
                         await fs.rm(tempDir, { recursive: true, force: true });
                 }
