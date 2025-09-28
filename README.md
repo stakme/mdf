@@ -1,50 +1,94 @@
 # markdfm
-Lightweight utility to organize Markdown files with front matter
 
-## Configuring
+> Organize Markdown knowledge bases with confident, schema-driven front matter.
 
-Create `.config/markdfm.mts` anywhere under your workspace and export a schema:
+`markdfm` helps teams and solo note-takers keep Markdown collections consistent. Define the
+front matter schema you expect, scaffold new notes from templates, and audit existing files with a
+single CLI.
+
+## Highlights
+
+- **Schema-first authoring** – enforce exactly the fields, defaults, and content rules you need.
+- **Frictionless scaffolding** – spin up ready-to-edit Markdown files in one command.
+- **Powerful querying** – filter notes by any front matter attribute and render custom output.
+- **Confident maintenance** – validate or auto-fix drifted notes before they reach your repo.
+
+## Installation
+
+```bash
+npm install --save-dev markdfm
+# or
+pnpm add -D markdfm
+# or
+yarn add -D markdfm
+```
+
+> **Node.js requirement:** markdfm targets Node 22 and newer.
+
+Add the CLI to your package scripts or run it via `npx markdfm`.
+
+## Quick start
+
+1. **Create a config:** place `.config/markdfm.mts` anywhere under your workspace with a schema
+   describing the front matter every file should include.
+2. **Generate a note:** run `markdfm new <directory>` and provide overrides with `--fm` flags or a
+   named template.
+3. **Query your vault:** surface exactly the notes you need with `markdfm query` filters and custom
+   output formats.
+
+When you are ready to publish new notes, validate the collection with `markdfm validate` or
+`markdfm fix`.
+
+## CLI overview
+
+| Command | Description |
+| --- | --- |
+| `markdfm new <directory>` | Scaffold Markdown files that match your schema and optional template defaults. |
+| `markdfm query <directory>` | Inspect existing notes using front matter filters and rich output formatting. |
+| `markdfm validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
+| `markdfm fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
+
+Run any command with `--help` for the full option list.
+
+## Configuration
+
+`markdfm` loads the closest `.config/markdfm.mts` file in the directory tree. Define your schema with
+Zod and optional helpers:
 
 ```ts
 import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
-	schema: z.object({
-		title: z.string(),
-		created_at: z.string().datetime().default(() => new Date().toISOString()),
-		updated_at: z.string().datetime().default(() => new Date().toISOString()),
-		tags: z.array(z.string()).default(() => []),
-	}),
+        schema: z.object({
+                title: z.string(),
+                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                status: z.enum(["todo", "in-progress", "done"]).default("todo"),
+                tags: z.array(z.string()).default(() => []),
+        }),
 });
 ```
 
-The schema can be any Zod object. Optional helpers allow you to provide `defaults`,
-`content`, or `fileName` functions for richer automation.
+- `schema` must be a Zod object describing your front matter.
+- `defaults` sets automatic fallback values for fields you omit when creating new notes.
+- `content` (optional) can generate the Markdown body from template data.
+- `fileName` (optional) lets you compute the file name from front matter values.
 
-## Creating notes
+### Templates and overrides
 
-Use the CLI to scaffold new Markdown files with valid front matter:
+Define named templates in your config to reuse curated defaults and starting content. Then apply them
+on the CLI:
 
 ```bash
-markdfm new notes
-markdfm new notes --fm title="Release Plan" --fm tags=["release","planning"]
-markdfm new notes --fm title="Release Plan" --fm tags=release --fm tags=planning
-markdfm new notes --template default
+markdfm new notes --template meeting --fm tags=sync --fm attendees="Ada, Lin"
 ```
 
-The command validates all provided fields using your schema, applies any
-defaults you define, and writes a Markdown file with front matter to the target
-directory. Array fields accept either a JSON-like literal or multiple
-`--fm key=value` flags to accumulate values.
+Templates layer their front matter on top of schema defaults, while `--fm key=value` flags win last.
+Array fields support JSON-style values (`["release","planning"]`) or repeated flags.
 
-Define named templates in `.config/markdfm.mts` to bundle front matter defaults
-and body content for common note types. Pass `--template <name>` to apply the
-template's front matter overrides and body generator while still allowing CLI
-overrides for any field.
+## Query, format, and automate
 
-## Querying notes
-
-Explore existing Markdown files by filtering their front matter:
+Use the query command to slice your knowledge base and pipe the output to other tools:
 
 ```bash
 markdfm query notes \
@@ -53,33 +97,41 @@ markdfm query notes \
   --format "[{{status}}] {{title}} ({{tags:, }})"
 ```
 
-Key details:
+- Filters accept `field: value` syntax. Strings are case-insensitive and arrays match when **any**
+  element equals the value.
+- Target nested fields with dot notation, such as `project.status`.
+- Customize the output template with front matter placeholders. Use `{{tags:, }}` to join array
+  values, or include the relative file path via `{{file}}`.
 
-- Each `--filter` expects `field: value`. Strings are case-insensitive, and arrays match when *any* element equals the value. Numbers and booleans are parsed automatically; wrap strings with spaces in quotes.
-- Use dot notation (e.g. `project.status`) to target nested front matter fields. Filters must all pass for a file to appear in the results.
-- The output template defaults to `{{title}}`. Insert any front matter value with `{{field}}`, join array values with a custom separator using `{{tags:, }}`, and emit the relative file path with `{{file}}`.
-- Results are printed in the order files are discovered, making it easy to pipe the output to other tools.
+## Keep notes trustworthy
 
-## Validating notes
-
-Audit existing files against your schema to catch drift:
+Run validation before shipping changes, or automatically fix what you can:
 
 ```bash
 markdfm validate notes
-```
-
-- Reports each valid file and exits with `0` when all front matter passes validation.
-- Prints errors per file when issues are found and exits with `1` so CI can fail fast.
-- Honors the same file extension configured via `.config/markdfm.mts`.
-
-## Fixing notes
-
-Patch files in-place by filling in missing or invalid values:
-
-```bash
 markdfm fix notes --fm status=todo --fm tags=backlog
 ```
 
-- Applies your schema defaults and any `--fm` overrides before rewriting front matter.
-- Skips files it cannot fix automatically, listing each problem at the end and exiting with `1` so you can review them manually.
-- Uses the same parser as `validate`, ensuring fixes keep data conformant.
+- `validate` reports each valid file and exits with code `0` when everything passes.
+- `fix` rewrites front matter safely, applying schema defaults and CLI overrides before writing.
+- Both commands honor the file extension and defaults defined in your config.
+
+## Programmatic usage
+
+The package also exposes utilities for custom tooling. Import from `markdfm` or `markdfm/config`
+inside build scripts, note-taking automations, or editor integrations to reuse the same schema and
+helper functions as the CLI.
+
+## Contributing
+
+1. Clone the repo and install dependencies with `npm install`.
+2. Run `npm run check`, `npm run build`, and `npm test` to verify changes.
+3. Open a PR with updated docs and tests covering your improvements.
+
+We welcome bug reports, feature requests, and documentation tweaks—open an issue to start the
+conversation.
+
+---
+
+Ready to publish your Markdown knowledge base? Give `markdfm` a spin and keep every note consistent
+from day one.
