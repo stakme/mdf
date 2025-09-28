@@ -7,13 +7,15 @@ import { constants as fsConstants } from "node:fs";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { MdfError } from "../errors.mts";
+import { parseFilterExpression } from "../utils/filters.mts";
 
 export interface ViewerCommandOptions {
 	cwd: string;
-	docsDir?: string;
+	directory: string;
 	host?: string;
 	port?: number;
 	open?: boolean;
+	filters?: readonly string[];
 	spawnImpl?: SpawnFunction;
 }
 
@@ -27,8 +29,8 @@ export async function runViewerCommand(
 	options: ViewerCommandOptions,
 ): Promise<void> {
 	const siteDir = path.resolve(options.cwd, "site");
-	const docsDirInput = options.docsDir ?? "docs";
-	const docsDir = path.resolve(options.cwd, docsDirInput);
+	const docsDir = path.resolve(options.cwd, options.directory);
+	const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
 
 	await ensureDirectoryExists(
 		siteDir,
@@ -41,13 +43,17 @@ export async function runViewerCommand(
 		docsDir,
 		"VIEWER_DOCS_NOT_FOUND",
 		() =>
-			`Markdown directory not found at ${formatDisplayPath(docsDir, options.cwd)}. Create the directory or pass --docs to select a folder.`,
+			`Markdown directory not found at ${formatDisplayPath(docsDir, options.cwd)}. Provide a valid directory when running "mdf viewer".`,
 	);
 
-	const env = {
+	const env: NodeJS.ProcessEnv = {
 		...process.env,
 		MDF_DOCS_DIR: docsDir,
 	};
+
+	if (parsedFilters.length > 0) {
+		env.MDF_FILTERS = JSON.stringify(parsedFilters);
+	}
 
 	const spawnFn = options.spawnImpl ?? spawn;
 	const args = buildViewerArgs(options);

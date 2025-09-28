@@ -1,1 +1,3 @@
 dist
+site/.astro
+site/.astro/**

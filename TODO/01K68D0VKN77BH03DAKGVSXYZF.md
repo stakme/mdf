@@ -1,10 +1,10 @@
 ---
 title: Enhance `viewer` command
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-28T14:53:22.957Z
-updated_at: 2025-09-28T14:53:22.958Z
+updated_at: 2025-09-28T21:01:58.000Z
 ---
 
 # Enhance `viewer` command

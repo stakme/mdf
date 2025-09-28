@@ -4,8 +4,10 @@ import { getCollection } from "astro:content";
 import PageShell from "../components/PageShell.astro";
 // biome-ignore lint/correctness/noUnusedImports: Component is referenced within the Astro template markup
 import Search from "../components/Search.tsx";
+import { entryMatchesViewerFilters } from "../lib/viewerFilters";
 
 const entries = (await getCollection("pages"))
+	.filter((entry) => entryMatchesViewerFilters(entry.data))
 	.filter((entry) => !entry.data.draft)
 	.map((entry) => {
 		const routePath = (entry.data.vpath ?? entry.slug).replace(

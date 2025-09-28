@@ -149,21 +149,35 @@ function createProgram(version: string): Command {
 	program
 		.command("viewer")
 		.description("Launch the interactive docs viewer")
-		.option("--docs <directory>", "Directory containing Markdown files", "docs")
+		.option(
+			"--filter <expression>",
+			"Filter entries by front matter values",
+			collectFilters,
+			[] as string[],
+		)
 		.option("--host <host>", "Host interface for the Astro dev server")
 		.option("--port <port>", "Port for the Astro dev server", parsePort)
 		.option("--open", "Open the site in the default browser")
+		.argument(
+			"[directory]",
+			"Directory containing Markdown files to serve",
+			"docs",
+		)
 		.action(
-			async (command: {
-				docs: string;
-				host?: string;
-				port?: number;
-				open?: boolean;
-			}) => {
+			async (
+				directory: string,
+				command: {
+					filter?: string[];
+					host?: string;
+					port?: number;
+					open?: boolean;
+				},
+			) => {
 				try {
 					await runViewerCommand({
 						cwd: process.cwd(),
-						docsDir: command.docs,
+						directory,
+						filters: command.filter ?? [],
 						host: command.host,
 						port: command.port,
 						open: command.open ?? false,

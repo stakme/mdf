@@ -3,6 +3,7 @@ import type { MdfConfig } from "./types.mts";
 
 export { z };
 export type {
+	AnySchemaDefinition,
 	LoadedVirtualPathConfig,
 	MdfConfig,
 	SchemaDefinition,

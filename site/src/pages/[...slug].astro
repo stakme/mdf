@@ -2,11 +2,14 @@
 import { getCollection } from "astro:content";
 // biome-ignore lint/correctness/noUnusedImports: Used within Astro template markup
 import DocsLayout from "../layouts/DocsLayout.astro";
+import { entryMatchesViewerFilters } from "../lib/viewerFilters";
 
 const slugParam = Astro.params.slug ?? "";
 const requestPath = Array.isArray(slugParam) ? slugParam.join("/") : slugParam;
 
-const entries = await getCollection("pages");
+const entries = (await getCollection("pages")).filter((entry) =>
+	entryMatchesViewerFilters(entry.data),
+);
 const normalize = (value: string | undefined, fallback: string) =>
 	(value ?? fallback).replace(/^\/+|\/+$/g, "");
 const entry = entries.find(

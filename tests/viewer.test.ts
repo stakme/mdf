@@ -28,7 +28,9 @@ describe("runViewerCommand", () => {
 		const temp = await fs.mkdtemp(path.join(os.tmpdir(), "mdf-viewer-error-"));
 		await fs.mkdir(path.join(temp, "docs"), { recursive: true });
 
-		await expect(runViewerCommand({ cwd: temp })).rejects.toMatchObject({
+		await expect(
+			runViewerCommand({ cwd: temp, directory: "docs" }),
+		).rejects.toMatchObject({
 			code: "VIEWER_SITE_NOT_FOUND",
 		});
 
@@ -59,7 +61,7 @@ describe("runViewerCommand", () => {
 
 		await runViewerCommand({
 			cwd: root,
-			docsDir: "docs",
+			directory: "docs",
 			host: "127.0.0.1",
 			port: 4321,
 			open: true,
@@ -99,8 +101,56 @@ describe("runViewerCommand", () => {
 			}) as unknown as ReturnType<SpawnFunction>;
 
 		await expect(
-			runViewerCommand({ cwd: root, spawnImpl: spawnStub }),
+			runViewerCommand({
+				cwd: root,
+				directory: "docs",
+				spawnImpl: spawnStub,
+			}),
 		).rejects.toBeInstanceOf(MdfError);
+
+		await fs.rm(root, { recursive: true, force: true });
+	});
+
+	it("serializes parsed filters into the viewer environment", async () => {
+		const root = await createWorkspace();
+		const spawnCalls: Array<{
+			options: { env?: NodeJS.ProcessEnv };
+		}> = [];
+
+		const spawnStub: SpawnFunction = (_command, _args, options) => {
+			spawnCalls.push({ options });
+			return {
+				on(event, handler) {
+					if (event === "exit") {
+						setImmediate(() => {
+							handler(0, null);
+						});
+					}
+					return this;
+				},
+			} as unknown as ReturnType<SpawnFunction>;
+		};
+
+		await runViewerCommand({
+			cwd: root,
+			directory: "docs",
+			filters: ["status = todo", "tags~=feature"],
+			spawnImpl: spawnStub,
+		});
+
+		expect(spawnCalls).toHaveLength(1);
+		const env = spawnCalls[0]?.options.env ?? {};
+		expect(env.MDF_FILTERS).toBeDefined();
+
+		const parsed = JSON.parse(env.MDF_FILTERS as string) as Array<{
+			path: string[];
+			operator: string;
+			value: unknown;
+		}>;
+		expect(parsed).toEqual([
+			{ path: ["status"], operator: "exact", value: "todo" },
+			{ path: ["tags"], operator: "loose", value: "feature" },
+		]);
 
 		await fs.rm(root, { recursive: true, force: true });
 	});
