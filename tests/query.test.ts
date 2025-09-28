@@ -81,4 +81,44 @@ describe("markdfm query", () => {
                         await fs.rm(tempDir, { recursive: true, force: true });
                 }
         });
+
+        it("exposes reserved path placeholders in the output template", async () => {
+                const tempDir = await setupWorkspace();
+                const notesDir = path.join(tempDir, "notes");
+                await fs.mkdir(notesDir, { recursive: true });
+
+                const notePath = path.join(notesDir, "note.md");
+                await fs.writeFile(
+                        notePath,
+                        `---\ntitle: Lone Note\nauthor: tester\nstatus: done\n---\n`,
+                        "utf8",
+                );
+
+                const relativePath = path.relative(tempDir, notePath) || path.basename(notePath);
+                const displayPath = relativePath.startsWith("..")
+                        ? relativePath
+                        : relativePath.startsWith(".")
+                                ? relativePath
+                                : `./${relativePath}`;
+
+                try {
+                        const { stdout } = await execa(
+                                nodeBinary,
+                                [
+                                        cliPath,
+                                        "query",
+                                        "notes",
+                                        "--format",
+                                        "{{relpath}}|{{filename}}|{{abspath}}|{{file}}|{{f.title}}",
+                                ],
+                                { cwd: tempDir },
+                        );
+
+                        expect(stdout.trim()).toBe(
+                                `${relativePath}|${path.basename(notePath)}|${notePath}|${displayPath}|Lone Note`,
+                        );
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
 });

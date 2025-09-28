@@ -58,10 +58,16 @@ export async function runQueryCommand(
                         continue;
                 }
 
+                const relativePath = formatRelativePath(filePath, options.cwd);
                 const displayPath = formatDisplayPath(filePath, options.cwd);
                 const output = renderTemplate(template, {
                         frontMatter: document.frontMatter,
-                        filePath: displayPath,
+                        paths: {
+                                absolutePath: filePath,
+                                displayPath,
+                                filename: path.basename(filePath),
+                                relativePath,
+                        },
                 });
                 matches.push({
                         filePath,
@@ -167,15 +173,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function renderTemplate(
         template: string,
-        context: { frontMatter: Record<string, unknown>; filePath: string },
+        context: {
+                frontMatter: Record<string, unknown>;
+                paths: {
+                        absolutePath: string;
+                        displayPath: string;
+                        filename: string;
+                        relativePath: string;
+                };
+        },
 ): string {
         return template.replace(/\{\{\s*([^}]*)\}\}/gu, (_, rawExpression: string) => {
                 const { path, separator } = parseTemplateExpression(rawExpression);
-                if (path === "file") {
-                        return context.filePath;
+                const reservedValue = resolveReservedPath(path, context.paths);
+                if (reservedValue !== null) {
+                        return reservedValue;
                 }
 
-                const value = resolvePath(context.frontMatter, path.split("."));
+                const value = resolveTemplatePath(context.frontMatter, path);
                 if (value === undefined || value === null) {
                         return "";
                 }
@@ -190,6 +205,40 @@ function renderTemplate(
 
                 return formatValue(value);
         });
+}
+
+function resolveReservedPath(
+        pathExpression: string,
+        paths: {
+                absolutePath: string;
+                displayPath: string;
+                filename: string;
+                relativePath: string;
+        },
+): string | null {
+        switch (pathExpression) {
+                case "file":
+                        return paths.displayPath;
+                case "relpath":
+                        return paths.relativePath;
+                case "abspath":
+                        return paths.absolutePath;
+                case "filename":
+                        return paths.filename;
+                default:
+                        return null;
+        }
+}
+
+function resolveTemplatePath(
+        frontMatter: Record<string, unknown>,
+        expression: string,
+): unknown {
+        const segments = expression.split(".");
+        if (segments[0] === "f" && segments.length > 1) {
+                        segments.shift();
+        }
+        return resolvePath(frontMatter, segments);
 }
 
 function parseTemplateExpression(expression: string): { path: string; separator: string | null } {
@@ -258,4 +307,9 @@ function formatDisplayPath(filePath: string, cwd: string): string {
                 return relative;
         }
         return relative.startsWith(".") ? relative : `./${relative}`;
+}
+
+function formatRelativePath(filePath: string, cwd: string): string {
+        const relative = path.relative(cwd, filePath) || path.basename(filePath);
+        return relative;
 }
