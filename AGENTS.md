@@ -1,7 +1,7 @@
 # Collaboration Guide for AI Developers
 
 ## Repository Snapshot
-- TypeScript project targeting Node.js, distributed as `markdfm` CLI and library.
+- TypeScript project targeting Node.js, distributed as `mdf` CLI and library.
 - Source lives under `src/` (ESM, `.mts` modules); Vitest specs in `tests/` mirror CLI behavior.
 - Build outputs land in `dist/` via `tsdown`; scripts in `scripts/` adjust post-build details (e.g., CLI shebang).
 - Task briefs arrive as Markdown files inside `TODO/`, each with front matter describing status, authorship, and intent.
@@ -21,13 +21,13 @@
 7. Close the TODO via the CLI once everything is ready, for example:
 
 ```
-npx @stakme/markdfm run close ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
+npx @stakme/mdf run close ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
 
 Updated ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
 ```
 
 ## Coding Notes
-- Follow existing logging and error patterns—surface user-facing issues through `MarkdfmError` subclasses and catch them in the CLI for polite messaging.
+- Follow existing logging and error patterns—surface user-facing issues through `MdfError` subclasses and catch them in the CLI for polite messaging.
 - Commander command definitions live in `src/cli.mts`; keep option names, summaries, and UX consistent.
 - Schemas rely on Zod; define reusable pieces in `front-matter*.mts` rather than duplicating literals.
 - Prefer pure functions and dependency injection where possible to keep command handlers testable without the filesystem.

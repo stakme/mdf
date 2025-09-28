@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { z } from "zod";
 import { loadConfig } from "../config.mts";
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 import {
 	readMarkdownDocument,
 	serializeMarkdownDocument,
@@ -37,14 +37,14 @@ export async function runUpdateCommand(
 ): Promise<UpdateCommandResult> {
 	const config = await loadConfig(options.cwd);
 	if (!config) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+			"Could not find an mdf config file. Create one at .config/mdf.mts",
 		);
 	}
 
 	if (!options.files.length) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_UPDATE_INPUT",
 			"At least one Markdown file must be provided",
 		);
@@ -155,7 +155,7 @@ async function updateDocument(params: {
 			? defaultsFromConfig.get(key)
 			: schemaDefaults.get(key);
 		if (defaultValue === undefined) {
-			throw new MarkdfmError(
+			throw new MdfError(
 				"DEFAULT_VALUE_UNAVAILABLE",
 				`No default value available for ${key}`,
 			);
@@ -191,7 +191,7 @@ function parseUpdateInputs(inputs: string[]): ParsedUpdateInputs {
 
 		const key = raw.trim();
 		if (!key) {
-			throw new MarkdfmError(
+			throw new MdfError(
 				"INVALID_UPDATE_INPUT",
 				"Front matter key cannot be empty",
 			);
@@ -207,7 +207,7 @@ function parseUpdateInputs(inputs: string[]): ParsedUpdateInputs {
 	const explicit = parseFrontMatterInputs(explicitInputs);
 	for (const key of Object.keys(explicit)) {
 		if (defaultKeys.has(key)) {
-			throw new MarkdfmError(
+			throw new MdfError(
 				"INVALID_UPDATE_INPUT",
 				`Duplicate front matter override for ${key}`,
 			);
@@ -237,13 +237,13 @@ async function resolveSchemaDefaults(params: {
 			missing.length === parseResult.error.issues.length
 		) {
 			const list = missing.join(", ");
-			throw new MarkdfmError(
+			throw new MdfError(
 				"DEFAULT_VALUE_UNAVAILABLE",
 				`No default value available for ${list}`,
 			);
 		}
 		const message = parseResult.error.message;
-		throw new MarkdfmError("SCHEMA_VALIDATION", message);
+		throw new MdfError("SCHEMA_VALIDATION", message);
 	}
 
 	const parseData = parseResult.data as Record<string, unknown>;
@@ -262,7 +262,7 @@ async function assertValidFrontMatter(
 ): Promise<void> {
 	const result = await schema.safeParseAsync(value);
 	if (!result.success) {
-		throw new MarkdfmError("SCHEMA_VALIDATION", result.error.message);
+		throw new MdfError("SCHEMA_VALIDATION", result.error.message);
 	}
 }
 
@@ -278,7 +278,7 @@ function extractMissingKeys(error: z.ZodError, targets: Set<string>): string[] {
 }
 
 function normalizeErrorMessages(error: unknown): string[] {
-	if (error instanceof MarkdfmError) {
+	if (error instanceof MdfError) {
 		return [error.message];
 	}
 	if (error instanceof Error) {

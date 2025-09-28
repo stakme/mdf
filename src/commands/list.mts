@@ -1,6 +1,6 @@
 import path from "node:path";
 import { loadConfig } from "../config.mts";
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 import { readMarkdownDocument } from "../front-matter.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
@@ -46,9 +46,9 @@ export async function runListCommand(
 	const resolvedDirectory = path.resolve(options.cwd, options.directory);
 	const config = await loadConfig(options.cwd);
 	if (!config) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+			"Could not find an mdf config file. Create one at .config/mdf.mts",
 		);
 	}
 
@@ -57,7 +57,7 @@ export async function runListCommand(
 	const virtualPathConfig = config.virtualPath;
 
 	if (needsVirtualPath && !virtualPathConfig) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"VIRTUAL_PATH_NOT_CONFIGURED",
 			`Virtual path configuration not found in ${formatDisplayPath(config.path, options.cwd)}. Define virtualPath.param in the config file.`,
 		);
@@ -66,7 +66,7 @@ export async function runListCommand(
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const files = await collectMarkdownFiles(resolvedDirectory, extension);
 	if (!files.length) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"NO_MATCHING_FILES",
 			`No files with extension ${extension} found in ${resolvedDirectory}`,
 		);
@@ -107,7 +107,7 @@ export async function runListCommand(
 					virtualPathConfig.separator ?? "/",
 				);
 			} else {
-				throw new MarkdfmError(
+				throw new MdfError(
 					"INVALID_VIRTUAL_PATH_VALUE",
 					`Front matter field "${virtualPathConfig.param}" must be a string in ${formatDisplayPath(filePath, options.cwd)}`,
 				);

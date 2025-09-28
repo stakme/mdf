@@ -9,7 +9,7 @@ import {
 	setupWorkspace,
 } from "./helpers";
 
-describe("markdfm update", () => {
+describe("mdf update", () => {
 	it("applies explicit values and schema defaults", async () => {
 		const tempDir = await setupWorkspace();
 		try {
@@ -66,7 +66,7 @@ describe("markdfm update", () => {
 
 	it("reports fields without available defaults", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/markdfm/config";
+			config: `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

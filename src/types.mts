@@ -47,7 +47,7 @@ export type SchemaConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> =
 	| SchemaDefinition<TSchema>
 	| readonly SchemaDefinition<TSchema>[];
 
-export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
+export interface MdfConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 	schema: SchemaConfig<TSchema>;
 	defaultSchema?: string;
 	defaults?: DefaultsValue<z.infer<TSchema>>;
@@ -69,7 +69,7 @@ export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
 	extends SchemaDefinition<TSchema> {}
 
 export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
-	extends Omit<MarkdfmConfig<TSchema>, "schema"> {
+	extends Omit<MdfConfig<TSchema>, "schema"> {
 	schema: TSchema;
 	schemas: readonly LoadedSchema<TSchema>[];
 	defaultSchema: string;

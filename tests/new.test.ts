@@ -13,7 +13,7 @@ const ULID_FILE_PATTERN = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}\.md$/u;
 const UUID_FILE_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.md$/u;
 
-describe("markdfm new", () => {
+describe("mdf new", () => {
 	it("generates ULID-based file names by default", async () => {
 		const tempDir = await setupWorkspace();
 		try {
@@ -37,7 +37,7 @@ describe("markdfm new", () => {
 
 	it("uses UUID file names when configured", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/markdfm/config";
+			config: `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -193,7 +193,7 @@ export default defineConfig({
 
 	it("applies schema overrides from a local config file", async () => {
 		const tempDir = await setupWorkspace({
-			localConfig: `import { defineConfig, z } from "@stakme/markdfm/config";
+			localConfig: `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -295,7 +295,7 @@ export default defineConfig({
 
 	it("uses directory-specific schema definitions when configured", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/markdfm/config";
+			config: `import { defineConfig, z } from "@stakme/mdf/config";
 
 const backlogSchema = z.object({
         title: z.string(),
@@ -395,7 +395,7 @@ export default defineConfig({
 
 	it("applies the configured default template when not specified", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/markdfm/config";
+			config: `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

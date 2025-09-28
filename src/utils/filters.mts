@@ -1,4 +1,4 @@
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 
 export type FilterOperator = "exact" | "loose" | "prefix" | "suffix";
 
@@ -11,7 +11,7 @@ export interface ParsedFilter {
 export function parseFilterExpression(raw: string): ParsedFilter {
 	const match = raw.match(/^(.*?)\s*(=|~=|\^=|\$=|:)\s*(.*)$/u);
 	if (!match) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_FILTER_EXPRESSION",
 			`Invalid filter expression: ${raw}`,
 		);
@@ -20,7 +20,7 @@ export function parseFilterExpression(raw: string): ParsedFilter {
 	const [, keyPart, operatorPart, valuePart] = match;
 	const key = keyPart?.trim();
 	if (!key) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_FILTER_EXPRESSION",
 			`Invalid filter expression: ${raw}`,
 		);
@@ -68,7 +68,7 @@ function normalizeOperator(raw: string): FilterOperator {
 		case "$=":
 			return "suffix";
 		default:
-			throw new MarkdfmError(
+			throw new MdfError(
 				"INVALID_FILTER_EXPRESSION",
 				`Unsupported filter operator in expression: ${raw}`,
 			);

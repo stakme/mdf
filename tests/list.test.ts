@@ -4,9 +4,9 @@ import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
-describe("markdfm list", () => {
+describe("mdf list", () => {
 	it("renders a virtual path tree for markdown files", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -68,7 +68,7 @@ export default defineConfig({
 	});
 
 	it("filters entries by virtual path prefix", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -125,7 +125,7 @@ export default defineConfig({
 	});
 
 	it("places files without a virtual path at the root level", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -175,7 +175,7 @@ export default defineConfig({
 	});
 
 	it("filters entries using front matter values", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -232,7 +232,7 @@ export default defineConfig({
 	});
 
 	it("supports loose, prefix, and suffix filter operators", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -371,7 +371,7 @@ export default defineConfig({
 	});
 
 	it("fails when a markdown file is missing the virtual path field", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

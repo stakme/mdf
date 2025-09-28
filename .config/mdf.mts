@@ -1,4 +1,4 @@
-import { defineConfig, z } from "@stakme/markdfm/config";
+import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
 	aliases: {

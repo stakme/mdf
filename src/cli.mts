@@ -7,7 +7,7 @@ import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
 import { runUpdateCommand } from "./commands/update.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
-import { MarkdfmError } from "./errors.mts";
+import { MdfError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
 	const version = await readPackageVersion().catch(() => "0.0.0");
@@ -24,7 +24,7 @@ function createProgram(version: string): Command {
 	const program = new Command();
 
 	program
-		.name("markdfm")
+		.name("mdf")
 		.description(
 			"Lightweight utility to organize Markdown files with front matter",
 		)
@@ -228,7 +228,7 @@ function createProgram(version: string): Command {
 		.passThroughOptions()
 		.action(async (aliasName: string, args: string[] = []) => {
 			const extras = Array.isArray(args) ? args : [];
-			const previousStack = process.env.MARKDFM_ALIAS_STACK;
+			const previousStack = process.env.MDF_ALIAS_STACK;
 			const delimiter = "\u001F";
 			const visited = previousStack
 				? previousStack
@@ -239,7 +239,7 @@ function createProgram(version: string): Command {
 
 			if (visited.includes(aliasName)) {
 				handleError(
-					new MarkdfmError(
+					new MdfError(
 						"ALIAS_CYCLE",
 						`Detected a cycle while resolving alias "${aliasName}"`,
 					),
@@ -247,7 +247,7 @@ function createProgram(version: string): Command {
 				return;
 			}
 
-			process.env.MARKDFM_ALIAS_STACK = [...visited, aliasName].join(delimiter);
+			process.env.MDF_ALIAS_STACK = [...visited, aliasName].join(delimiter);
 
 			try {
 				const result = await prepareRunCommand({
@@ -259,16 +259,16 @@ function createProgram(version: string): Command {
 				const aliasProgram = createProgram(version);
 				await aliasProgram.parseAsync([
 					process.argv[0] ?? "node",
-					process.argv[1] ?? "markdfm",
+					process.argv[1] ?? "mdf",
 					...result.argv,
 				]);
 			} catch (error) {
 				handleError(error);
 			} finally {
 				if (previousStack === undefined) {
-					delete process.env.MARKDFM_ALIAS_STACK;
+					delete process.env.MDF_ALIAS_STACK;
 				} else {
-					process.env.MARKDFM_ALIAS_STACK = previousStack;
+					process.env.MDF_ALIAS_STACK = previousStack;
 				}
 			}
 		});
@@ -301,7 +301,7 @@ async function readPackageVersion(): Promise<string> {
 }
 
 function handleError(error: unknown): never {
-	if (error instanceof MarkdfmError) {
+	if (error instanceof MdfError) {
 		console.error(error.message);
 		process.exit(1);
 	}

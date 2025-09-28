@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { z } from "zod";
 import { loadConfig } from "../config.mts";
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 import {
 	readMarkdownDocument,
 	serializeMarkdownDocument,
@@ -102,16 +102,16 @@ async function prepareFiles(
 	const resolvedDirectory = path.resolve(options.cwd, options.directory);
 	const config = await loadConfig(options.cwd);
 	if (!config) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+			"Could not find an mdf config file. Create one at .config/mdf.mts",
 		);
 	}
 
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const files = await collectFiles(resolvedDirectory, extension);
 	if (!files.length) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"NO_MATCHING_FILES",
 			`No files with extension ${extension} found in ${resolvedDirectory}`,
 		);
@@ -161,7 +161,7 @@ async function validateFile(
 		const messages = parsed.error.issues.map(formatZodIssue);
 		return { success: false, messages };
 	} catch (error) {
-		if (error instanceof MarkdfmError) {
+		if (error instanceof MdfError) {
 			return { success: false, messages: [error.message] };
 		}
 		return {

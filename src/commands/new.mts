@@ -4,7 +4,7 @@ import path from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import { loadConfig } from "../config.mts";
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
 import type {
 	DefaultsValue,
@@ -35,18 +35,15 @@ export async function runNewCommand(
 	const config = await loadConfig(options.cwd);
 
 	if (!config) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+			"Could not find an mdf config file. Create one at .config/mdf.mts",
 		);
 	}
 
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
-	const placeholderFile = path.join(
-		relativeDirectory,
-		`__markdfm__${extension}`,
-	);
+	const placeholderFile = path.join(relativeDirectory, `__mdf__${extension}`);
 	const schemaEntry = config.getSchemaForRelativePath(placeholderFile);
 
 	const template = await resolveTemplate(config, options.template);
@@ -120,7 +117,7 @@ async function determineFileName(params: {
 	if (config.fileName) {
 		const provided = await config.fileName({ data, directory, now });
 		if (!provided || typeof provided !== "string") {
-			throw new MarkdfmError(
+			throw new MdfError(
 				"INVALID_FILE_NAME",
 				"Config fileName() must return a non-empty string",
 			);
@@ -137,7 +134,7 @@ async function determineFileName(params: {
 		}
 	}
 
-	throw new MarkdfmError(
+	throw new MdfError(
 		"FILE_EXISTS",
 		"Unable to generate a unique file name after multiple attempts",
 	);
@@ -153,7 +150,7 @@ async function ensureUniquePath(filePath: string): Promise<void> {
 		throw error;
 	}
 
-	throw new MarkdfmError("FILE_EXISTS", `File already exists at ${filePath}`);
+	throw new MdfError("FILE_EXISTS", `File already exists at ${filePath}`);
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -188,7 +185,7 @@ async function resolveContent(
 
 	const result = await config.content({ data, now });
 	if (typeof result !== "string") {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_CONTENT",
 			"Config content() must return a string",
 		);
@@ -209,7 +206,7 @@ async function resolveTemplate(
 	const collection = config.templates;
 	const template = collection?.[resolvedName];
 	if (!template) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"TEMPLATE_NOT_FOUND",
 			`Template "${resolvedName}" not found in ${config.path}`,
 		);
@@ -232,10 +229,7 @@ async function resolveTemplateBody(
 	>;
 	const result = await body(context);
 	if (typeof result !== "string") {
-		throw new MarkdfmError(
-			"INVALID_CONTENT",
-			"Template body must return a string",
-		);
+		throw new MdfError("INVALID_CONTENT", "Template body must return a string");
 	}
 	return result;
 }
@@ -444,7 +438,7 @@ async function parseFrontMatter(
 		return result as Record<string, unknown>;
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			throw new MarkdfmError("SCHEMA_VALIDATION", error.message);
+			throw new MdfError("SCHEMA_VALIDATION", error.message);
 		}
 		throw error;
 	}

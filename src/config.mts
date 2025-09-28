@@ -10,7 +10,7 @@ import type {
 	LoadedConfig,
 	LoadedSchema,
 	LoadedVirtualPathConfig,
-	MarkdfmConfig,
+	MdfConfig,
 } from "./types.mts";
 
 const packageRequire = Module.createRequire(
@@ -18,21 +18,21 @@ const packageRequire = Module.createRequire(
 );
 
 const CONFIG_CANDIDATES = [
-	".config/markdfm.mts",
-	".config/markdfm.ts",
-	".config/markdfm.mjs",
-	".config/markdfm.js",
-	".config/markdfm.cjs",
-	".config/markdfm.json",
+	".config/mdf.mts",
+	".config/mdf.ts",
+	".config/mdf.mjs",
+	".config/mdf.js",
+	".config/mdf.cjs",
+	".config/mdf.json",
 ];
 
 const LOCAL_CONFIG_CANDIDATES = [
-	".config/markdfm.local.mts",
-	".config/markdfm.local.ts",
-	".config/markdfm.local.mjs",
-	".config/markdfm.local.js",
-	".config/markdfm.local.cjs",
-	".config/markdfm.local.json",
+	".config/mdf.local.mts",
+	".config/mdf.local.ts",
+	".config/mdf.local.mjs",
+	".config/mdf.local.js",
+	".config/mdf.local.cjs",
+	".config/mdf.local.json",
 ];
 
 export async function findConfigPath(
@@ -159,7 +159,7 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 
 interface NormalizedConfig
 	extends Omit<
-		MarkdfmConfig,
+		MdfConfig,
 		"schema" | "defaultSchema" | "virtualPath" | "aliases"
 	> {
 	schemas: readonly LoadedSchema[];
@@ -171,14 +171,14 @@ interface NormalizedConfig
 
 function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	if (!value || typeof value !== "object") {
-		throw new Error(`markdfm config at ${configPath} must export an object`);
+		throw new Error(`mdf config at ${configPath} must export an object`);
 	}
 
 	const record = value as Record<string, unknown>;
 	const schemaInput = record.schema;
 	if (schemaInput === undefined) {
 		throw new Error(
-			`markdfm config at ${configPath} must include a schema definition under the "schema" key`,
+			`mdf config at ${configPath} must include a schema definition under the "schema" key`,
 		);
 	}
 
@@ -189,7 +189,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 			!defaultSchemaCandidate.trim())
 	) {
 		throw new Error(
-			`markdfm config at ${configPath} must define "defaultSchema" as a non-empty string when provided`,
+			`mdf config at ${configPath} must define "defaultSchema" as a non-empty string when provided`,
 		);
 	}
 
@@ -214,7 +214,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 
 	return {
 		...(clone as Omit<
-			MarkdfmConfig,
+			MdfConfig,
 			"schema" | "defaultSchema" | "virtualPath" | "aliases"
 		>),
 		schemas: definitions,
@@ -235,7 +235,7 @@ function normalizeAliases(
 
 	if (!input || typeof input !== "object" || Array.isArray(input)) {
 		throw new Error(
-			`markdfm config at ${configPath} must define "aliases" as an object mapping strings to strings`,
+			`mdf config at ${configPath} must define "aliases" as an object mapping strings to strings`,
 		);
 	}
 
@@ -246,20 +246,20 @@ function normalizeAliases(
 		const aliasName = key.trim();
 		if (!aliasName) {
 			throw new Error(
-				`markdfm config at ${configPath} must define aliases with non-empty names`,
+				`mdf config at ${configPath} must define aliases with non-empty names`,
 			);
 		}
 
 		if (typeof value !== "string") {
 			throw new Error(
-				`markdfm config at ${configPath} must define alias "${aliasName}" as a string`,
+				`mdf config at ${configPath} must define alias "${aliasName}" as a string`,
 			);
 		}
 
 		const command = value.trim();
 		if (!command) {
 			throw new Error(
-				`markdfm config at ${configPath} must define alias "${aliasName}" with a non-empty command`,
+				`mdf config at ${configPath} must define alias "${aliasName}" with a non-empty command`,
 			);
 		}
 
@@ -279,7 +279,7 @@ function normalizeVirtualPath(
 
 	if (!input || typeof input !== "object") {
 		throw new Error(
-			`markdfm config at ${configPath} must define "virtualPath" as an object when provided`,
+			`mdf config at ${configPath} must define "virtualPath" as an object when provided`,
 		);
 	}
 
@@ -287,7 +287,7 @@ function normalizeVirtualPath(
 	const param = record.param;
 	if (typeof param !== "string" || !param.trim()) {
 		throw new Error(
-			`markdfm config at ${configPath} must define virtualPath.param as a non-empty string`,
+			`mdf config at ${configPath} must define virtualPath.param as a non-empty string`,
 		);
 	}
 
@@ -301,14 +301,14 @@ function normalizeVirtualPath(
 
 	if (typeof separatorInput !== "string") {
 		throw new Error(
-			`markdfm config at ${configPath} must define virtualPath.separator as a string when provided`,
+			`mdf config at ${configPath} must define virtualPath.separator as a string when provided`,
 		);
 	}
 
 	const separator = separatorInput.trim();
 	if (!separator) {
 		throw new Error(
-			`markdfm config at ${configPath} must define virtualPath.separator as a non-empty string when provided`,
+			`mdf config at ${configPath} must define virtualPath.separator as a non-empty string when provided`,
 		);
 	}
 
@@ -331,7 +331,7 @@ function normalizeIdGenerator(
 	}
 
 	throw new Error(
-		`markdfm config at ${configPath} must define "idGenerator" as either "ulid" or "uuid" when provided`,
+		`mdf config at ${configPath} must define "idGenerator" as either "ulid" or "uuid" when provided`,
 	);
 }
 
@@ -381,9 +381,9 @@ function mergeAliases(
 }
 
 function mergeTemplates(
-	baseTemplates: MarkdfmConfig["templates"],
-	overrideTemplates: MarkdfmConfig["templates"],
-): MarkdfmConfig["templates"] {
+	baseTemplates: MdfConfig["templates"],
+	overrideTemplates: MdfConfig["templates"],
+): MdfConfig["templates"] {
 	if (!baseTemplates) {
 		return overrideTemplates;
 	}
@@ -413,7 +413,7 @@ function mergeSchemas(
 	}
 
 	throw new Error(
-		`markdfm local config at ${localConfigPath} must provide a Zod object schema to extend ${baseConfigPath}`,
+		`mdf local config at ${localConfigPath} must provide a Zod object schema to extend ${baseConfigPath}`,
 	);
 }
 
@@ -424,7 +424,7 @@ function isZodType(value: unknown): value is z.ZodTypeAny {
 function createResolver(configFile: string) {
 	const localRequire = Module.createRequire(configFile);
 	return function resolve(request: string) {
-		if (request === "@stakme/markdfm/config") {
+		if (request === "@stakme/mdf/config") {
 			return { defineConfig, z };
 		}
 
@@ -482,7 +482,7 @@ function normalizeSchemaDefinitions(
 	if (Array.isArray(input)) {
 		if (input.length === 0) {
 			throw new Error(
-				`markdfm config at ${configPath} must define at least one schema entry`,
+				`mdf config at ${configPath} must define at least one schema entry`,
 			);
 		}
 		const entries = input.map((entry, index) =>
@@ -497,7 +497,7 @@ function normalizeSchemaDefinitions(
 	}
 
 	throw new Error(
-		`markdfm config at ${configPath} must define "schema" as a Zod schema or an array of schema definitions`,
+		`mdf config at ${configPath} must define "schema" as a Zod schema or an array of schema definitions`,
 	);
 }
 
@@ -550,7 +550,7 @@ function finalizeSchemaEntries(
 	for (const entry of entries) {
 		if (seen.has(entry.name)) {
 			throw new Error(
-				`markdfm config at ${configPath} contains duplicate schema name "${entry.name}"`,
+				`mdf config at ${configPath} contains duplicate schema name "${entry.name}"`,
 			);
 		}
 		seen.add(entry.name);
@@ -560,7 +560,7 @@ function finalizeSchemaEntries(
 	if (!resolvedDefault || !seen.has(resolvedDefault)) {
 		const available = entries.map((entry) => `"${entry.name}"`).join(", ");
 		throw new Error(
-			`markdfm config at ${configPath} must set "defaultSchema" to one of: ${available}`,
+			`mdf config at ${configPath} must set "defaultSchema" to one of: ${available}`,
 		);
 	}
 
@@ -621,7 +621,7 @@ function createSchemaSelector(
 	if (!defaultSchema) {
 		const available = entries.map((entry) => `"${entry.name}"`).join(", ");
 		throw new Error(
-			`markdfm config at ${configPath} could not resolve default schema. Available schemas: ${available}`,
+			`mdf config at ${configPath} could not resolve default schema. Available schemas: ${available}`,
 		);
 	}
 

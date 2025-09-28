@@ -69,7 +69,7 @@ async function createInvalidNoteWithoutBlankLine(
 	return notePath;
 }
 
-describe("markdfm validate", () => {
+describe("mdf validate", () => {
 	it("reports files missing required fields", async () => {
 		const tempDir = await setupWorkspace();
 		try {
@@ -117,7 +117,7 @@ describe("markdfm validate", () => {
 	});
 });
 
-describe("markdfm fix", () => {
+describe("mdf fix", () => {
 	it("fills missing fields using provided defaults", async () => {
 		const tempDir = await setupWorkspace();
 		try {

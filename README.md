@@ -1,8 +1,8 @@
-# markdfm
+# mdf
 
 > Organize Markdown knowledge bases with confident, schema-driven front matter.
 
-`markdfm` helps teams and solo note-takers keep Markdown collections consistent. Define the
+`mdf` helps teams and solo note-takers keep Markdown collections consistent. Define the
 front matter schema you expect, scaffold new notes from templates, and audit existing files with a
 single CLI.
 
@@ -16,48 +16,48 @@ single CLI.
 ## Installation
 
 ```bash
-npm install --save-dev markdfm
+npm install --save-dev @stakme/mdf
 # or
-pnpm add -D markdfm
+pnpm add -D @stakme/mdf
 # or
-yarn add -D markdfm
+yarn add -D @stakme/mdf
 ```
 
-> **Node.js requirement:** markdfm targets Node 22 and newer.
+> **Node.js requirement:** mdf targets Node 22 and newer.
 
-Add the CLI to your package scripts or run it via `npx markdfm`.
+Add the CLI to your package scripts or run it via `npx @stakme/mdf`.
 
 ## Quick start
 
-1. **Create a config:** place `.config/markdfm.mts` anywhere under your workspace with a schema
+1. **Create a config:** place `.config/mdf.mts` anywhere under your workspace with a schema
    describing the front matter every file should include.
-2. **Generate a note:** run `markdfm new <directory>` and provide overrides with `--fm` flags or a
+2. **Generate a note:** run `mdf new <directory>` and provide overrides with `--fm` flags or a
    named template.
-3. **Surface the right notes:** explore your collection with `markdfm list` filters, virtual-path
+3. **Surface the right notes:** explore your collection with `mdf list` filters, virtual-path
    scoping, and custom output formats.
 
-When you are ready to publish new notes, validate the collection with `markdfm validate` or
-`markdfm fix`.
+When you are ready to publish new notes, validate the collection with `mdf validate` or
+`mdf fix`.
 
 ## CLI overview
 
 | Command | Description |
 | --- | --- |
-| `markdfm new <directory>` | Scaffold Markdown files that match your schema and optional template defaults. |
-| `markdfm list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
-| `markdfm validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
-| `markdfm fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
-| `markdfm run <alias> [args...]` | Execute a configured alias that expands to another `markdfm` command. |
+| `mdf new <directory>` | Scaffold Markdown files that match your schema and optional template defaults. |
+| `mdf list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
+| `mdf validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
+| `mdf fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
+| `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command. |
 
 Run any command with `--help` for the full option list.
 
 ## Configuration
 
-`markdfm` loads the closest `.config/markdfm.mts` file in the directory tree. Define your schema with
+`mdf` loads the closest `.config/mdf.mts` file in the directory tree. Define your schema with
 Zod and optional helpers:
 
 ```ts
-import { defineConfig, z } from "@stakme/markdfm/config";
+import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -74,7 +74,7 @@ export default defineConfig({
 - `defaults` sets automatic fallback values for fields you omit when creating new notes.
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
-- `aliases` (optional) map friendly names to frequently used CLI command fragments for `markdfm run`.
+- `aliases` (optional) map friendly names to frequently used CLI command fragments for `mdf run`.
 
 ### Templates and overrides
 
@@ -82,7 +82,7 @@ Define named templates in your config to reuse curated defaults and starting con
 on the CLI:
 
 ```bash
-markdfm new notes --template meeting --fm tags=sync --fm attendees="Ada, Lin"
+mdf new notes --template meeting --fm tags=sync --fm attendees="Ada, Lin"
 ```
 
 Templates layer their front matter on top of schema defaults, while `--fm key=value` flags win last.
@@ -93,15 +93,15 @@ Array fields support JSON-style values (`["release","planning"]`) or repeated fl
 Use the list command to slice your knowledge base and pipe the output to other tools:
 
 ```bash
-markdfm list notes
-markdfm list --vpath backlog notes
-markdfm list notes \
+mdf list notes
+mdf list --vpath backlog notes
+mdf list notes \
   --filter "status=todo" \
   --filter "tags~=feature" \
   --format "[{{status}}] {{title}} ({{tags:, }})"
 ```
 
-- `markdfm list` shows a virtual-path tree by default. Configure `virtualPath.param` in your config
+- `mdf list` shows a virtual-path tree by default. Configure `virtualPath.param` in your config
   and pass `--vpath <prefix>` to narrow the tree to matching paths.
 - Provide `--filter` expressions with `=` (or `:`), `~=`, `^=`, or `$=` operators for exact,
   substring, prefix, or suffix matching. Arrays match when **any** element satisfies the filter.
@@ -114,7 +114,7 @@ markdfm list notes \
 Store your favorite command combinations in the config and run them with a short name:
 
 ```ts
-import { defineConfig, z } from "@stakme/markdfm/config";
+import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -132,10 +132,10 @@ export default defineConfig({
 ```
 
 ```bash
-markdfm run todo
+mdf run todo
 ```
 
-`markdfm run` expands the alias value into a fresh CLI invocation, so all built-in commands and
+`mdf run` expands the alias value into a fresh CLI invocation, so all built-in commands and
 flags work as if you typed them manually. Aliases can reference other aliases, and the CLI detects
 cycles to prevent infinite recursion.
 
@@ -144,8 +144,8 @@ cycles to prevent infinite recursion.
 Run validation before shipping changes, or automatically fix what you can:
 
 ```bash
-markdfm validate notes
-markdfm fix notes --fm status=todo --fm tags=backlog
+mdf validate notes
+mdf fix notes --fm status=todo --fm tags=backlog
 ```
 
 - `validate` reports each valid file and exits with code `0` when everything passes.
@@ -154,10 +154,9 @@ markdfm fix notes --fm status=todo --fm tags=backlog
 
 ## Programmatic usage
 
-The package also exposes utilities for custom tooling. Import from `@stakme/markdfm` or
-`@stakme/markdfm/config` inside build scripts, note-taking automations, or editor integrations to
-reuse the same schema and helper functions as the CLI. (The legacy `markdfm/config` specifier still
-resolves for compatibility.)
+The package also exposes utilities for custom tooling. Import from `@stakme/mdf` or
+`@stakme/mdf/config` inside build scripts, note-taking automations, or editor integrations to
+reuse the same schema and helper functions as the CLI.
 
 ## Legal notice
 
@@ -183,5 +182,5 @@ I am not accepting contributions at this time.
 
 ---
 
-Ready to publish your Markdown knowledge base? Give `markdfm` a spin and keep every note consistent
+Ready to publish your Markdown knowledge base? Give `mdf` a spin and keep every note consistent
 from day one.

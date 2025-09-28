@@ -4,9 +4,9 @@ import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
-describe("markdfm run", () => {
+describe("mdf run", () => {
 	it("executes a configured alias with quoted arguments", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -51,7 +51,7 @@ export default defineConfig({
 	});
 
 	it("informs the user when an alias is not defined", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -69,7 +69,7 @@ export default defineConfig({
 
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr.trim()).toContain(
-				'Alias "missing" not found in .config/markdfm.mts',
+				'Alias "missing" not found in .config/mdf.mts',
 			);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
@@ -77,7 +77,7 @@ export default defineConfig({
 	});
 
 	it("reports alias cycles to prevent infinite recursion", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

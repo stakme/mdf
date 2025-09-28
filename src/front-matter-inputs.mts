@@ -1,4 +1,4 @@
-import { MarkdfmError } from "./errors.mts";
+import { MdfError } from "./errors.mts";
 
 export function parseFrontMatterInputs(
 	inputs: string[],
@@ -45,7 +45,7 @@ export function parseFrontMatterInput(input: string): {
 } {
 	const separatorIndex = input.indexOf("=");
 	if (separatorIndex === -1) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_FRONT_MATTER",
 			`Front matter must be provided as key=value, received: ${input}`,
 		);
@@ -54,7 +54,7 @@ export function parseFrontMatterInput(input: string): {
 	const key = input.slice(0, separatorIndex).trim();
 	const rawValue = input.slice(separatorIndex + 1).trim();
 	if (!key) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_FRONT_MATTER",
 			`Front matter key cannot be empty: ${input}`,
 		);

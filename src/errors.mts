@@ -1,4 +1,4 @@
-export type MarkdfmErrorCode =
+export type MdfErrorCode =
 	| "CONFIG_NOT_FOUND"
 	| "SCHEMA_VALIDATION"
 	| "INVALID_FRONT_MATTER"
@@ -19,12 +19,12 @@ export type MarkdfmErrorCode =
 	| "ALIAS_CYCLE"
 	| "INVALID_ALIAS_COMMAND";
 
-export class MarkdfmError extends Error {
+export class MdfError extends Error {
 	constructor(
-		public readonly code: MarkdfmErrorCode,
+		public readonly code: MdfErrorCode,
 		message: string,
 	) {
 		super(message);
-		this.name = "MarkdfmError";
+		this.name = "MdfError";
 	}
 }

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { loadConfig } from "../config.mts";
-import { MarkdfmError } from "../errors.mts";
+import { MdfError } from "../errors.mts";
 
 export interface RunCommandOptions {
 	cwd: string;
@@ -17,15 +17,15 @@ export async function prepareRunCommand(
 ): Promise<RunCommandResult> {
 	const config = await loadConfig(options.cwd);
 	if (!config) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"CONFIG_NOT_FOUND",
-			"Could not find a markdfm config file. Create one at .config/markdfm.mts",
+			"Could not find an mdf config file. Create one at .config/mdf.mts",
 		);
 	}
 
 	const aliasName = options.alias.trim();
 	if (!aliasName) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_ALIAS_COMMAND",
 			"Alias name must be provided to run a command",
 		);
@@ -34,7 +34,7 @@ export async function prepareRunCommand(
 	const aliasCommand = config.aliases?.[aliasName];
 	if (!aliasCommand) {
 		const displayPath = formatDisplayPath(config.path, options.cwd);
-		throw new MarkdfmError(
+		throw new MdfError(
 			"ALIAS_NOT_FOUND",
 			`Alias "${aliasName}" not found in ${displayPath}. Define it under aliases in the config file.`,
 		);
@@ -42,13 +42,13 @@ export async function prepareRunCommand(
 
 	const argv = parseAliasCommand(aliasCommand);
 	if (argv.length === 0) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_ALIAS_COMMAND",
 			`Alias "${aliasName}" does not define a command to execute`,
 		);
 	}
 
-	if (argv[0] === "markdfm") {
+	if (argv[0] === "mdf") {
 		argv.shift();
 	}
 
@@ -104,7 +104,7 @@ function parseAliasCommand(command: string): string[] {
 	}
 
 	if (quote) {
-		throw new MarkdfmError(
+		throw new MdfError(
 			"INVALID_ALIAS_COMMAND",
 			`Alias command has an unterminated ${quote === '"' ? "double" : "single"} quote`,
 		);

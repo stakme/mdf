@@ -14,14 +14,14 @@ export async function setupWorkspace(options?: {
 	localConfig?: string;
 	config?: string;
 }): Promise<string> {
-	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
+	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "mdf-test-"));
 	const configDir = path.join(tempDir, ".config");
 	await fs.mkdir(configDir, { recursive: true });
 
-	const configFile = path.join(configDir, "markdfm.mts");
+	const configFile = path.join(configDir, "mdf.mts");
 	const configSource =
 		options?.config ??
-		`import { defineConfig, z } from "@stakme/markdfm/config";
+		`import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -50,7 +50,7 @@ export default defineConfig({
 	await fs.writeFile(configFile, configSource, "utf8");
 
 	if (options?.localConfig) {
-		const localConfigFile = path.join(configDir, "markdfm.local.mts");
+		const localConfigFile = path.join(configDir, "mdf.local.mts");
 		await fs.writeFile(localConfigFile, options.localConfig, "utf8");
 	}
 

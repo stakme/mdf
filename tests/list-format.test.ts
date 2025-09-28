@@ -4,7 +4,7 @@ import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
-describe("markdfm list --format", () => {
+describe("mdf list --format", () => {
 	it("filters notes using front matter and renders templates", async () => {
 		const tempDir = await setupWorkspace();
 		const notesDir = path.join(tempDir, "notes");

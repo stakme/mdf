@@ -1,15 +1,15 @@
 {
-	"name": "@stakme/markdfm",
-	"version": "0.1.3",
+	"name": "@stakme/mdf",
+	"version": "0.2.0",
 	"description": "Lightweight utility to organize Markdown files with front matter",
 	"author": "@stakme",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/stakme/markdfm.git"
+		"url": "https://github.com/stakme/mdf.git"
 	},
 	"type": "module",
 	"bin": {
-		"markdfm": "./dist/cli.mjs"
+		"mdf": "./dist/cli.mjs"
 	},
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
