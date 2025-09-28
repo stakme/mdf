@@ -9,6 +9,19 @@ export default defineConfig({
 
 	schema: [
 		{
+			name: "docs",
+			glob: "docs/**",
+			schema: z.object({
+				title: z.string().min(1),
+				description: z.string().optional(),
+				vpath: z.string().min(1),
+				date: z.iso.date().optional(),
+				tags: z.array(z.string()).default(() => []),
+				draft: z.boolean().default(false),
+				author: z.string().optional(),
+			}),
+		},
+		{
 			name: "default",
 			glob: "**",
 			schema: z.object({
