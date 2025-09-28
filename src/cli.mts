@@ -5,6 +5,7 @@ import { Command } from "commander";
 import { runNewCommand } from "./commands/new.mts";
 import { runQueryCommand } from "./commands/query.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
+import { runUpdateCommand } from "./commands/update.mts";
 import { MarkdfmError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
@@ -112,6 +113,43 @@ async function bootstrap(): Promise<void> {
                                         cwd: process.cwd(),
                                         directory,
                                         frontMatterInputs: defaults,
+                                });
+
+                                for (const filePath of result.updated) {
+                                        console.log(`Updated ${formatDisplayPath(filePath)}`);
+                                }
+
+                                if (result.skipped.length > 0) {
+                                        for (const entry of result.skipped) {
+                                                const displayPath = formatDisplayPath(entry.filePath);
+                                                for (const message of entry.messages) {
+                                                        console.error(`${displayPath}: ${message}`);
+                                                }
+                                        }
+                                        process.exitCode = 1;
+                                }
+                        } catch (error) {
+                                handleError(error);
+                        }
+                });
+
+        program
+                .command("update")
+                .description("Update front matter fields on specific Markdown files")
+                .option(
+                        "-f, --fm <entry>",
+                        "Front matter update; omit =value to use defaults",
+                        collectFrontMatter,
+                        [] as string[],
+                )
+                .argument("<files...>", "Markdown files to update")
+                .action(async (files: string[], command: { fm?: string[] }) => {
+                        try {
+                                const fmInputs = command.fm ?? [];
+                                const result = await runUpdateCommand({
+                                        cwd: process.cwd(),
+                                        files,
+                                        frontMatterInputs: fmInputs,
                                 });
 
                                 for (const filePath of result.updated) {

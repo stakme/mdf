@@ -168,11 +168,17 @@ async function validateFile(
 
 function formatZodIssue(issue: z.ZodIssue): string {
         const path = issue.path.join(".");
-        if (
+        const lowerMessage = issue.message.toLowerCase();
+        const received =
                 issue.code === "invalid_type" &&
-                (issue.received === "undefined" ||
-                        issue.message.toLowerCase().includes("received undefined") ||
-                        issue.message.toLowerCase() === "required")
+                "received" in issue &&
+                typeof (issue as { received?: unknown }).received === "string"
+                        ? (issue as { received: string }).received
+                        : undefined;
+        if (
+                (issue.code === "invalid_type" &&
+                        (received === "undefined" || lowerMessage.includes("received undefined"))) ||
+                lowerMessage === "required"
         ) {
                 return path ? `${path} field is missing` : "A required field is missing";
         }

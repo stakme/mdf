@@ -6,7 +6,12 @@ import { z } from "zod";
 import { loadConfig } from "../config.mts";
 import { MarkdfmError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
-import type { DefaultsValue, LoadedConfig, TemplateDefinition } from "../types.mts";
+import type {
+        DefaultsValue,
+        LoadedConfig,
+        TemplateBodyContext,
+        TemplateDefinition,
+} from "../types.mts";
 
 export interface NewCommandOptions {
         cwd: string;
@@ -156,7 +161,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 async function resolveContent(
         config: LoadedConfig,
         template: TemplateDefinition<Record<string, unknown>> | undefined,
-        data: unknown,
+        data: Record<string, unknown>,
         now: Date,
 ): Promise<string> {
         if (template?.body !== undefined) {
@@ -204,15 +209,17 @@ async function resolveTemplate(
 }
 
 async function resolveTemplateBody(
-        body: TemplateDefinition<Record<string, unknown>>["body"],
-        data: unknown,
+        body: NonNullable<TemplateDefinition<Record<string, unknown>>["body"]>,
+        data: Record<string, unknown>,
         now: Date,
 ): Promise<string> {
         if (typeof body === "string") {
                 return body;
         }
 
-        const context = Object.assign({ now, data }, data as Record<string, unknown>);
+        const context = Object.assign({ now, data }, data) as TemplateBodyContext<
+                Record<string, unknown>
+        >;
         const result = await body(context);
         if (typeof result !== "string") {
                 throw new MarkdfmError(

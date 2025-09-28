@@ -102,6 +102,7 @@ describe("markdfm query", () => {
                                 : `./${relativePath}`;
 
                 try {
+                        const absoluteNotePath = await fs.realpath(notePath);
                         const { stdout } = await execa(
                                 nodeBinary,
                                 [
@@ -115,7 +116,7 @@ describe("markdfm query", () => {
                         );
 
                         expect(stdout.trim()).toBe(
-                                `${relativePath}|${path.basename(notePath)}|${notePath}|${displayPath}|Lone Note`,
+                                `${relativePath}|${path.basename(notePath)}|${absoluteNotePath}|${displayPath}|Lone Note`,
                         );
                 } finally {
                         await fs.rm(tempDir, { recursive: true, force: true });

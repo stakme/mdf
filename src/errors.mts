@@ -9,7 +9,9 @@ export type MarkdfmErrorCode =
         | "FRONT_MATTER_PARSE"
         | "NO_MATCHING_FILES"
         | "INVALID_QUERY_FILTER"
-        | "TEMPLATE_NOT_FOUND";
+        | "TEMPLATE_NOT_FOUND"
+        | "INVALID_UPDATE_INPUT"
+        | "DEFAULT_VALUE_UNAVAILABLE";
 
 export class MarkdfmError extends Error {
         constructor(
