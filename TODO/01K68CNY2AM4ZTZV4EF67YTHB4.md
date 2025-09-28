@@ -1,10 +1,10 @@
 ---
 title: Fix config type definitions
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-28T14:47:25.025Z
-updated_at: 2025-09-28T14:47:25.026Z
+updated_at: 2025-09-28T15:03:46.118Z
 ---
 
 # Fix config type definitions

@@ -10,6 +10,7 @@ import type {
 	DefaultsValue,
 	IdGeneratorName,
 	LoadedConfig,
+	LoadedSchema,
 	TemplateBodyContext,
 	TemplateDefinition,
 } from "../types.mts";
@@ -25,6 +26,11 @@ export interface NewCommandOptions {
 export interface NewCommandResult {
 	filePath: string;
 	frontMatter: unknown;
+}
+
+interface ResolvedTemplate {
+	name: string;
+	template: TemplateDefinition<Record<string, unknown>>;
 }
 
 export async function runNewCommand(
@@ -44,9 +50,15 @@ export async function runNewCommand(
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
 	const placeholderFile = path.join(relativeDirectory, `__mdf__${extension}`);
-	const schemaEntry = config.getSchemaForRelativePath(placeholderFile);
 
-	const template = await resolveTemplate(config, options.template);
+	const resolvedTemplate = await resolveTemplate(config, options.template);
+	const template = resolvedTemplate?.template;
+	const schemaEntry = determineSchemaEntry(
+		config,
+		placeholderFile,
+		template,
+		resolvedTemplate?.name,
+	);
 	const baseData = await buildInitialFrontMatter(
 		config,
 		schemaEntry.schema,
@@ -193,10 +205,30 @@ async function resolveContent(
 	return result;
 }
 
+function determineSchemaEntry(
+	config: LoadedConfig,
+	placeholderFile: string,
+	template: TemplateDefinition<Record<string, unknown>> | undefined,
+	templateName?: string,
+): LoadedSchema {
+	if (template?.schema) {
+		const schemaEntry = config.getSchemaByName(template.schema);
+		if (!schemaEntry) {
+			throw new MdfError(
+				"INVALID_CONTENT",
+				`Template "${templateName ?? template.schema}" references unknown schema "${template.schema}" in ${config.path}`,
+			);
+		}
+		return schemaEntry;
+	}
+
+	return config.getSchemaForRelativePath(placeholderFile);
+}
+
 async function resolveTemplate(
 	config: LoadedConfig,
 	templateName?: string,
-): Promise<TemplateDefinition<Record<string, unknown>> | undefined> {
+): Promise<ResolvedTemplate | undefined> {
 	const resolvedName = templateName ?? config.defaultTemplate;
 
 	if (!resolvedName) {
@@ -212,7 +244,10 @@ async function resolveTemplate(
 		);
 	}
 
-	return template as TemplateDefinition<Record<string, unknown>>;
+	return {
+		name: resolvedName,
+		template: template as TemplateDefinition<Record<string, unknown>>,
+	};
 }
 
 async function resolveTemplateBody(

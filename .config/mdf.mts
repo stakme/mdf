@@ -39,6 +39,7 @@ export default defineConfig({
 
 	templates: {
 		default: {
+			schema: "default",
 			body: ({ title }) => `# ${title}
 
 ## What I need
@@ -47,6 +48,7 @@ export default defineConfig({
 `,
 		},
 		bug_report: {
+			schema: "default",
 			frontmatter: {
 				title: "[Bug] Brief summary",
 				vpath: "bug_reports",

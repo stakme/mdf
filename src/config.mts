@@ -447,6 +447,10 @@ function finalizeConfig(
 	configPath: string,
 ): LoadedConfig {
 	const schemas = config.schemas.map((entry) => ({ ...entry }));
+	validateTemplateSchemas(config.templates, schemas, configPath);
+	const schemaLookup = new Map<string, LoadedSchema>(
+		schemas.map((entry) => [entry.name, entry] as const),
+	);
 	const selector = createSchemaSelector(
 		schemas,
 		config.defaultSchema,
@@ -460,10 +464,57 @@ function finalizeConfig(
 		getSchemaForRelativePath(relativePath: string): LoadedSchema {
 			return selector.select(relativePath);
 		},
+		getSchemaByName(name: string): LoadedSchema | undefined {
+			return schemaLookup.get(name);
+		},
 		path: configPath,
 		idGenerator: config.idGenerator ?? "ulid",
 		aliases: config.aliases ? { ...config.aliases } : undefined,
 	};
+}
+
+function validateTemplateSchemas(
+	templates: NormalizedConfig["templates"],
+	schemas: readonly LoadedSchema[],
+	configPath: string,
+): void {
+	if (!templates) {
+		return;
+	}
+
+	const available = new Set(schemas.map((entry) => entry.name));
+
+	for (const [templateName, template] of Object.entries(templates)) {
+		if (!template || typeof template !== "object") {
+			continue;
+		}
+
+		const schemaRef = (template as { schema?: unknown }).schema;
+		if (schemaRef === undefined) {
+			continue;
+		}
+
+		if (typeof schemaRef !== "string") {
+			throw new Error(
+				`mdf config at ${configPath} must define template "${templateName}" schema as a string when provided`,
+			);
+		}
+
+		const normalized = schemaRef.trim();
+		if (!normalized) {
+			throw new Error(
+				`mdf config at ${configPath} must define template "${templateName}" schema as a non-empty string when provided`,
+			);
+		}
+
+		if (!available.has(normalized)) {
+			throw new Error(
+				`mdf config at ${configPath} template "${templateName}" references unknown schema "${normalized}"`,
+			);
+		}
+
+		(template as { schema: string }).schema = normalized;
+	}
 }
 
 function normalizeSchemaDefinitions(

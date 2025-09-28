@@ -21,6 +21,7 @@ export type DefaultsValue<TData> =
 export type TemplateBodyContext<TData> = TData & { now: Date; data: TData };
 
 export interface TemplateDefinition<TData> {
+	schema?: string;
 	frontmatter?: DefaultsValue<TData>;
 	body?:
 		| string
@@ -74,6 +75,7 @@ export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
 	schemas: readonly LoadedSchema<TSchema>[];
 	defaultSchema: string;
 	getSchemaForRelativePath(relativePath: string): LoadedSchema<TSchema>;
+	getSchemaByName(name: string): LoadedSchema<TSchema> | undefined;
 	path: string;
 	virtualPath?: LoadedVirtualPathConfig;
 	idGenerator: IdGeneratorName;

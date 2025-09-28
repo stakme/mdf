@@ -363,6 +363,75 @@ export default defineConfig({
 		}
 	});
 
+	it("uses template-specific schema definitions when provided", async () => {
+		const tempDir = await setupWorkspace({
+			config: `import { defineConfig, z } from "@stakme/mdf/config";
+
+const defaultSchema = z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+});
+
+const docsSchema = z.object({
+        title: z.string(),
+        description: z.string(),
+});
+
+export default defineConfig({
+        schema: [
+                { name: "default", glob: "**", schema: defaultSchema },
+                { name: "docs", glob: "docs/**", schema: docsSchema },
+        ],
+        defaultSchema: "default",
+        templates: {
+                doc_page: {
+                        schema: "docs",
+                        frontmatter: {
+                                description: "Fill me in",
+                        },
+                        body: ({ title }) => "# " + title,
+                },
+        },
+});`,
+		});
+
+		try {
+			await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"new",
+					"notes",
+					"--template",
+					"doc_page",
+					"--fm",
+					"title=Documentation",
+				],
+				{ cwd: tempDir },
+			);
+
+			const notesDir = path.join(tempDir, "notes");
+			const entries = await fs.readdir(notesDir);
+			const fileName = entries[0];
+			if (!fileName) {
+				throw new Error("Expected template schema test to create a file");
+			}
+			const filePath = path.join(notesDir, fileName);
+			const content = await fs.readFile(filePath, "utf8");
+			const frontMatter = parseFrontMatter(content).frontMatter as {
+				title: string;
+				description: string;
+				status?: string;
+			};
+
+			expect(frontMatter.title).toBe("Documentation");
+			expect(frontMatter.description).toBe("Fill me in");
+			expect(frontMatter.status).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("applies template defaults and body when requested", async () => {
 		const tempDir = await setupWorkspace();
 		try {
