@@ -158,14 +158,27 @@ The package also exposes utilities for custom tooling. Import from `markdfm` or 
 inside build scripts, note-taking automations, or editor integrations to reuse the same schema and
 helper functions as the CLI.
 
+## Legal notice
+
+> TL;DR: You can use this freely, but I'm not confident about applying an open‑source license right now.
+
+This project is not distributed under an OSI‑approved open‑source license.
+
+- As of 2025-09-28, you may use this package without notifying or asking the author.
+- I (stakme) am not presently exercising any copyrights in this repository. This is an expression
+  of my current intent and should be read as me not asserting rights at this time.
+- I may change my mind later and adopt a specific license or begin exercising rights for future
+  releases. If that happens, I will update this repository. Any change would apply going forward and
+  is not intended to retroactively change what you already obtained under these terms.
+
+I used AI‑assisted tooling (Codex CLI) extensively while creating this project and therefore cannot
+make a definitive legal declaration about copyright ownership of every line of code. This does not
+mean the project is illegal or a copied work—it simply reflects caution about formal legal
+assertions at this time.
+
 ## Contributing
 
-1. Clone the repo and install dependencies with `npm install`.
-2. Run `npm run check`, `npm run build`, and `npm test` to verify changes.
-3. Open a PR with updated docs and tests covering your improvements.
-
-We welcome bug reports, feature requests, and documentation tweaks—open an issue to start the
-conversation.
+I am not accepting contributions at this time.
 
 ---
 
