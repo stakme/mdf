@@ -21,7 +21,7 @@ export async function setupWorkspace(options?: {
 	const configFile = path.join(configDir, "markdfm.mts");
 	const configSource =
 		options?.config ??
-		`import { defineConfig, z } from "markdfm/config";
+		`import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({

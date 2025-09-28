@@ -57,7 +57,7 @@ Run any command with `--help` for the full option list.
 Zod and optional helpers:
 
 ```ts
-import { defineConfig, z } from "markdfm/config";
+import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -114,7 +114,7 @@ markdfm list notes \
 Store your favorite command combinations in the config and run them with a short name:
 
 ```ts
-import { defineConfig, z } from "markdfm/config";
+import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -154,9 +154,10 @@ markdfm fix notes --fm status=todo --fm tags=backlog
 
 ## Programmatic usage
 
-The package also exposes utilities for custom tooling. Import from `markdfm` or `markdfm/config`
-inside build scripts, note-taking automations, or editor integrations to reuse the same schema and
-helper functions as the CLI.
+The package also exposes utilities for custom tooling. Import from `@stakme/markdfm` or
+`@stakme/markdfm/config` inside build scripts, note-taking automations, or editor integrations to
+reuse the same schema and helper functions as the CLI. (The legacy `markdfm/config` specifier still
+resolves for compatibility.)
 
 ## Legal notice
 

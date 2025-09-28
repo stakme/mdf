@@ -6,7 +6,7 @@ import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("markdfm run", () => {
 	it("executes a configured alias with quoted arguments", async () => {
-		const configSource = `import { defineConfig, z } from "markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -51,7 +51,7 @@ export default defineConfig({
 	});
 
 	it("informs the user when an alias is not defined", async () => {
-		const configSource = `import { defineConfig, z } from "markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({
@@ -77,7 +77,7 @@ export default defineConfig({
 	});
 
 	it("reports alias cycles to prevent infinite recursion", async () => {
-		const configSource = `import { defineConfig, z } from "markdfm/config";
+		const configSource = `import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({

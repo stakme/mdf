@@ -27,6 +27,39 @@ export default defineConfig({
 ## So I will create...
 `,
 		},
+		bug_report: {
+			frontmatter: {
+				title: "[Bug] Brief summary",
+				vpath: "bug_reports",
+				status: "todo",
+				tags: ["bug"],
+			},
+			body: ({ title }) => `# ${title}
+
+## Summary
+Provide a concise description of the issue.
+
+## Steps to Reproduce
+
+1. 
+2. 
+3. 
+
+## Expected Behavior
+What you expected to happen.
+
+## Actual Behavior
+What actually happened.
+
+## Environment
+- OS:
+- Node.js:
+- App/Package Version:
+
+## Additional Context
+Logs, screenshots, or notes.
+`,
+		},
 	},
 	defaultTemplate: "default",
 	virtualPath: {
@@ -36,5 +69,6 @@ export default defineConfig({
 
 	aliases: {
 		todo: `list --filter "status=todo" ./TODO`,
+		new_bug: `new ./TODO --template bug_report`,
 	},
 });

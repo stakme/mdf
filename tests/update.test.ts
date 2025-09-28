@@ -66,7 +66,7 @@ describe("markdfm update", () => {
 
 	it("reports fields without available defaults", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "markdfm/config";
+			config: `import { defineConfig, z } from "@stakme/markdfm/config";
 
 export default defineConfig({
         schema: z.object({

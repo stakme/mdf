@@ -1,6 +1,6 @@
 {
 	"name": "@stakme/markdfm",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Lightweight utility to organize Markdown files with front matter",
 	"author": "@stakme",
 	"repository": {
