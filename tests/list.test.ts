@@ -231,6 +231,117 @@ export default defineConfig({
                 }
         });
 
+        it("supports loose, prefix, and suffix filter operators", async () => {
+                const configSource = `import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+                status: z.string(),
+                category: z.string(),
+                author: z.string(),
+                tags: z.array(z.string()).default(() => []),
+                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+                const tempDir = await setupWorkspace({ config: configSource });
+                const notesDir = path.join(tempDir, "TODO");
+                await fs.mkdir(notesDir, { recursive: true });
+
+                const shared = `author: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+
+                await fs.writeFile(
+                        path.join(notesDir, "feature-task.md"),
+                        `---\ntitle: Feature Task\nvpath: backlog/feature\nstatus: todo\ncategory: enhancements\n${shared}\n---\n`,
+                        "utf8",
+                );
+
+                await fs.writeFile(
+                        path.join(notesDir, "feature-doc.md"),
+                        `---\ntitle: Feature Document\nvpath: backlog/docs\nstatus: done\ncategory: enhancements\n${shared}\n---\n`,
+                        "utf8",
+                );
+
+                await fs.writeFile(
+                        path.join(notesDir, "bug-task.md"),
+                        `---\ntitle: Bug Task\nvpath: bugs\nstatus: todo\ncategory: fixes\n${shared}\n---\n`,
+                        "utf8",
+                );
+
+                const formatTemplate = "{{title}}|{{status}}";
+
+                try {
+                        const loose = await execa(
+                                nodeBinary,
+                                [
+                                        cliPath,
+                                        "list",
+                                        "--filter",
+                                        "title~=feature",
+                                        "--format",
+                                        formatTemplate,
+                                        "TODO",
+                                ],
+                                { cwd: tempDir },
+                        );
+
+                        const looseLines = loose.stdout.trim().split("\n").filter(Boolean).sort();
+                        expect(looseLines).toEqual([
+                                "Feature Document|done",
+                                "Feature Task|todo",
+                        ]);
+
+                        const prefix = await execa(
+                                nodeBinary,
+                                [
+                                        cliPath,
+                                        "list",
+                                        "--filter",
+                                        "status^=to",
+                                        "--format",
+                                        formatTemplate,
+                                        "TODO",
+                                ],
+                                { cwd: tempDir },
+                        );
+
+                        const prefixLines = prefix.stdout.trim().split("\n").filter(Boolean).sort();
+                        expect(prefixLines).toEqual([
+                                "Bug Task|todo",
+                                "Feature Task|todo",
+                        ]);
+
+                        const suffix = await execa(
+                                nodeBinary,
+                                [
+                                        cliPath,
+                                        "list",
+                                        "--filter",
+                                        "title$=task",
+                                        "--format",
+                                        formatTemplate,
+                                        "TODO",
+                                ],
+                                { cwd: tempDir },
+                        );
+
+                        const suffixLines = suffix.stdout.trim().split("\n").filter(Boolean).sort();
+                        expect(suffixLines).toEqual([
+                                "Bug Task|todo",
+                                "Feature Task|todo",
+                        ]);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
         it("fails when virtual path configuration is missing", async () => {
                 const tempDir = await setupWorkspace();
                 const notesDir = path.join(tempDir, "notes");

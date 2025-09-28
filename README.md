@@ -10,7 +10,7 @@ single CLI.
 
 - **Schema-first authoring** – enforce exactly the fields, defaults, and content rules you need.
 - **Frictionless scaffolding** – spin up ready-to-edit Markdown files in one command.
-- **Powerful querying** – filter notes by any front matter attribute and render custom output.
+- **Smart filtering** – slice notes by front matter attributes and render tailored output.
 - **Confident maintenance** – validate or auto-fix drifted notes before they reach your repo.
 
 ## Installation
@@ -33,8 +33,8 @@ Add the CLI to your package scripts or run it via `npx markdfm`.
    describing the front matter every file should include.
 2. **Generate a note:** run `markdfm new <directory>` and provide overrides with `--fm` flags or a
    named template.
-3. **Query your vault:** surface exactly the notes you need with `markdfm query` filters and custom
-   output formats.
+3. **Surface the right notes:** explore your collection with `markdfm list` filters, virtual-path
+   scoping, and custom output formats.
 
 When you are ready to publish new notes, validate the collection with `markdfm validate` or
 `markdfm fix`.
@@ -44,7 +44,7 @@ When you are ready to publish new notes, validate the collection with `markdfm v
 | Command | Description |
 | --- | --- |
 | `markdfm new <directory>` | Scaffold Markdown files that match your schema and optional template defaults. |
-| `markdfm query <directory>` | Inspect existing notes using front matter filters and rich output formatting. |
+| `markdfm list <directory>` | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
 | `markdfm validate <directory>` | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
 | `markdfm fix <directory>` | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
 
@@ -86,22 +86,26 @@ markdfm new notes --template meeting --fm tags=sync --fm attendees="Ada, Lin"
 Templates layer their front matter on top of schema defaults, while `--fm key=value` flags win last.
 Array fields support JSON-style values (`["release","planning"]`) or repeated flags.
 
-## Query, format, and automate
+## List, filter, and automate
 
-Use the query command to slice your knowledge base and pipe the output to other tools:
+Use the list command to slice your knowledge base and pipe the output to other tools:
 
 ```bash
-markdfm query notes \
-  --filter "status: todo" \
-  --filter "tags: 'new feature'" \
+markdfm list notes
+markdfm list --vpath backlog notes
+markdfm list notes \
+  --filter "status=todo" \
+  --filter "tags~=feature" \
   --format "[{{status}}] {{title}} ({{tags:, }})"
 ```
 
-- Filters accept `field: value` syntax. Strings are case-insensitive and arrays match when **any**
-  element equals the value.
-- Target nested fields with dot notation, such as `project.status`.
-- Customize the output template with front matter placeholders. Use `{{tags:, }}` to join array
-  values, or include the relative file path via `{{file}}`.
+- `markdfm list` shows a virtual-path tree by default. Configure `virtualPath.param` in your config
+  and pass `--vpath <prefix>` to narrow the tree to matching paths.
+- Provide `--filter` expressions with `=` (or `:`), `~=`, `^=`, or `$=` operators for exact,
+  substring, prefix, or suffix matching. Arrays match when **any** element satisfies the filter.
+- Target nested front matter fields with dot notation, such as `project.status`.
+- Supply `--format` to bypass the tree and render each match with `{{field}}` placeholders. Use
+  helpers like `{{tags:, }}` to join arrays or `{{paths.relativePath}}` for the file location.
 
 ## Keep notes trustworthy
 

@@ -6,6 +6,7 @@ import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
         matchesParsedFilter,
         parseFilterExpression,
+        resolveFilterPath,
 } from "../utils/filters.mts";
 
 export interface ListCommandOptions {
@@ -13,10 +14,11 @@ export interface ListCommandOptions {
         directory: string;
         virtualPathPrefix?: string;
         filters?: readonly string[];
+        format?: string;
 }
 
 export interface ListCommandResult {
-        tree: string[];
+        lines: string[];
 }
 
 interface VirtualPathEntry {
@@ -50,7 +52,10 @@ export async function runListCommand(
                 );
         }
 
-        if (!config.virtualPath) {
+        const needsVirtualPath = !options.format || Boolean(options.virtualPathPrefix);
+        const virtualPathConfig = config.virtualPath;
+
+        if (needsVirtualPath && !virtualPathConfig) {
                 throw new MarkdfmError(
                         "VIRTUAL_PATH_NOT_CONFIGURED",
                         `Virtual path configuration not found in ${formatDisplayPath(config.path, options.cwd)}. Define virtualPath.param in the config file.`,
@@ -67,11 +72,18 @@ export async function runListCommand(
         }
 
         const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
-        const prefixSegments = options.virtualPathPrefix
-                ? splitVirtualPath(options.virtualPathPrefix, config.virtualPath.separator)
-                : undefined;
+        const prefixSegments =
+                options.virtualPathPrefix && virtualPathConfig
+                        ? splitVirtualPath(
+                                  options.virtualPathPrefix,
+                                  virtualPathConfig.separator ?? "/",
+                          )
+                        : undefined;
 
+        const template = options.format;
         const entries: VirtualPathEntry[] = [];
+        const formatted: string[] = [];
+
         for (const filePath of files) {
                 const document = await readMarkdownDocument(filePath);
                 const frontMatter = document.frontMatter;
@@ -80,21 +92,42 @@ export async function runListCommand(
                         continue;
                 }
 
-                const rawVirtualPath = frontMatter[config.virtualPath.param];
+                let segments: string[] = [];
+                if (virtualPathConfig) {
+                        const rawVirtualPath = frontMatter[virtualPathConfig.param];
 
-                let segments: string[];
-                if (rawVirtualPath === undefined || rawVirtualPath === null) {
-                        segments = [];
-                } else if (typeof rawVirtualPath === "string") {
-                        segments = splitVirtualPath(rawVirtualPath, config.virtualPath.separator);
-                } else {
-                        throw new MarkdfmError(
-                                "INVALID_VIRTUAL_PATH_VALUE",
-                                `Front matter field "${config.virtualPath.param}" must be a string in ${formatDisplayPath(filePath, options.cwd)}`,
-                        );
+                        if (rawVirtualPath === undefined || rawVirtualPath === null) {
+                                segments = [];
+                        } else if (typeof rawVirtualPath === "string") {
+                                segments = splitVirtualPath(
+                                        rawVirtualPath,
+                                        virtualPathConfig.separator ?? "/",
+                                );
+                        } else {
+                                throw new MarkdfmError(
+                                        "INVALID_VIRTUAL_PATH_VALUE",
+                                        `Front matter field "${virtualPathConfig.param}" must be a string in ${formatDisplayPath(filePath, options.cwd)}`,
+                                );
+                        }
+
+                        if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
+                                continue;
+                        }
                 }
 
-                if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
+                if (template) {
+                        const displayPath = formatDisplayPath(filePath, options.cwd);
+                        const relativePath = formatRelativePath(filePath, options.cwd);
+                        const output = renderTemplate(template, {
+                                frontMatter,
+                                paths: {
+                                        absolutePath: filePath,
+                                        displayPath,
+                                        filename: path.basename(filePath),
+                                        relativePath,
+                                },
+                        });
+                        formatted.push(output);
                         continue;
                 }
 
@@ -107,8 +140,12 @@ export async function runListCommand(
                 entries.push({ segments, label });
         }
 
+        if (template) {
+                return { lines: formatted };
+        }
+
         const tree = buildTree(entries);
-        return { tree };
+        return { lines: tree };
 }
 
 function splitVirtualPath(value: string, separator: string): string[] {
@@ -198,10 +235,122 @@ function segmentsStartsWith(segments: readonly string[], prefix: readonly string
         return prefix.every((segment, index) => segments[index] === segment);
 }
 
+function renderTemplate(
+        template: string,
+        context: {
+                frontMatter: Record<string, unknown>;
+                paths: {
+                        absolutePath: string;
+                        displayPath: string;
+                        filename: string;
+                        relativePath: string;
+                };
+        },
+): string {
+        return template.replace(/\{\{\s*([^}]*)\}\}/gu, (_, rawExpression: string) => {
+                const { path, separator } = parseTemplateExpression(rawExpression);
+                const reservedValue = resolveReservedPath(path, context.paths);
+                if (reservedValue !== null) {
+                        return reservedValue;
+                }
+
+                const value = resolveTemplatePath(context.frontMatter, path);
+                if (value === undefined || value === null) {
+                        return "";
+                }
+
+                if (Array.isArray(value)) {
+                        const formatted = value.map(formatValue).filter((entry) => entry !== "");
+                        if (!formatted.length) {
+                                return "";
+                        }
+                        return formatted.join(separator ?? ", ");
+                }
+
+                return formatValue(value);
+        });
+}
+
+function resolveReservedPath(
+        pathExpression: string,
+        paths: {
+                absolutePath: string;
+                displayPath: string;
+                filename: string;
+                relativePath: string;
+        },
+): string | null {
+        switch (pathExpression) {
+                case "file":
+                        return paths.displayPath;
+                case "relpath":
+                        return paths.relativePath;
+                case "abspath":
+                        return paths.absolutePath;
+                case "filename":
+                        return paths.filename;
+                default:
+                        return null;
+        }
+}
+
+function resolveTemplatePath(
+        frontMatter: Record<string, unknown>,
+        expression: string,
+): unknown {
+        const segments = expression.split(".");
+        if (segments[0] === "f" && segments.length > 1) {
+                segments.shift();
+        }
+        return resolveFilterPath(frontMatter, segments);
+}
+
+function parseTemplateExpression(expression: string): { path: string; separator: string | null } {
+        const trimmedStart = expression.trimStart();
+        const colonIndex = trimmedStart.indexOf(":");
+        if (colonIndex === -1) {
+                return { path: trimmedStart.trimEnd(), separator: null };
+        }
+        const path = trimmedStart.slice(0, colonIndex).trimEnd();
+        const separator = trimmedStart.slice(colonIndex + 1);
+        return { path, separator };
+}
+
+function formatValue(value: unknown): string {
+        if (value === null || value === undefined) {
+                return "";
+        }
+        if (typeof value === "string") {
+                return value;
+        }
+        if (typeof value === "number" || typeof value === "bigint") {
+                return value.toString();
+        }
+        if (typeof value === "boolean") {
+                return value ? "true" : "false";
+        }
+        if (value instanceof Date) {
+                return value.toISOString();
+        }
+        if (typeof value === "object") {
+                try {
+                        return JSON.stringify(value);
+                } catch {
+                        return String(value);
+                }
+        }
+        return String(value);
+}
+
 function formatDisplayPath(filePath: string, cwd: string): string {
         const relative = path.relative(cwd, filePath) || path.basename(filePath);
         if (relative.startsWith("..")) {
                 return relative;
         }
         return relative.startsWith(".") ? relative : `./${relative}`;
+}
+
+function formatRelativePath(filePath: string, cwd: string): string {
+        const relative = path.relative(cwd, filePath) || path.basename(filePath);
+        return relative;
 }

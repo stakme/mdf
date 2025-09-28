@@ -4,7 +4,7 @@ import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
-describe("markdfm query", () => {
+describe("markdfm list --format", () => {
         it("filters notes using front matter and renders templates", async () => {
                 const tempDir = await setupWorkspace();
                 const notesDir = path.join(tempDir, "notes");
@@ -35,7 +35,7 @@ describe("markdfm query", () => {
                                 nodeBinary,
                                 [
                                         cliPath,
-                                        "query",
+                                        "list",
                                         "notes",
                                         "--filter",
                                         "status: todo",
@@ -69,10 +69,22 @@ describe("markdfm query", () => {
 
                 try {
                         await expect(
-                                execa(nodeBinary, [cliPath, "query", "notes", "--filter", "status todo"], {
-                                        cwd: tempDir,
-                                        reject: true,
-                                }),
+                                execa(
+                                        nodeBinary,
+                                        [
+                                                cliPath,
+                                                "list",
+                                                "notes",
+                                                "--filter",
+                                                "status todo",
+                                                "--format",
+                                                "{{title}}",
+                                        ],
+                                        {
+                                                cwd: tempDir,
+                                                reject: true,
+                                        },
+                                ),
                         ).rejects.toMatchObject({
                                 exitCode: 1,
                                 stderr: expect.stringContaining("Invalid filter expression"),
@@ -107,7 +119,7 @@ describe("markdfm query", () => {
                                 nodeBinary,
                                 [
                                         cliPath,
-                                        "query",
+                                        "list",
                                         "notes",
                                         "--format",
                                         "{{relpath}}|{{filename}}|{{abspath}}|{{file}}|{{f.title}}",

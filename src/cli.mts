@@ -4,7 +4,6 @@ import path from "node:path";
 import { Command } from "commander";
 import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
-import { runQueryCommand } from "./commands/query.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
 import { runUpdateCommand } from "./commands/update.mts";
 import { MarkdfmError } from "./errors.mts";
@@ -98,12 +97,20 @@ async function bootstrap(): Promise<void> {
                 .option("--vpath <prefix>", "Filter entries by virtual path prefix")
                 .option(
                         "-f, --filter <expression>",
-                        "Filter expression in the form field=value",
+                        "Filter expression supporting =, ~=, ^=, $= operators",
                         collectFilters,
                         [] as string[],
                 )
+                .option(
+                        "--format <template>",
+                        "Output template using {{field}} placeholders",
+                )
                 .argument("<directory>", "Directory containing Markdown files to list")
-                .action(async (directory: string, command: { vpath?: string; filter?: string[] }) => {
+                .action(
+                        async (
+                                directory: string,
+                                command: { vpath?: string; filter?: string[]; format?: string },
+                        ) => {
                         try {
                                 const filters = command.filter ?? [];
                                 const result = await runListCommand({
@@ -111,15 +118,17 @@ async function bootstrap(): Promise<void> {
                                         directory,
                                         virtualPathPrefix: command.vpath,
                                         filters,
+                                        format: command.format,
                                 });
 
-                                for (const line of result.tree) {
+                                for (const line of result.lines) {
                                         console.log(line);
                                 }
                         } catch (error) {
                                 handleError(error);
                         }
-                });
+                },
+                );
 
         program
                 .command("fix")
@@ -200,48 +209,11 @@ async function bootstrap(): Promise<void> {
                         }
                 });
 
-        program
-                .command("query")
-                .description("Query Markdown files by front matter values")
-                .option(
-                        "-f, --filter <expression>",
-                        "Filter expression in the form field: value",
-                        collectFilters,
-                        [] as string[],
-                )
-                .option(
-                        "--format <template>",
-                        "Output template using {{field}} placeholders",
-                )
-                .argument("<directory>", "Directory containing Markdown files to query")
-                .action(
-                        async (
-                                directory: string,
-                                command: { filter?: string[]; format?: string },
-                        ) => {
-                                try {
-                                        const filters = command.filter ?? [];
-                                        const result = await runQueryCommand({
-                                                cwd: process.cwd(),
-                                                directory,
-                                                filters,
-                                                format: command.format,
-                                        });
-
-                                        for (const match of result.matches) {
-                                                console.log(match.output);
-                                        }
-                                } catch (error) {
-                                        handleError(error);
-                                }
-                        },
-                );
-
-	try {
-		await program.parseAsync(process.argv);
-	} catch (error) {
-		handleError(error);
-	}
+        try {
+                await program.parseAsync(process.argv);
+        } catch (error) {
+                handleError(error);
+        }
 }
 
 function collectFrontMatter(value: string, previous: string[]): string[] {
