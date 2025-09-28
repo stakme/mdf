@@ -294,7 +294,7 @@ export default defineConfig({
                                 "\\n\\n## What I need\\n\\n## So I will create...",
                 },
         },
-        default_template: "default",
+        defaultTemplate: "default",
 });`,
                 });
                 try {

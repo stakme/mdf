@@ -189,7 +189,7 @@ function mergeConfigs(
                 fileName: override.fileName ?? base.fileName,
                 extension: override.extension ?? base.extension,
                 templates: mergeTemplates(base.templates, override.templates),
-                default_template: override.default_template ?? base.default_template,
+                defaultTemplate: override.defaultTemplate ?? base.defaultTemplate,
         };
 }
 

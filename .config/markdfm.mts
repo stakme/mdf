@@ -19,5 +19,5 @@ export default defineConfig({
 `,
                 },
         },
-        default_template: "default",
+        defaultTemplate: "default",
 });

@@ -190,7 +190,7 @@ async function resolveTemplate(
         config: LoadedConfig,
         templateName?: string,
 ): Promise<TemplateDefinition<Record<string, unknown>> | undefined> {
-        const resolvedName = templateName ?? config.default_template;
+        const resolvedName = templateName ?? config.defaultTemplate;
 
         if (!resolvedName) {
                 return undefined;
