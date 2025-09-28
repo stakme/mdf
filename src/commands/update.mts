@@ -59,10 +59,13 @@ export async function runUpdateCommand(
 
         for (const relativeFile of options.files) {
                 const filePath = path.resolve(options.cwd, relativeFile);
+                const schemaEntry = config.getSchemaForRelativePath(
+                        path.relative(options.cwd, filePath),
+                );
                 try {
                         const document = await readMarkdownDocument(filePath);
                         const updateResult = await updateDocument({
-                                configSchema: config.schema,
+                                schema: schemaEntry.schema,
                                 frontMatter: document.frontMatter,
                                 body: document.body,
                                 explicitValues: parsedInputs.explicit,
@@ -86,14 +89,14 @@ export async function runUpdateCommand(
 }
 
 async function updateDocument(params: {
-        configSchema: z.ZodTypeAny;
+        schema: z.ZodTypeAny;
         frontMatter: Record<string, unknown>;
         body: string;
         explicitValues: Record<string, unknown>;
         defaultKeys: Set<string>;
         configDefaults: Record<string, unknown>;
 }): Promise<{ changed: boolean; content: string }> {
-        const { configSchema, frontMatter, body, explicitValues, defaultKeys, configDefaults } =
+        const { schema, frontMatter, body, explicitValues, defaultKeys, configDefaults } =
                 params;
 
         const explicitEntries = Object.entries(explicitValues);
@@ -121,7 +124,7 @@ async function updateDocument(params: {
         }
 
         const schemaDefaults = await resolveSchemaDefaults({
-                schema: configSchema,
+                schema,
                 candidate: candidateForDefaults,
                 missingKeys: requestedDefaultKeys.filter((key) => !defaultsFromConfig.has(key)),
         });
@@ -156,7 +159,7 @@ async function updateDocument(params: {
                 return { changed: false, content: serializeMarkdownDocument(frontMatter, body) };
         }
 
-        await assertValidFrontMatter(configSchema, finalFrontMatter);
+        await assertValidFrontMatter(schema, finalFrontMatter);
 
         const serialized = serializeMarkdownDocument(finalFrontMatter, body);
         return { changed: true, content: serialized };

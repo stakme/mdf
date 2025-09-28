@@ -25,8 +25,20 @@ export interface TemplateDefinition<TData> {
                 | ((context: TemplateBodyContext<TData>) => string | Promise<string>);
 }
 
-export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
+export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
+        name: string;
+        glob?: string;
         schema: TSchema;
+}
+
+export type SchemaConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> =
+        | TSchema
+        | SchemaDefinition<TSchema>
+        | readonly SchemaDefinition<TSchema>[];
+
+export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
+        schema: SchemaConfig<TSchema>;
+        defaultSchema?: string;
         defaults?: DefaultsValue<z.infer<TSchema>>;
         content?:
                 | string
@@ -39,7 +51,14 @@ export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         defaultTemplate?: string;
 }
 
+export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
+        extends SchemaDefinition<TSchema> {}
+
 export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
-        extends MarkdfmConfig<TSchema> {
+        extends Omit<MarkdfmConfig<TSchema>, "schema"> {
+        schema: TSchema;
+        schemas: readonly LoadedSchema<TSchema>[];
+        defaultSchema: string;
+        getSchemaForRelativePath(relativePath: string): LoadedSchema<TSchema>;
         path: string;
 }

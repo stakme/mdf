@@ -40,14 +40,20 @@ export async function runNewCommand(
                 );
         }
 
+        const extension = normalizeExtension(config.extension ?? ".md");
+        const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
+        const placeholderFile = path.join(relativeDirectory, `__markdfm__${extension}`);
+        const schemaEntry = config.getSchemaForRelativePath(placeholderFile);
+
         const template = await resolveTemplate(config, options.template);
         const baseData = await buildInitialFrontMatter(
                 config,
+                schemaEntry.schema,
                 options.frontMatterInputs,
                 now,
                 template,
         );
-        const parsed = await parseFrontMatter(config, baseData);
+        const parsed = await parseFrontMatter(schemaEntry.schema, baseData);
 
         const filePath = await writeMarkdownFile({
                 config,
@@ -232,6 +238,7 @@ async function resolveTemplateBody(
 
 async function buildInitialFrontMatter(
         config: LoadedConfig,
+        schema: z.ZodTypeAny,
         inputs: string[],
         now: Date,
         template?: TemplateDefinition<Record<string, unknown>>,
@@ -239,7 +246,7 @@ async function buildInitialFrontMatter(
         const defaults = await resolveDefaults(config, now, template);
         const cliValues = parseFrontMatterInputs(inputs);
         const combined = { ...defaults, ...cliValues };
-        ensureRequiredStringFields(config, combined);
+        ensureRequiredStringFields(schema, combined);
         return combined;
 }
 
@@ -296,10 +303,10 @@ function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
 }
 
 function ensureRequiredStringFields(
-	config: LoadedConfig,
-	frontMatter: Record<string, unknown>,
+        schema: z.ZodTypeAny,
+        frontMatter: Record<string, unknown>,
 ): void {
-	const baseSchema = unwrapSchema(config.schema);
+        const baseSchema = unwrapSchema(schema);
 	if (!(baseSchema instanceof z.ZodObject)) {
 		return;
 	}
@@ -388,13 +395,13 @@ function generateUuidV7(now: Date): string {
 }
 
 async function parseFrontMatter(
-        config: LoadedConfig,
+        schema: z.ZodTypeAny,
         candidate: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-	try {
-		const result = await config.schema.parseAsync(candidate);
-		return result as Record<string, unknown>;
-	} catch (error) {
+        try {
+                const result = await schema.parseAsync(candidate);
+                return result as Record<string, unknown>;
+        } catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new MarkdfmError("SCHEMA_VALIDATION", error.message);
 		}

@@ -233,6 +233,75 @@ export default defineConfig({
                 }
         });
 
+        it("uses directory-specific schema definitions when configured", async () => {
+                const tempDir = await setupWorkspace({
+                        config: `import { defineConfig, z } from "markdfm/config";
+
+const backlogSchema = z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+});
+
+const bugSchema = z.object({
+        title: z.string(),
+        severity: z.enum(["low", "medium", "high"]),
+});
+
+export default defineConfig({
+        schema: [
+                { name: "backlog", glob: "backlog/**", schema: backlogSchema },
+                { name: "bug", glob: "bugs/**", schema: bugSchema },
+        ],
+        defaultSchema: "backlog",
+});`,
+                });
+
+                try {
+                        await execa(nodeBinary, [cliPath, "new", "backlog"], { cwd: tempDir });
+                        await execa(
+                                nodeBinary,
+                                [cliPath, "new", "bugs", "--fm", "severity=high"],
+                                { cwd: tempDir },
+                        );
+
+                        const backlogDir = path.join(tempDir, "backlog");
+                        const backlogEntries = await fs.readdir(backlogDir);
+                        const backlogFileName = backlogEntries[0];
+                        if (!backlogFileName) {
+                                throw new Error("Expected backlog schema to produce a file");
+                        }
+                        const backlogFile = path.join(backlogDir, backlogFileName);
+                        const backlogContent = await fs.readFile(backlogFile, "utf8");
+                        const backlogFrontMatter = parseFrontMatter(backlogContent).frontMatter as {
+                                title: string;
+                                status: string;
+                                severity?: string;
+                        };
+
+                        expect(backlogFrontMatter.status).toBe("todo");
+                        expect(backlogFrontMatter.severity).toBeUndefined();
+
+                        const bugsDir = path.join(tempDir, "bugs");
+                        const bugEntries = await fs.readdir(bugsDir);
+                        const bugFileName = bugEntries[0];
+                        if (!bugFileName) {
+                                throw new Error("Expected bug schema to produce a file");
+                        }
+                        const bugFile = path.join(bugsDir, bugFileName);
+                        const bugContent = await fs.readFile(bugFile, "utf8");
+                        const bugFrontMatter = parseFrontMatter(bugContent).frontMatter as {
+                                title: string;
+                                severity: string;
+                                status?: string;
+                        };
+
+                        expect(bugFrontMatter.severity).toBe("high");
+                        expect(bugFrontMatter.status).toBeUndefined();
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
+
         it("applies template defaults and body when requested", async () => {
                 const tempDir = await setupWorkspace();
                 try {

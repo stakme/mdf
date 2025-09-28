@@ -43,7 +43,9 @@ export async function runValidateCommand(
 
         const invalid: ValidationIssue[] = [];
         for (const file of files) {
-                const validation = await validateFile(config, file);
+                const relative = path.relative(options.cwd, file);
+                const schemaEntry = config.getSchemaForRelativePath(relative);
+                const validation = await validateFile(schemaEntry.schema, file);
                 if (!validation.success) {
                         invalid.push({ filePath: file, messages: validation.messages });
                 }
@@ -62,7 +64,9 @@ export async function runFixCommand(
         const skipped: ValidationIssue[] = [];
 
         for (const file of files) {
-                const validation = await validateFile(config, file);
+                const relative = path.relative(options.cwd, file);
+                const schemaEntry = config.getSchemaForRelativePath(relative);
+                const validation = await validateFile(schemaEntry.schema, file);
                 if (validation.success) {
                         continue;
                 }
@@ -70,7 +74,7 @@ export async function runFixCommand(
                 try {
                         const document = await readMarkdownDocument(file);
                         const patched = applyDefaults(document.frontMatter, defaults);
-                        const parsed = await config.schema.safeParseAsync(patched);
+                        const parsed = await schemaEntry.schema.safeParseAsync(patched);
                         if (!parsed.success) {
                                 const messages = parsed.error.issues.map(formatZodIssue);
                                 skipped.push({ filePath: file, messages });
@@ -135,12 +139,12 @@ async function collectFiles(directory: string, extension: string): Promise<strin
 }
 
 async function validateFile(
-        config: LoadedConfig,
+        schema: z.ZodTypeAny,
         filePath: string,
 ): Promise<{ success: true } | { success: false; messages: string[] }> {
         try {
-                        const document = await readMarkdownDocument(filePath);
-                const parsed = await config.schema.safeParseAsync(document.frontMatter);
+                const document = await readMarkdownDocument(filePath);
+                const parsed = await schema.safeParseAsync(document.frontMatter);
                 if (parsed.success) {
                         const missing = findMissingFields(parsed.data, document.frontMatter);
                         if (missing.length > 0) {
