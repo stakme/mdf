@@ -18,4 +18,5 @@ export default defineConfig({
 `,
                 },
         },
+        default_template: "default",
 });

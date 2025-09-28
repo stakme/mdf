@@ -185,16 +185,18 @@ async function resolveTemplate(
         config: LoadedConfig,
         templateName?: string,
 ): Promise<TemplateDefinition<Record<string, unknown>> | undefined> {
-        if (!templateName) {
+        const resolvedName = templateName ?? config.default_template;
+
+        if (!resolvedName) {
                 return undefined;
         }
 
         const collection = config.templates;
-        const template = collection?.[templateName];
+        const template = collection?.[resolvedName];
         if (!template) {
                 throw new MarkdfmError(
                         "TEMPLATE_NOT_FOUND",
-                        `Template "${templateName}" not found in ${config.path}`,
+                        `Template "${resolvedName}" not found in ${config.path}`,
                 );
         }
 

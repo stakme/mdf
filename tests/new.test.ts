@@ -260,4 +260,62 @@ export default defineConfig({
                         await fs.rm(tempDir, { recursive: true, force: true });
                 }
         });
+
+        it("applies the configured default template when not specified", async () => {
+                const tempDir = await setupWorkspace({
+                        config: `import { defineConfig, z } from "markdfm/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                description: z.string(),
+                author: z.string(),
+                created_at: z
+                        .string()
+                        .datetime()
+                        .default(() => new Date().toISOString()),
+                updated_at: z
+                        .string()
+                        .datetime()
+                        .default(() => new Date().toISOString()),
+                tags: z.array(z.string()).default(() => []),
+        }),
+        templates: {
+                default: {
+                        frontmatter: {
+                                title: "[New Note] Title goes here",
+                                description: "Describe your note here",
+                        },
+                        body: ({ title, description }) =>
+                                "# " +
+                                title +
+                                "\\n\\n" +
+                                description +
+                                "\\n\\n## What I need\\n\\n## So I will create...",
+                },
+        },
+        default_template: "default",
+});`,
+                });
+                try {
+                        await execa(nodeBinary, [cliPath, "new", "notes"], { cwd: tempDir });
+
+                        const notesDir = path.join(tempDir, "notes");
+                        const entries = await fs.readdir(notesDir);
+                        const [firstEntry] = entries;
+                        if (!firstEntry) {
+                                throw new Error("Expected the command to create a file");
+                        }
+
+                        const createdFile = path.join(notesDir, firstEntry);
+                        const content = await fs.readFile(createdFile, "utf8");
+                        const { frontMatter, body } = parseFrontMatter(content);
+
+                        expect(frontMatter.title).toBe("[New Note] Title goes here");
+                        expect(frontMatter.description).toBe("Describe your note here");
+                        expect(body).toBe(`\n# [New Note] Title goes here\n\nDescribe your note here\n\n## What I need\n\n## So I will create...\n`);
+                } finally {
+                        await fs.rm(tempDir, { recursive: true, force: true });
+                }
+        });
 });

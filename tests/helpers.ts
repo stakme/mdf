@@ -12,13 +12,14 @@ export const nodeBinary =
 
 export async function setupWorkspace(options?: {
         localConfig?: string;
+        config?: string;
 }): Promise<string> {
         const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "markdfm-test-"));
         const configDir = path.join(tempDir, ".config");
         await fs.mkdir(configDir, { recursive: true });
 
         const configFile = path.join(configDir, "markdfm.mts");
-        const configSource = `import { defineConfig, z } from "markdfm/config";
+        const configSource = options?.config ?? `import { defineConfig, z } from "markdfm/config";
 
 export default defineConfig({
         schema: z.object({

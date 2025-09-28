@@ -36,6 +36,7 @@ export interface MarkdfmConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         ) => string | Promise<string>;
         extension?: string;
         templates?: Record<string, TemplateDefinition<z.infer<TSchema>>>;
+        default_template?: string;
 }
 
 export interface LoadedConfig<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
