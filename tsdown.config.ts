@@ -19,7 +19,6 @@ export default defineConfig([
 	{
 		entry: {
 			cli: "src/cli.mts",
-			"commands/viewer": "src/commands/viewer.mts",
 		},
 		format: "esm",
 		target: "node22",

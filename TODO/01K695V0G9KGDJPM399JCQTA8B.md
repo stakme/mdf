@@ -1,10 +1,10 @@
 ---
 title: Abandon viewer command
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-28T22:07:05.765Z
-updated_at: 2025-09-28T22:07:05.765Z
+updated_at: 2025-09-28T22:12:20.000Z
 ---
 
 # Abandon viewer command

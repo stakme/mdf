@@ -7,7 +7,6 @@ import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
 import { runUpdateCommand } from "./commands/update.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
-import { runViewerCommand } from "./commands/viewer.mts";
 import { MdfError } from "./errors.mts";
 
 async function bootstrap(): Promise<void> {
@@ -140,48 +139,6 @@ function createProgram(version: string): Command {
 					for (const line of result.lines) {
 						console.log(line);
 					}
-				} catch (error) {
-					handleError(error);
-				}
-			},
-		);
-
-	program
-		.command("viewer")
-		.description("Launch the interactive docs viewer")
-		.option(
-			"--filter <expression>",
-			"Filter entries by front matter values",
-			collectFilters,
-			[] as string[],
-		)
-		.option("--host <host>", "Host interface for the Astro dev server")
-		.option("--port <port>", "Port for the Astro dev server", parsePort)
-		.option("--open", "Open the site in the default browser")
-		.argument(
-			"[directory]",
-			"Directory containing Markdown files to serve",
-			"docs",
-		)
-		.action(
-			async (
-				directory: string,
-				command: {
-					filter?: string[];
-					host?: string;
-					port?: number;
-					open?: boolean;
-				},
-			) => {
-				try {
-					await runViewerCommand({
-						cwd: process.cwd(),
-						directory,
-						filters: command.filter ?? [],
-						host: command.host,
-						port: command.port,
-						open: command.open ?? false,
-					});
 				} catch (error) {
 					handleError(error);
 				}
@@ -325,17 +282,6 @@ function collectFrontMatter(value: string, previous: string[]): string[] {
 
 function collectFilters(value: string, previous: string[]): string[] {
 	return [...previous, value];
-}
-
-function parsePort(value: string): number {
-	const parsed = Number.parseInt(value, 10);
-	if (Number.isNaN(parsed) || parsed <= 0 || parsed >= 65536) {
-		throw new MdfError(
-			"INVALID_VIEWER_OPTION",
-			`Invalid port number: ${value}`,
-		);
-	}
-	return parsed;
 }
 
 function formatDisplayPath(filePath: string): string {
