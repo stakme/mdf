@@ -1047,7 +1047,7 @@ function renderFooter(document: ViewerDocument): string {
 		.join("");
 
 	return `<footer class="mt-12 rounded-lg border border-border bg-card/40 p-6">
-		<div class="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
+		<div class="flex flex-wrap items-center justify-between gap-2 pb-4">
 			<span class="text-sm font-medium text-muted-foreground">Front matter</span>
 			<span class="text-xs text-muted-foreground">${escapeHtml(document.displayPath)}</span>
 		</div>
