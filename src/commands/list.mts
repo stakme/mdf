@@ -1,7 +1,12 @@
 import path from "node:path";
 import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
-import { readMarkdownDocument } from "../front-matter.mts";
+import {
+	type MarkdownDocument,
+	readMarkdownDocument,
+} from "../front-matter.mts";
+import type { InvalidFileWarning } from "../types.mts";
+import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
 	matchesParsedFilter,
@@ -19,10 +24,12 @@ export interface ListCommandOptions {
 	virtualPathPrefix?: string;
 	filters?: readonly string[];
 	format?: string;
+	strict?: boolean;
 }
 
 export interface ListCommandResult {
 	lines: string[];
+	warnings: InvalidFileWarning[];
 }
 
 interface VirtualPathEntry {
@@ -88,9 +95,22 @@ export async function runListCommand(
 	const template = options.format;
 	const entries: VirtualPathEntry[] = [];
 	const formatted: string[] = [];
+	const warnings: InvalidFileWarning[] = [];
 
 	for (const filePath of files) {
-		const document = await readMarkdownDocument(filePath);
+		let document: MarkdownDocument;
+		try {
+			document = await readMarkdownDocument(filePath);
+		} catch (error) {
+			if (options.strict) {
+				throw error;
+			}
+			warnings.push({
+				filePath,
+				messages: [formatErrorMessage(error)],
+			});
+			continue;
+		}
 		const frontMatter = document.frontMatter;
 
 		if (
@@ -148,11 +168,11 @@ export async function runListCommand(
 	}
 
 	if (template) {
-		return { lines: formatted };
+		return { lines: formatted, warnings };
 	}
 
 	const tree = buildTree(entries);
-	return { lines: tree };
+	return { lines: tree, warnings };
 }
 
 function splitVirtualPath(value: string, separator: string): string[] {

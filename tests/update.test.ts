@@ -114,4 +114,51 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("warns and skips invalid files without failing by default", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+        }),
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		try {
+			const notesDir = path.join(tempDir, "notes");
+			await fs.mkdir(notesDir, { recursive: true });
+
+			const validPath = path.join(notesDir, "valid.md");
+			await fs.writeFile(validPath, `---\ntitle: Initial\n---\n`, "utf8");
+
+			const invalidPath = path.join(notesDir, "broken.md");
+			await fs.writeFile(invalidPath, "# Missing front matter\n", "utf8");
+
+			const result = await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"update",
+					"--fm",
+					"title=Updated",
+					path.relative(tempDir, validPath),
+					path.relative(tempDir, invalidPath),
+				],
+				{ cwd: tempDir, reject: false },
+			);
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("Updated ./notes/valid.md");
+			expect(result.stderr).toContain(
+				"Ignoring invalid Markdown file ./notes/broken.md: Front matter not found",
+			);
+
+			const fileContent = await fs.readFile(validPath, "utf8");
+			const { frontMatter } = parseFrontMatter<{ title: string }>(fileContent);
+			expect(frontMatter.title).toBe("Updated");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

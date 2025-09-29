@@ -244,4 +244,85 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("ignores invalid documents and records warnings by default", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "valid.md"),
+			`---\ntitle: Valid\nvpath: docs/valid\n---\n# Body`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "broken.md"),
+			"# Missing front matter\n",
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents).toHaveLength(1);
+			expect(context.documents[0]?.meta.title).toBe("Valid");
+			expect(context.warnings).toHaveLength(1);
+			const warning = context.warnings[0];
+			expect(warning?.filePath.endsWith("broken.md")).toBe(true);
+			expect(warning?.messages[0]).toContain("Front matter not found");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("throws in strict mode when encountering invalid documents", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		try {
+			const notesDir = path.join(tempDir, "notes");
+			await fs.mkdir(notesDir, { recursive: true });
+			await fs.writeFile(
+				path.join(notesDir, "broken.md"),
+				"# Missing front matter\n",
+				"utf8",
+			);
+
+			await expect(async () => {
+				await prepareViewerContext({
+					cwd: tempDir,
+					directory: "notes",
+					strict: true,
+				});
+			}).rejects.toThrow(/Front matter not found/);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

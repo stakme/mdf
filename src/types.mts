@@ -6,6 +6,11 @@ export interface DefaultsContext {
 	now: Date;
 }
 
+export interface InvalidFileWarning {
+	filePath: string;
+	messages: string[];
+}
+
 export interface ContentContext<TData> extends DefaultsContext {
 	data: TData;
 }

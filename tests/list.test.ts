@@ -231,6 +231,89 @@ export default defineConfig({
 		}
 	});
 
+	it("warns and ignores invalid markdown files by default", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "valid.md"),
+			`---\ntitle: Valid\nvpath: backlog\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "broken.md"),
+			"# Missing front matter\n",
+			"utf8",
+		);
+
+		try {
+			const result = await execa(nodeBinary, [cliPath, "list", "notes"], {
+				cwd: tempDir,
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.trim().split("\n")).toEqual([
+				"└── backlog",
+				"    └── Valid (./notes/valid.md)",
+			]);
+			expect(result.stderr).toContain(
+				"Ignoring invalid Markdown file ./notes/broken.md: Front matter not found",
+			);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("fails in strict mode when encountering invalid markdown files", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "broken.md"),
+			"# Missing front matter\n",
+			"utf8",
+		);
+
+		try {
+			const result = await execa(
+				nodeBinary,
+				[cliPath, "list", "--strict", "notes"],
+				{ cwd: tempDir, reject: false },
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Front matter not found");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("supports loose, prefix, and suffix filter operators", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 

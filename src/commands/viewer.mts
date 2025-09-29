@@ -8,13 +8,19 @@ import type { TokensList } from "marked";
 import { marked } from "marked";
 import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
-import { readMarkdownDocument } from "../front-matter.mts";
+import {
+	type MarkdownDocument,
+	readMarkdownDocument,
+} from "../front-matter.mts";
+import type { InvalidFileWarning } from "../types.mts";
+import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
 	matchesParsedFilter,
 	type ParsedFilter,
 	parseFilterExpression,
 } from "../utils/filters.mts";
+import { logInvalidFileWarnings } from "../utils/invalid-file-warning.mts";
 import {
 	formatDisplayPath,
 	formatRelativePath,
@@ -31,6 +37,7 @@ export interface ViewerCommandOptions {
 	virtualPathPrefix?: string;
 	port?: number;
 	host?: string;
+	strict?: boolean;
 }
 
 export interface ViewerDocument {
@@ -58,6 +65,7 @@ export interface ViewerContext {
 	defaultDocument: ViewerDocument;
 	virtualPathParam: string;
 	virtualPathSeparator: string;
+	warnings: InvalidFileWarning[];
 }
 
 export interface ViewerHeaderOption {
@@ -95,6 +103,7 @@ export async function runViewerCommand(
 	options: ViewerCommandOptions,
 ): Promise<void> {
 	let context = await prepareViewerContext(options);
+	logInvalidFileWarnings(context.warnings, options.cwd);
 	const appControls = createViewerApp(() => context);
 	const port = options.port ?? 4173;
 	const hostname = options.host ?? "127.0.0.1";
@@ -111,6 +120,7 @@ export async function runViewerCommand(
 		try {
 			const next = await prepareViewerContext(options);
 			context = next;
+			logInvalidFileWarnings(next.warnings, options.cwd);
 			appControls.notifyReload();
 		} catch (error) {
 			console.error("Failed to reload viewer after change:", error);
@@ -161,8 +171,21 @@ export async function prepareViewerContext(
 	const headerOptions = buildViewerHeaderOptions(options);
 
 	const documents: ViewerDocument[] = [];
+	const warnings: InvalidFileWarning[] = [];
 	for (const filePath of files) {
-		const document = await readMarkdownDocument(filePath);
+		let document: MarkdownDocument;
+		try {
+			document = await readMarkdownDocument(filePath);
+		} catch (error) {
+			if (options.strict) {
+				throw error;
+			}
+			warnings.push({
+				filePath,
+				messages: [formatErrorMessage(error)],
+			});
+			continue;
+		}
 		const frontMatter = document.frontMatter;
 
 		if (!matchesAllFilters(frontMatter, parsedFilters)) {
@@ -242,6 +265,7 @@ export async function prepareViewerContext(
 		defaultDocument,
 		virtualPathParam: virtualPathConfig.param,
 		virtualPathSeparator: separator,
+		warnings,
 	};
 }
 

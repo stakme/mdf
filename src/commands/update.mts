@@ -8,18 +8,20 @@ import {
 	serializeMarkdownDocument,
 } from "../front-matter.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
-import type { DefaultsValue } from "../types.mts";
+import type { DefaultsValue, InvalidFileWarning } from "../types.mts";
 
 export interface UpdateCommandOptions {
 	cwd: string;
 	files: string[];
 	frontMatterInputs: string[];
 	now?: Date;
+	strict?: boolean;
 }
 
 export interface UpdateCommandResult {
 	updated: string[];
 	skipped: UpdateIssue[];
+	warnings: InvalidFileWarning[];
 }
 
 export interface UpdateIssue {
@@ -56,6 +58,7 @@ export async function runUpdateCommand(
 
 	const updated: string[] = [];
 	const skipped: UpdateIssue[] = [];
+	const warnings: InvalidFileWarning[] = [];
 
 	for (const relativeFile of options.files) {
 		const filePath = path.resolve(options.cwd, relativeFile);
@@ -81,11 +84,20 @@ export async function runUpdateCommand(
 			updated.push(filePath);
 		} catch (error) {
 			const messages = normalizeErrorMessages(error);
+			if (isIgnorableFrontMatterError(error)) {
+				if (options.strict) {
+					skipped.push({ filePath, messages });
+				} else {
+					warnings.push({ filePath, messages });
+				}
+				continue;
+			}
+
 			skipped.push({ filePath, messages });
 		}
 	}
 
-	return { updated, skipped };
+	return { updated, skipped, warnings };
 }
 
 async function updateDocument(params: {
@@ -285,6 +297,14 @@ function normalizeErrorMessages(error: unknown): string[] {
 		return [error.message];
 	}
 	return [String(error)];
+}
+
+function isIgnorableFrontMatterError(error: unknown): boolean {
+	return (
+		error instanceof MdfError &&
+		(error.code === "FRONT_MATTER_NOT_FOUND" ||
+			error.code === "FRONT_MATTER_PARSE")
+	);
 }
 
 async function resolveDefaultsValue<TValue>(

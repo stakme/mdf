@@ -9,6 +9,7 @@ import { runUpdateCommand } from "./commands/update.mts";
 import { runFixCommand, runValidateCommand } from "./commands/validate.mts";
 import { runViewerCommand } from "./commands/viewer.mts";
 import { MdfError } from "./errors.mts";
+import { logInvalidFileWarnings } from "./utils/invalid-file-warning.mts";
 
 async function bootstrap(): Promise<void> {
 	const version = await readPackageVersion().catch(() => "0.0.0");
@@ -121,11 +122,17 @@ function createProgram(version: string): Command {
 			"--format <template>",
 			"Output template using {{field}} placeholders",
 		)
+		.option("--strict", "Treat invalid Markdown files as errors")
 		.argument("<directory>", "Directory containing Markdown files to list")
 		.action(
 			async (
 				directory: string,
-				command: { vpath?: string; filter?: string[]; format?: string },
+				command: {
+					vpath?: string;
+					filter?: string[];
+					format?: string;
+					strict?: boolean;
+				},
 			) => {
 				try {
 					const filters = command.filter ?? [];
@@ -135,10 +142,15 @@ function createProgram(version: string): Command {
 						virtualPathPrefix: command.vpath,
 						filters,
 						format: command.format,
+						strict: command.strict === true,
 					});
 
 					for (const line of result.lines) {
 						console.log(line);
+					}
+
+					if (result.warnings.length > 0) {
+						logInvalidFileWarnings(result.warnings, process.cwd());
 					}
 				} catch (error) {
 					handleError(error);
@@ -198,6 +210,7 @@ function createProgram(version: string): Command {
 			"Port to bind the viewer server (defaults to 4173)",
 		)
 		.option("--host <hostname>", "Hostname to bind the viewer server")
+		.option("--strict", "Treat invalid Markdown files as errors")
 		.argument("<directory>", "Directory containing Markdown files to render")
 		.action(
 			async (
@@ -207,6 +220,7 @@ function createProgram(version: string): Command {
 					filter?: string[];
 					port?: string;
 					host?: string;
+					strict?: boolean;
 				},
 			) => {
 				try {
@@ -220,6 +234,7 @@ function createProgram(version: string): Command {
 						virtualPathPrefix: command.vpath,
 						port,
 						host: command.host,
+						strict: command.strict === true,
 					});
 				} catch (error) {
 					handleError(error);
@@ -236,33 +251,41 @@ function createProgram(version: string): Command {
 			collectFrontMatter,
 			[] as string[],
 		)
+		.option("--strict", "Treat invalid Markdown files as errors")
 		.argument("<files...>", "Markdown files to update")
-		.action(async (files: string[], command: { fm?: string[] }) => {
-			try {
-				const fmInputs = command.fm ?? [];
-				const result = await runUpdateCommand({
-					cwd: process.cwd(),
-					files,
-					frontMatterInputs: fmInputs,
-				});
+		.action(
+			async (files: string[], command: { fm?: string[]; strict?: boolean }) => {
+				try {
+					const fmInputs = command.fm ?? [];
+					const result = await runUpdateCommand({
+						cwd: process.cwd(),
+						files,
+						frontMatterInputs: fmInputs,
+						strict: command.strict === true,
+					});
 
-				for (const filePath of result.updated) {
-					console.log(`Updated ${formatDisplayPath(filePath)}`);
-				}
-
-				if (result.skipped.length > 0) {
-					for (const entry of result.skipped) {
-						const displayPath = formatDisplayPath(entry.filePath);
-						for (const message of entry.messages) {
-							console.error(`${displayPath}: ${message}`);
-						}
+					for (const filePath of result.updated) {
+						console.log(`Updated ${formatDisplayPath(filePath)}`);
 					}
-					process.exitCode = 1;
+
+					if (result.warnings.length > 0) {
+						logInvalidFileWarnings(result.warnings, process.cwd());
+					}
+
+					if (result.skipped.length > 0) {
+						for (const entry of result.skipped) {
+							const displayPath = formatDisplayPath(entry.filePath);
+							for (const message of entry.messages) {
+								console.error(`${displayPath}: ${message}`);
+							}
+						}
+						process.exitCode = 1;
+					}
+				} catch (error) {
+					handleError(error);
 				}
-			} catch (error) {
-				handleError(error);
-			}
-		});
+			},
+		);
 
 	program
 		.command("run")
