@@ -76,6 +76,12 @@ export default defineConfig({
 			expect(html).toContain("Front matter");
 			expect(html).toMatch(/status[\s\S]*todo/);
 			expect(html).toMatch(/vpath[\s\S]*docs\/alpha/);
+			expect(html).toMatch(
+				/Filter<\/span><span class="font-mono leading-none normal-case">status=todo<\/span>/,
+			);
+			expect(html).toMatch(
+				/Virtual Path<\/span><span class="font-mono leading-none normal-case">docs<\/span>/,
+			);
 			expect(html).toContain('EventSource("/events")');
 			expect(html).not.toContain("Beta");
 		} finally {

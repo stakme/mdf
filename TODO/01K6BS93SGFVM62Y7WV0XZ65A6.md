@@ -1,10 +1,10 @@
 ---
 title: Show enabled options in viewer
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T22:25:19.693Z
-updated_at: 2025-09-29T22:25:19.694Z
+updated_at: 2025-09-29T22:36:02Z
 ---
 
 # Show enabled options in viewer

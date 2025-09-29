@@ -51,12 +51,18 @@ export interface ViewerContext {
 	cwd: string;
 	directory: string;
 	directoryLabel: string;
+	headerOptions: ViewerHeaderOption[];
 	documents: ViewerDocument[];
 	documentMap: Map<string, ViewerDocument>;
 	navigation: ViewerNavigationDirectory;
 	defaultDocument: ViewerDocument;
 	virtualPathParam: string;
 	virtualPathSeparator: string;
+}
+
+export interface ViewerHeaderOption {
+	label: string;
+	value: string;
 }
 
 export interface ViewerNavigationDirectory {
@@ -152,6 +158,7 @@ export async function prepareViewerContext(
 	const prefixSegments = options.virtualPathPrefix?.length
 		? splitVirtualPathInput(options.virtualPathPrefix, separator)
 		: undefined;
+	const headerOptions = buildViewerHeaderOptions(options);
 
 	const documents: ViewerDocument[] = [];
 	for (const filePath of files) {
@@ -228,6 +235,7 @@ export async function prepareViewerContext(
 		cwd: options.cwd,
 		directory: resolvedDirectory,
 		directoryLabel: formatDisplayPath(resolvedDirectory, options.cwd),
+		headerOptions,
 		documents,
 		documentMap,
 		navigation,
@@ -240,6 +248,36 @@ export async function prepareViewerContext(
 interface ViewerAppControls {
 	app: Hono;
 	notifyReload(): void;
+}
+
+function buildViewerHeaderOptions(
+	options: ViewerCommandOptions,
+): ViewerHeaderOption[] {
+	const items: ViewerHeaderOption[] = [];
+
+	for (const rawFilter of options.filters ?? []) {
+		const filter = rawFilter.trim();
+		if (filter.length === 0) {
+			continue;
+		}
+		items.push({ label: "Filter", value: filter });
+	}
+
+	const virtualPathPrefix = options.virtualPathPrefix?.trim();
+	if (virtualPathPrefix && virtualPathPrefix.length > 0) {
+		items.push({ label: "Virtual Path", value: virtualPathPrefix });
+	}
+
+	if (typeof options.port === "number" && Number.isFinite(options.port)) {
+		items.push({ label: "Port", value: String(options.port) });
+	}
+
+	const host = options.host?.trim();
+	if (host && host.length > 0) {
+		items.push({ label: "Host", value: host });
+	}
+
+	return items;
 }
 
 export function createViewerApp(
@@ -533,6 +571,7 @@ export function renderViewerHtml(
 	const descriptionHtml = document.meta.description
 		? `<p class="text-base text-muted-foreground">${escapeHtml(document.meta.description)}</p>`
 		: "";
+	const headerOptionsHtml = renderHeaderOptions(context.headerOptions);
 	const hotReloadScript = `
 <script>
 (function () {
@@ -547,6 +586,8 @@ export function renderViewerHtml(
 })();
 </script>`;
 
+	const directoryLabelHtml = escapeHtml(context.directoryLabel);
+
 	return `<!DOCTYPE html>
 <html lang="en" class="dark" data-theme="dark">
 <head>
@@ -560,11 +601,16 @@ export function renderViewerHtml(
 <body class="min-h-screen bg-background text-foreground">
 <div class="flex min-h-screen flex-col">
 	<header class="border-b border-border bg-card/60 backdrop-blur">
-		<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-			<span class="text-lg font-semibold tracking-tight">mdf viewer</span>
-			<span class="text-xs text-muted-foreground">${escapeHtml(context.directoryLabel)}</span>
-		</div>
-	</header>
+		<div class="mx-auto w-full max-w-6xl px-6 py-4">
+				<div class="flex flex-wrap items-center justify-between gap-4">
+					<span class="text-lg font-semibold tracking-tight">mdf viewer</span>
+					<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+						<span class="truncate">${directoryLabelHtml}</span>
+						${headerOptionsHtml}
+					</div>
+				</div>
+			</div>
+		</header>
         <div class="flex flex-1">
                 <aside class="hidden w-72 border-r border-border bg-muted/40 lg:block">
                         <nav class="h-full overflow-y-auto px-4 py-6">
@@ -589,6 +635,20 @@ export function renderViewerHtml(
 ${hotReloadScript}
 </body>
 </html>`;
+}
+
+function renderHeaderOptions(options: readonly ViewerHeaderOption[]): string {
+	if (!options.length) {
+		return "";
+	}
+
+	return options
+		.map(({ label, value }) => {
+			const labelText = escapeHtml(label);
+			const valueText = escapeHtml(value);
+			return `<span class="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-1 text-[0.65rem] text-muted-foreground"><span class="font-semibold uppercase tracking-wide">${labelText}</span><span class="font-mono leading-none normal-case">${valueText}</span></span>`;
+		})
+		.join("");
 }
 
 async function enableHotReload(
