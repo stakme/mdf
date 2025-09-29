@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	createViewerApp,
 	prepareViewerContext,
 	renderViewerHtml,
 } from "../src/commands/viewer.mts";
@@ -116,6 +117,58 @@ export default defineConfig({
 			const doc = context.documents[0];
 			expect(doc.meta.title).toBe("Alpha");
 			expect(doc.html).toMatch(/<h1[^>]*>Different heading<\/h1>/);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("serves relative images referenced in markdown", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		const imagePath = path.join(notesDir, "diagram.png");
+		const imageBuffer = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+		await fs.writeFile(
+			path.join(notesDir, "gamma.md"),
+			`---\ntitle: Gamma\nvpath: docs/gamma\n---\n![Diagram](./diagram.png)`,
+			"utf8",
+		);
+		await fs.writeFile(imagePath, imageBuffer);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const doc = context.documents[0];
+			const imageMatch = doc.html.match(/<img[^>]+src="([^"]+)"/u);
+			expect(imageMatch?.[1]).toBeDefined();
+			const assetPath = imageMatch?.[1];
+			expect(assetPath).toBe(
+				`/documents/${encodeURIComponent(doc.id)}/assets/diagram.png`,
+			);
+
+			const { app } = createViewerApp(() => context);
+			const response = await app.request(`http://localhost${assetPath ?? ""}`);
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get("content-type")).toBe("image/png");
+			const responseBuffer = Buffer.from(await response.arrayBuffer());
+			expect(responseBuffer.equals(imageBuffer)).toBe(true);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

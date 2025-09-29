@@ -181,8 +181,10 @@ export async function prepareViewerContext(
 			virtualPathSeparator: separator,
 		});
 
-		const html = renderDocumentMarkdown(document.body, meta.title);
 		const id = encodeDocumentId(relativePath);
+		const html = renderDocumentMarkdown(document.body, meta.title, {
+			assetBaseUrl: buildDocumentAssetBaseUrl(id),
+		});
 		const navigationSegments = segments.length
 			? [...segments]
 			: slugSegments(meta.routePath);
@@ -263,6 +265,47 @@ export function createViewerApp(
 		return c.html(renderViewerHtml(context, document));
 	});
 
+	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
+		const context = getContext();
+		const document = context.documentMap.get(c.req.param("id"));
+		if (!document) {
+			return c.json({ error: "Not Found" }, 404);
+		}
+
+		const requestedPath = c.req.param("assetPath") ?? "";
+		const assetPath = resolveDocumentAssetPath(
+			document.filePath,
+			requestedPath,
+			context.directory,
+		);
+
+		if (!assetPath) {
+			return c.json({ error: "Not Found" }, 404);
+		}
+
+		try {
+			const stats = await fs.stat(assetPath);
+			if (!stats.isFile()) {
+				return c.json({ error: "Not Found" }, 404);
+			}
+
+			const contents = await fs.readFile(assetPath);
+			const arrayBuffer = (contents.buffer as ArrayBuffer).slice(
+				contents.byteOffset,
+				contents.byteOffset + contents.byteLength,
+			);
+			return c.newResponse(arrayBuffer, 200, {
+				"Content-Type": determineContentType(assetPath),
+				"Cache-Control": "no-cache",
+			});
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+				return c.json({ error: "Not Found" }, 404);
+			}
+			throw error;
+		}
+	});
+
 	app.get("/documents/:id", (c) => {
 		const context = getContext();
 		const document = context.documentMap.get(c.req.param("id"));
@@ -329,14 +372,100 @@ export function createViewerApp(
 	return { app, notifyReload: broadcastReload };
 }
 
+interface RenderDocumentMarkdownOptions {
+	assetBaseUrl?: string;
+}
+
 function renderDocumentMarkdown(
 	markdown: string,
 	title: string | null,
+	options: RenderDocumentMarkdownOptions = {},
 ): string {
 	const tokens = marked.lexer(markdown);
 	stripLeadingTitleHeading(tokens, title);
+	if (options.assetBaseUrl) {
+		rewriteDocumentAssetTokens(tokens, options.assetBaseUrl);
+	}
 	const rendered = marked.parser(tokens);
 	return typeof rendered === "string" ? rendered : String(rendered);
+}
+
+function rewriteDocumentAssetTokens(
+	tokens: TokensList,
+	assetBaseUrl: string,
+): void {
+	marked.walkTokens(tokens, (token) => {
+		if (token.type === "image") {
+			token.href = rewriteRelativeAssetHref(token.href, assetBaseUrl);
+		}
+	});
+}
+
+function rewriteRelativeAssetHref(
+	href: string | null | undefined,
+	baseUrl: string,
+): string {
+	if (href === null || href === undefined) {
+		return "";
+	}
+
+	const trimmed = href.trim();
+	if (!trimmed) {
+		return trimmed;
+	}
+
+	if (trimmed.startsWith("#")) {
+		return trimmed;
+	}
+
+	if (trimmed.startsWith("//")) {
+		return trimmed;
+	}
+
+	if (trimmed.startsWith("/")) {
+		return trimmed;
+	}
+
+	if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/u.test(trimmed)) {
+		return trimmed;
+	}
+
+	const { path: pathPart, suffix } = splitHref(trimmed);
+	const encodedSegments: string[] = [];
+	for (const segment of pathPart.split("/")) {
+		if (!segment || segment === ".") {
+			continue;
+		}
+
+		if (segment === "..") {
+			encodedSegments.push(segment);
+			continue;
+		}
+
+		encodedSegments.push(encodeURIComponent(segment));
+	}
+
+	const encodedPath = encodedSegments.join("/");
+	return `${baseUrl}${encodedPath}${suffix}`;
+}
+
+function splitHref(value: string): { path: string; suffix: string } {
+	let pathPart = value;
+	let suffix = "";
+
+	const hashIndex = pathPart.indexOf("#");
+	if (hashIndex >= 0) {
+		suffix = pathPart.slice(hashIndex);
+		pathPart = pathPart.slice(0, hashIndex);
+	}
+
+	const queryIndex = pathPart.indexOf("?");
+	if (queryIndex >= 0) {
+		suffix = pathPart.slice(queryIndex) + suffix;
+		pathPart = pathPart.slice(0, queryIndex);
+	}
+
+	return { path: pathPart, suffix };
 }
 
 function stripLeadingTitleHeading(
@@ -664,6 +793,59 @@ function slugSegments(slug: string): string[] {
 
 function encodeDocumentId(relativePath: string): string {
 	return Buffer.from(relativePath).toString("base64url");
+}
+
+function buildDocumentAssetBaseUrl(documentId: string): string {
+	return `/documents/${encodeURIComponent(documentId)}/assets/`;
+}
+
+function resolveDocumentAssetPath(
+	documentPath: string,
+	requestedPath: string,
+	rootDirectory: string,
+): string | null {
+	const documentDirectory = path.dirname(documentPath);
+	const normalizedRequest = requestedPath.replace(/\\/gu, "/");
+	const resolved = path.resolve(documentDirectory, normalizedRequest);
+	if (!isPathWithinRoot(resolved, rootDirectory)) {
+		return null;
+	}
+	return resolved;
+}
+
+function isPathWithinRoot(targetPath: string, rootDirectory: string): boolean {
+	const relative = path.relative(
+		path.resolve(rootDirectory),
+		path.resolve(targetPath),
+	);
+	return (
+		relative === "" ||
+		(!relative.startsWith("..") && !path.isAbsolute(relative))
+	);
+}
+
+function determineContentType(filePath: string): string {
+	switch (path.extname(filePath).toLowerCase()) {
+		case ".png":
+			return "image/png";
+		case ".jpg":
+		case ".jpeg":
+			return "image/jpeg";
+		case ".gif":
+			return "image/gif";
+		case ".svg":
+			return "image/svg+xml";
+		case ".webp":
+			return "image/webp";
+		case ".avif":
+			return "image/avif";
+		case ".bmp":
+			return "image/bmp";
+		case ".ico":
+			return "image/x-icon";
+		default:
+			return "application/octet-stream";
+	}
 }
 
 function buildNavigation(

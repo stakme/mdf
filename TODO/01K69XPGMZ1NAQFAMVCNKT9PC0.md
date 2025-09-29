@@ -1,11 +1,11 @@
 ---
 title: Show Images in Viewer
 vpath: backlog/development
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T05:04:04.285Z
-updated_at: 2025-09-29T05:04:04.286Z
+updated_at: 2025-09-29T05:28:43.713Z
 ---
 
 # Show Images in Viewer
