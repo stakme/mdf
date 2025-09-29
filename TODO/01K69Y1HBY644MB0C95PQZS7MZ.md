@@ -11,8 +11,9 @@ updated_at: 2025-09-29T05:10:05.469Z
 
 ## What I need
 
-Current `viewer` command only shows nested vpath with depth 2 and I cannot
-recognize the vpath depth > 2.
+In HTML output, Current `viewer` command only shows nested vpath with depth 2
+and I cannot recognize the vpath depth > 2. But I want to user deeper vpath
+structure.
 
 ## So I will create...
 
@@ -20,3 +21,4 @@ recognize the vpath depth > 2.
 
 - display nested vpath unless it exceeds 6 levels
 - Collapse nested vpath
+- Follow the style in this image ![alt](./01K69Y1HBY644MB0C95PQZS7MZ/image.png)
