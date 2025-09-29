@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { type ServerType, serve } from "@hono/node-server";
 import { Hono } from "hono";
+import type { TokensList } from "marked";
 import { marked } from "marked";
 import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
@@ -180,8 +181,7 @@ export async function prepareViewerContext(
 			virtualPathSeparator: separator,
 		});
 
-		const rendered = marked.parse(document.body);
-		const html = typeof rendered === "string" ? rendered : String(rendered);
+		const html = renderDocumentMarkdown(document.body, meta.title);
 		const id = encodeDocumentId(relativePath);
 		const navigationSegments = segments.length
 			? [...segments]
@@ -327,6 +327,71 @@ export function createViewerApp(
 	});
 
 	return { app, notifyReload: broadcastReload };
+}
+
+function renderDocumentMarkdown(
+	markdown: string,
+	title: string | null,
+): string {
+	const tokens = marked.lexer(markdown);
+	stripLeadingTitleHeading(tokens, title);
+	const rendered = marked.parser(tokens);
+	return typeof rendered === "string" ? rendered : String(rendered);
+}
+
+function stripLeadingTitleHeading(
+	tokens: TokensList,
+	title: string | null,
+): void {
+	const normalizedTitle = normalizeHeadingComparisonValue(title);
+	if (!normalizedTitle) {
+		return;
+	}
+
+	for (let index = 0; index < tokens.length; index += 1) {
+		const token = tokens[index];
+		if (!token) {
+			break;
+		}
+
+		if (token.type === "space") {
+			continue;
+		}
+
+		if (token.type === "heading" && token.depth === 1) {
+			const normalizedHeading = normalizeHeadingComparisonValue(token.text);
+			if (normalizedHeading === normalizedTitle) {
+				tokens.splice(index, 1);
+				removeLeadingSpaceTokens(tokens, index);
+			}
+		}
+
+		break;
+	}
+}
+
+function removeLeadingSpaceTokens(
+	tokens: TokensList,
+	startIndex: number,
+): void {
+	while (startIndex < tokens.length && tokens[startIndex]?.type === "space") {
+		tokens.splice(startIndex, 1);
+	}
+}
+
+function normalizeHeadingComparisonValue(
+	value: string | null | undefined,
+): string | null {
+	if (!value) {
+		return null;
+	}
+
+	const collapsed = value.replace(/\s+/gu, " ").trim();
+	if (!collapsed) {
+		return null;
+	}
+
+	return collapsed.toLowerCase();
 }
 
 export function renderViewerHtml(

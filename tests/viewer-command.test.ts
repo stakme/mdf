@@ -51,7 +51,8 @@ export default defineConfig({
 			const doc = context.documents[0];
 			expect(doc.meta.title).toBe("Alpha");
 			expect(doc.meta.routePath).toBe("docs/alpha");
-			expect(doc.html).toContain("<h1");
+			expect(doc.html).not.toContain("<h1>Alpha</h1>");
+			expect(doc.html).toMatch(/<p>Content<\/p>/);
 
 			expect(context.navigation.children).toHaveLength(1);
 			const firstNode = context.navigation.children[0];
@@ -76,6 +77,45 @@ export default defineConfig({
 			expect(html).toMatch(/vpath[\s\S]*docs\/alpha/);
 			expect(html).toContain('EventSource("/events")');
 			expect(html).not.toContain("Beta");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps leading heading when it does not match the front matter title", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "delta.md"),
+			`---\ntitle: Alpha\nvpath: docs/delta\n---\n# Different heading\n\nBody`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents).toHaveLength(1);
+			const doc = context.documents[0];
+			expect(doc.meta.title).toBe("Alpha");
+			expect(doc.html).toMatch(/<h1[^>]*>Different heading<\/h1>/);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
