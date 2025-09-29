@@ -1,5 +1,6 @@
 ---
 title: Show Images in Viewer
+vpath: backlog/development
 status: todo
 author: "@stakme"
 tags: []
