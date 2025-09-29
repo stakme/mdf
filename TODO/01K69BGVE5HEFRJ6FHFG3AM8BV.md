@@ -1,6 +1,6 @@
 ---
 title: Hot reload viewer
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-28T23:46:24.354Z

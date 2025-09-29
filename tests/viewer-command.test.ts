@@ -74,6 +74,7 @@ export default defineConfig({
 			expect(html).toContain("Front matter");
 			expect(html).toMatch(/status[\s\S]*todo/);
 			expect(html).toMatch(/vpath[\s\S]*docs\/alpha/);
+			expect(html).toContain('EventSource("/events")');
 			expect(html).not.toContain("Beta");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });

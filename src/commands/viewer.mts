@@ -1,3 +1,5 @@
+import type { FSWatcher } from "node:fs";
+import { promises as fs, watch as watchDirectory } from "node:fs";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { type ServerType, serve } from "@hono/node-server";
@@ -85,20 +87,34 @@ interface MutableDirectoryNode {
 export async function runViewerCommand(
 	options: ViewerCommandOptions,
 ): Promise<void> {
-	const context = await prepareViewerContext(options);
-	const app = createViewerApp(context);
+	let context = await prepareViewerContext(options);
+	const appControls = createViewerApp(() => context);
 	const port = options.port ?? 4173;
 	const hostname = options.host ?? "127.0.0.1";
 
 	const server = serve(
-		{ fetch: app.fetch, port, hostname },
+		{ fetch: appControls.app.fetch, port, hostname },
 		(info: AddressInfo) => {
 			const hostLabel = formatAddress(info);
 			console.log(`Viewer running at http://${hostLabel}`);
 		},
 	);
 
-	await waitForShutdown(server);
+	const stopWatching = await enableHotReload(context.directory, async () => {
+		try {
+			const next = await prepareViewerContext(options);
+			context = next;
+			appControls.notifyReload();
+		} catch (error) {
+			console.error("Failed to reload viewer after change:", error);
+		}
+	});
+
+	try {
+		await waitForShutdown(server);
+	} finally {
+		await stopWatching();
+	}
 }
 
 export async function prepareViewerContext(
@@ -219,10 +235,27 @@ export async function prepareViewerContext(
 	};
 }
 
-export function createViewerApp(context: ViewerContext): Hono {
+interface ViewerAppControls {
+	app: Hono;
+	notifyReload(): void;
+}
+
+export function createViewerApp(
+	getContext: () => ViewerContext,
+): ViewerAppControls {
 	const app = new Hono();
+	const reloadListeners = new Set<() => boolean>();
+
+	function broadcastReload(): void {
+		for (const listener of [...reloadListeners]) {
+			if (!listener()) {
+				reloadListeners.delete(listener);
+			}
+		}
+	}
 
 	app.get("/", (c) => {
+		const context = getContext();
 		const requestedId = c.req.query("doc");
 		const document = requestedId
 			? (context.documentMap.get(requestedId) ?? context.defaultDocument)
@@ -231,6 +264,7 @@ export function createViewerApp(context: ViewerContext): Hono {
 	});
 
 	app.get("/documents/:id", (c) => {
+		const context = getContext();
 		const document = context.documentMap.get(c.req.param("id"));
 		if (!document) {
 			return c.json({ error: "Not Found" }, 404);
@@ -251,7 +285,48 @@ export function createViewerApp(context: ViewerContext): Hono {
 		});
 	});
 
-	return app;
+	app.get("/events", (c) => {
+		const encoder = new TextEncoder();
+		let closed = false;
+		let removeListener: (() => void) | null = null;
+
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				const send = (message: string): boolean => {
+					if (closed) {
+						return false;
+					}
+
+					try {
+						controller.enqueue(encoder.encode(message));
+						return true;
+					} catch {
+						closed = true;
+						return false;
+					}
+				};
+
+				send(": connected\n\n");
+				send("retry: 2000\n\n");
+
+				const listener = (): boolean => send("event: reload\ndata: {}\n\n");
+				reloadListeners.add(listener);
+				removeListener = () => reloadListeners.delete(listener);
+			},
+			cancel() {
+				closed = true;
+				removeListener?.();
+			},
+		});
+
+		return c.newResponse(stream, 200, {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-cache",
+			Connection: "keep-alive",
+		});
+	});
+
+	return { app, notifyReload: broadcastReload };
 }
 
 export function renderViewerHtml(
@@ -264,6 +339,19 @@ export function renderViewerHtml(
 	const descriptionHtml = document.meta.description
 		? `<p class="text-base text-muted-foreground">${escapeHtml(document.meta.description)}</p>`
 		: "";
+	const hotReloadScript = `
+<script>
+(function () {
+        if (!("EventSource" in window)) {
+                return;
+        }
+
+        var source = new EventSource("/events");
+        source.addEventListener("reload", function () {
+                window.location.reload();
+        });
+})();
+</script>`;
 
 	return `<!DOCTYPE html>
 <html lang="en" class="dark" data-theme="dark">
@@ -283,11 +371,11 @@ export function renderViewerHtml(
 			<span class="text-xs text-muted-foreground">${escapeHtml(context.directoryLabel)}</span>
 		</div>
 	</header>
-	<div class="flex flex-1">
-		<aside class="hidden w-72 border-r border-border bg-muted/40 lg:block">
-			<nav class="h-full overflow-y-auto px-4 py-6">
-				${navigationHtml}
-			</nav>
+        <div class="flex flex-1">
+                <aside class="hidden w-72 border-r border-border bg-muted/40 lg:block">
+                        <nav class="h-full overflow-y-auto px-4 py-6">
+                                ${navigationHtml}
+                        </nav>
 		</aside>
 		<main class="flex-1 overflow-y-auto">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
@@ -302,10 +390,140 @@ export function renderViewerHtml(
 				${renderFooter(document)}
 			</div>
 		</main>
-	</div>
+        </div>
 </div>
+${hotReloadScript}
 </body>
 </html>`;
+}
+
+async function enableHotReload(
+	rootDirectory: string,
+	onChange: () => Promise<void>,
+): Promise<() => Promise<void>> {
+	const normalizedRoot = path.resolve(rootDirectory);
+	const watchers = new Map<string, FSWatcher>();
+	let disposed = false;
+	let scheduled = false;
+	let running = false;
+	let rerun = false;
+
+	const schedule = (): void => {
+		if (disposed) {
+			return;
+		}
+
+		if (running) {
+			rerun = true;
+			return;
+		}
+
+		if (scheduled) {
+			return;
+		}
+
+		scheduled = true;
+		const timer = setTimeout(async () => {
+			scheduled = false;
+			if (disposed) {
+				return;
+			}
+
+			running = true;
+			try {
+				await onChange();
+			} finally {
+				running = false;
+				if (rerun) {
+					rerun = false;
+					schedule();
+				}
+			}
+		}, 75);
+
+		if (typeof timer === "object" && typeof timer.unref === "function") {
+			timer.unref();
+		}
+	};
+
+	const ensureChildWatcher = async (target: string): Promise<void> => {
+		if (disposed) {
+			return;
+		}
+
+		try {
+			const stats = await fs.stat(target);
+			if (stats.isDirectory()) {
+				await registerWatcher(path.resolve(target));
+			}
+		} catch {
+			// Ignore race conditions where the path was removed before we could inspect it.
+		}
+	};
+
+	const registerWatcher = async (directory: string): Promise<void> => {
+		if (disposed || watchers.has(directory)) {
+			return;
+		}
+
+		let watcher: FSWatcher;
+		try {
+			watcher = watchDirectory(directory, (_eventType, filename) => {
+				if (disposed) {
+					return;
+				}
+
+				if (filename) {
+					const childPath = path.join(directory, filename.toString());
+					void ensureChildWatcher(childPath);
+				}
+
+				schedule();
+			});
+		} catch (error) {
+			console.error(`Failed to watch ${directory}:`, error);
+			return;
+		}
+
+		watchers.set(directory, watcher);
+
+		watcher.on("error", (error: NodeJS.ErrnoException) => {
+			if (disposed) {
+				return;
+			}
+
+			const code = error?.code;
+			if (code === "ENOENT" || code === "EACCES") {
+				return;
+			}
+
+			console.error(`Viewer watcher error for ${directory}:`, error);
+		});
+
+		try {
+			const entries = await fs.readdir(directory, { withFileTypes: true });
+			for (const entry of entries) {
+				if (entry.isDirectory()) {
+					const childDirectory = path.join(directory, entry.name);
+					await registerWatcher(childDirectory);
+				}
+			}
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException | undefined)?.code;
+			if (code !== "ENOENT" && code !== "EACCES") {
+				console.error(`Failed to read directory ${directory}:`, error);
+			}
+		}
+	};
+
+	await registerWatcher(normalizedRoot);
+
+	return async () => {
+		disposed = true;
+		for (const watcher of watchers.values()) {
+			watcher.close();
+		}
+	};
 }
 
 function matchesAllFilters(
