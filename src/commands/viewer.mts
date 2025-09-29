@@ -917,6 +917,8 @@ function freezeDirectory(
 	};
 }
 
+const MAX_NAVIGATION_DEPTH = 6;
+
 function renderNavigation(
 	node: ViewerNavigationDirectory,
 	activeId: string,
@@ -926,46 +928,102 @@ function renderNavigation(
 	}
 
 	const items = node.children
-		.map((child) => renderNavigationNode(child, activeId, 0))
+		.map((child) => renderNavigationNode(child, activeId, 0, []))
+		.filter((child) => child.length > 0)
 		.join("");
-	return `<ul class="space-y-1">${items}</ul>`;
+	return `<ul class="space-y-1" data-viewer-nav="tree">${items}</ul>`;
 }
 
 function renderNavigationNode(
 	node: ViewerNavigationNode,
 	activeId: string,
 	depth: number,
+	path: readonly string[],
 ): string {
-	if (node.type === "dir") {
-		const label = node.name
-			? `<div class="${navIndent(depth)} px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">${escapeHtml(node.name)}</div>`
-			: "";
-		const children = node.children
-			.map((child) => renderNavigationNode(child, activeId, depth + 1))
-			.join("");
-		return `<li class="space-y-1">${label}${children ? `<ul class="space-y-1">${children}</ul>` : ""}</li>`;
+	return node.type === "dir"
+		? renderNavigationDirectory(node, activeId, depth, path)
+		: renderNavigationFile(node, activeId, depth);
+}
+
+function renderNavigationDirectory(
+	node: ViewerNavigationDirectory,
+	activeId: string,
+	depth: number,
+	path: readonly string[],
+): string {
+	const name = node.name || "Untitled";
+	const fullPath = node.name ? [...path, node.name] : path;
+	const containsActive = directoryContainsDocument(node, activeId);
+	const hasChildren = node.children.length > 0;
+	const nextDepth = depth + 1;
+	const canRenderChildren = nextDepth <= MAX_NAVIGATION_DEPTH;
+	const dataPath = fullPath.length
+		? ` data-viewer-nav-path="${escapeHtml(fullPath.join("/"))}"`
+		: "";
+
+	if (!hasChildren) {
+		return `<li data-viewer-nav-node="dir" data-viewer-nav-depth="${depth}"${dataPath}>
+			<div class="rounded-md px-2 py-1 text-sm font-medium text-muted-foreground">${escapeHtml(name)}</div>
+		</li>`;
 	}
 
+	let bodyHtml: string;
+	if (!canRenderChildren) {
+		bodyHtml = `<div class="mt-2 rounded-md border border-border/40 bg-card/40 px-2 py-2 text-xs text-muted-foreground">Nested levels deeper than ${MAX_NAVIGATION_DEPTH} are hidden.</div>`;
+	} else {
+		const childItems = node.children
+			.map((child) =>
+				renderNavigationNode(child, activeId, nextDepth, fullPath),
+			)
+			.filter((child) => child.length > 0)
+			.join("");
+		bodyHtml = childItems.length
+			? `<ul class="mt-1 space-y-1 border-l border-border/40 pl-3" data-viewer-nav-depth="${nextDepth}">${childItems}</ul>`
+			: `<div class="mt-1 pl-3 text-xs text-muted-foreground">No entries</div>`;
+	}
+
+	const openAttribute = containsActive ? " open" : "";
+	const chevronIcon = `<svg class="h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
+	const summaryClasses = containsActive
+		? "flex list-none items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+		: "flex list-none items-center justify-between gap-2 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
+
+	return `<li data-viewer-nav-node="dir" data-viewer-nav-depth="${depth}"${dataPath}>
+		<details class="group"${openAttribute}>
+			<summary class="${summaryClasses}">
+				<span class="truncate">${escapeHtml(name)}</span>
+				${chevronIcon}
+			</summary>
+			${bodyHtml}
+		</details>
+	</li>`;
+}
+
+function renderNavigationFile(
+	node: ViewerNavigationFile,
+	activeId: string,
+	depth: number,
+): string {
 	const isActive = node.documentId === activeId;
 	const variant = isActive
 		? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
 		: "text-muted-foreground hover:bg-muted hover:text-foreground";
-	return `<li><a class="block rounded-md px-2 py-1 text-sm transition-colors ${navIndent(depth)} ${variant}" href="/?doc=${encodeURIComponent(node.documentId)}">${escapeHtml(node.name)}</a></li>`;
+	return `<li data-viewer-nav-node="file" data-viewer-nav-depth="${depth}"><a class="block rounded-md px-2 py-1 text-sm transition-colors ${variant}" href="/?doc=${encodeURIComponent(node.documentId)}">${escapeHtml(node.name)}</a></li>`;
 }
 
-function navIndent(depth: number): string {
-	switch (depth) {
-		case 0:
-			return "";
-		case 1:
-			return "pl-4";
-		case 2:
-			return "pl-6";
-		case 3:
-			return "pl-8";
-		default:
-			return "pl-10";
+function directoryContainsDocument(
+	node: ViewerNavigationDirectory,
+	documentId: string,
+): boolean {
+	for (const child of node.children) {
+		if (child.type === "file" && child.documentId === documentId) {
+			return true;
+		}
+		if (child.type === "dir" && directoryContainsDocument(child, documentId)) {
+			return true;
+		}
 	}
+	return false;
 }
 
 function renderFooter(document: ViewerDocument): string {

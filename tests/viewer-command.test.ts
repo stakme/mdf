@@ -173,4 +173,69 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("renders collapsible navigation and enforces depth limit", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+		schema: z.object({
+			title: z.string(),
+			vpath: z.string().optional(),
+		}),
+		virtualPath: {
+			param: "vpath",
+			separator: "/",
+		},
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "deep.md"),
+			`---\ntitle: Deep Doc\nvpath: root/one/two/three/four/five/six/seven\n---\n# Deep Doc`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "shallow.md"),
+			`---\ntitle: Shallow Doc\nvpath: root/shallow\n---\n# Shallow Doc`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "other.md"),
+			`---\ntitle: Other Doc\nvpath: other/doc\n---\n# Other Doc`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const deepDoc = context.documents.find(
+				(doc) => doc.meta.title === "Deep Doc",
+			);
+			expect(deepDoc).toBeDefined();
+			if (!deepDoc) {
+				return;
+			}
+
+			const html = renderViewerHtml(context, deepDoc);
+			expect(html).toContain('data-viewer-nav="tree"');
+			expect(html).toContain("bg-muted/30");
+			expect(html).toContain('<details class="group" open>');
+			expect(html).toContain('<details class="group">');
+			expect(html).toContain("Nested levels deeper than 6 are hidden.");
+			expect(html).toContain('data-viewer-nav-node="file"');
+			expect(html).toContain(
+				'data-viewer-nav-path="root/one/two/three/four/five/six"',
+			);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

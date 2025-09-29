@@ -1,10 +1,10 @@
 ---
 title: Show nested vpath with depth > 3
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T05:10:05.468Z
-updated_at: 2025-09-29T05:10:05.469Z
+updated_at: 2025-09-29T22:14:26Z
 ---
 
 # Show nested vpath with depth > 2
