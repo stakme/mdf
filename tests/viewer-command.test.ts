@@ -5,6 +5,8 @@ import {
 	createViewerApp,
 	prepareViewerContext,
 	renderViewerHtml,
+	type ViewerNavigationDirectory,
+	type ViewerNavigationFile,
 } from "../src/commands/viewer.mts";
 import { setupWorkspace } from "./helpers";
 
@@ -381,6 +383,75 @@ export default defineConfig({
 				"Third",
 			]);
 			expect(context.defaultDocument.meta.title).toBe("Second");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("respects schema-defined sort order in navigation entries", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: {
+                posts: {
+                        glob: "notes/**",
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                created_at: z.string(),
+                        }),
+                        sort: (a, b) => b.created_at.localeCompare(a.created_at),
+                },
+        },
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "first.md"),
+			`---\ntitle: First\nvpath: posts/first\ncreated_at: 2024-02-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "second.md"),
+			`---\ntitle: Second\nvpath: posts/second\ncreated_at: 2025-01-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "third.md"),
+			`---\ntitle: Third\nvpath: posts/third\ncreated_at: 2023-12-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const postsDirectory = context.navigation.children.find(
+				(child): child is ViewerNavigationDirectory =>
+					child.type === "dir" && child.name === "posts",
+			);
+
+			expect(postsDirectory).toBeDefined();
+			if (!postsDirectory) {
+				return;
+			}
+
+			const fileNames = postsDirectory.children
+				.filter((child): child is ViewerNavigationFile => child.type === "file")
+				.map((child) => child.name);
+
+			expect(fileNames).toEqual(["Second", "First", "Third"]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

@@ -19,7 +19,6 @@ export default defineConfig({
 				draft: z.boolean().default(false),
 				author: z.string().optional(),
 			}),
-			sort: (a, b) => a.title.localeCompare(b.title),
 		}),
 		default: defineSchema({
 			glob: "**",
@@ -32,6 +31,7 @@ export default defineConfig({
 				created_at: z.iso.datetime().default(() => new Date().toISOString()),
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
 			}),
+			sort: (a, b) => a.created_at.localeCompare(b.created_at),
 		}),
 	},
 	defaultSchema: "default",

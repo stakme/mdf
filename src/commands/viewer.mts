@@ -1006,18 +1006,23 @@ function buildNavigation(
 }
 
 function sortDirectory(directory: MutableDirectoryNode): void {
-	directory.children.sort((a, b) => {
-		if (a.type !== b.type) {
-			return a.type === "dir" ? -1 : 1;
-		}
-		return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-	});
+	const directories: MutableDirectoryNode[] = [];
+	const files: ViewerNavigationFile[] = [];
 
 	for (const child of directory.children) {
 		if (child.type === "dir") {
 			sortDirectory(child);
+			directories.push(child);
+		} else {
+			files.push(child);
 		}
 	}
+
+	directories.sort((a, b) =>
+		a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+	);
+
+	directory.children = [...directories, ...files];
 }
 
 function freezeDirectory(
