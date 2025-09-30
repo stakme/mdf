@@ -74,6 +74,9 @@ export default defineConfig({
 			expect(html).toContain('<html lang="en" class="dark" data-theme="dark">');
 			expect(html).toContain('<meta name="color-scheme" content="dark" />');
 			expect(html).toContain("cdn.tailwindcss.com");
+			expect(html).toContain(
+				'<a class="text-lg font-semibold tracking-tight hover:underline" href="/">mdf viewer</a>',
+			);
 			expect(html).toContain("Alpha");
 			expect(html).toContain("Front matter");
 			expect(html).toMatch(/status[\s\S]*todo/);
@@ -360,7 +363,7 @@ export default defineConfig({
 		}
 	});
 
-	it("ignores invalid documents and records warnings by default", async () => {
+	it("includes invalid documents and records warnings by default", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
@@ -393,6 +396,55 @@ export default defineConfig({
 			const context = await prepareViewerContext({
 				cwd: tempDir,
 				directory: "notes",
+			});
+
+			expect(context.documents).toHaveLength(2);
+			const titles = context.documents.map((doc) => doc.meta.title);
+			expect(titles).toContain("Valid");
+			expect(titles).toContain("broken");
+			expect(context.warnings).toHaveLength(1);
+			const warning = context.warnings[0];
+			expect(warning?.filePath.endsWith("broken.md")).toBe(true);
+			expect(warning?.messages[0]).toContain("Front matter not found");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("skips invalid documents when ignoreInvalid is enabled", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "valid.md"),
+			`---\ntitle: Valid\nvpath: docs/valid\n---\n# Body`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "broken.md"),
+			"# Missing front matter\n",
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+				ignoreInvalid: true,
 			});
 
 			expect(context.documents).toHaveLength(1);

@@ -39,6 +39,7 @@ export interface ViewerCommandOptions {
 	port?: number;
 	host?: string;
 	strict?: boolean;
+	ignoreInvalid?: boolean;
 }
 
 export interface ViewerDocument {
@@ -191,34 +192,82 @@ export async function prepareViewerContext(
 	const collected: ViewerDocumentEntry[] = [];
 	const warnings: InvalidFileWarning[] = [];
 	for (const filePath of files) {
-		let document: MarkdownDocument;
+		const warningMessages: string[] = [];
+		const flushWarnings = (): void => {
+			if (!warningMessages.length) {
+				return;
+			}
+			const existing = warnings.find((entry) => entry.filePath === filePath);
+			if (existing) {
+				existing.messages.push(...warningMessages);
+			} else {
+				warnings.push({ filePath, messages: [...warningMessages] });
+			}
+			warningMessages.length = 0;
+		};
+		let document: MarkdownDocument | null = null;
 		try {
 			document = await readMarkdownDocument(filePath);
 		} catch (error) {
 			if (options.strict) {
 				throw error;
 			}
-			warnings.push({
-				filePath,
-				messages: [formatErrorMessage(error)],
-			});
+			warningMessages.push(formatErrorMessage(error));
+
+			if (options.ignoreInvalid) {
+				flushWarnings();
+				continue;
+			}
+
+			try {
+				const raw = await fs.readFile(filePath, "utf8");
+				document = { frontMatter: {}, body: raw, raw };
+			} catch (readError) {
+				warningMessages.push(formatErrorMessage(readError));
+				flushWarnings();
+				continue;
+			}
+		}
+
+		if (!document) {
+			flushWarnings();
 			continue;
 		}
-		const frontMatter = document.frontMatter;
+
+		const frontMatter = document.frontMatter ?? {};
 
 		if (!matchesAllFilters(frontMatter, parsedFilters)) {
+			flushWarnings();
 			continue;
 		}
 
-		const { rawVirtualPath, segments } = extractVirtualPath(
-			frontMatter,
-			virtualPathConfig.param,
-			separator,
-			filePath,
-			options.cwd,
-		);
+		let rawVirtualPath: string | null;
+		let segments: string[];
+		try {
+			({ rawVirtualPath, segments } = extractVirtualPath(
+				frontMatter,
+				virtualPathConfig.param,
+				separator,
+				filePath,
+				options.cwd,
+			));
+		} catch (error) {
+			if (options.strict) {
+				throw error;
+			}
+			warningMessages.push(formatErrorMessage(error));
+
+			if (options.ignoreInvalid) {
+				flushWarnings();
+				continue;
+			}
+
+			rawVirtualPath = null;
+			segments = [];
+		}
 
 		if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
+			flushWarnings();
 			continue;
 		}
 
@@ -257,6 +306,8 @@ export async function prepareViewerContext(
 			virtualPathSegments: segments,
 			navigationSegments,
 		};
+
+		flushWarnings();
 
 		collected.push({
 			schema: schemaEntry,
@@ -686,7 +737,7 @@ function renderViewerPage(
         <header class="border-b border-border bg-card/60 backdrop-blur">
                 <div class="mx-auto w-full max-w-6xl px-6 py-4">
                                 <div class="flex flex-wrap items-center justify-between gap-4">
-                                        <span class="text-lg font-semibold tracking-tight">mdf viewer</span>
+                                        <a class="text-lg font-semibold tracking-tight hover:underline" href="/">mdf viewer</a>
                                         <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                                 <span class="truncate">${directoryLabelHtml}</span>
                                                 ${headerOptionsHtml}

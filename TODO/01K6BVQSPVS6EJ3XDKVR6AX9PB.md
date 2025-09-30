@@ -1,6 +1,6 @@
 ---
 title: No error with no valid documents
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T23:08:18.042Z

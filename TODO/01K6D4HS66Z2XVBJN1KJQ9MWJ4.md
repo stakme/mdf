@@ -1,6 +1,6 @@
 ---
 title: Link to the top page
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-30T11:01:32.517Z

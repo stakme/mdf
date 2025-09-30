@@ -214,6 +214,7 @@ function createProgram(version: string): Command {
 		)
 		.option("--host <hostname>", "Hostname to bind the viewer server")
 		.option("--strict", "Treat invalid Markdown files as errors")
+		.option("--ignore-invalid", "Skip Markdown files that fail to parse")
 		.argument("<directory>", "Directory containing Markdown files to render")
 		.action(
 			async (
@@ -224,6 +225,7 @@ function createProgram(version: string): Command {
 					port?: string;
 					host?: string;
 					strict?: boolean;
+					ignoreInvalid?: boolean;
 				},
 			) => {
 				try {
@@ -238,6 +240,7 @@ function createProgram(version: string): Command {
 						port,
 						host: command.host,
 						strict: command.strict === true,
+						ignoreInvalid: command.ignoreInvalid === true,
 					});
 				} catch (error) {
 					handleError(error);
