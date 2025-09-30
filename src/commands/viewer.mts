@@ -69,7 +69,8 @@ export interface ViewerContext {
 	documents: ViewerDocument[];
 	documentMap: Map<string, ViewerDocument>;
 	navigation: ViewerNavigationDirectory;
-	defaultDocument: ViewerDocument;
+	defaultDocument: ViewerDocument | null;
+	frontMatterIndex: ViewerFrontMatterIndex;
 	virtualPathParam: string;
 	virtualPathSeparator: string;
 	warnings: InvalidFileWarning[];
@@ -96,6 +97,22 @@ export interface ViewerNavigationFile {
 export type ViewerNavigationNode =
 	| ViewerNavigationDirectory
 	| ViewerNavigationFile;
+
+export interface ViewerFrontMatterIndex {
+	fields: ViewerFrontMatterField[];
+	fieldMap: Map<string, ViewerFrontMatterField>;
+}
+
+export interface ViewerFrontMatterField {
+	name: string;
+	values: ViewerFrontMatterValue[];
+	valueMap: Map<string, ViewerFrontMatterValue>;
+}
+
+export interface ViewerFrontMatterValue {
+	value: string;
+	documents: ViewerDocument[];
+}
 
 interface PrepareViewerContextOptions extends ViewerCommandOptions {}
 
@@ -163,12 +180,6 @@ export async function prepareViewerContext(
 
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const files = await collectMarkdownFiles(resolvedDirectory, extension);
-	if (!files.length) {
-		throw new MdfError(
-			"NO_MATCHING_FILES",
-			`No files with extension ${extension} found in ${resolvedDirectory}`,
-		);
-	}
 
 	const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
 	const separator = virtualPathConfig.separator ?? "/";
@@ -254,13 +265,6 @@ export async function prepareViewerContext(
 		});
 	}
 
-	if (!collected.length) {
-		throw new MdfError(
-			"VIEWER_NO_DOCUMENTS",
-			"No documents matched the current viewer filters",
-		);
-	}
-
 	const sortedEntries = sortSchemaDocuments(collected, (a, b) =>
 		compareViewerDocuments(a.document, b.document),
 	);
@@ -268,7 +272,8 @@ export async function prepareViewerContext(
 
 	const navigation = buildNavigation(documents);
 	const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
-	const defaultDocument = documents[0];
+	const defaultDocument = documents[0] ?? null;
+	const frontMatterIndex = buildFrontMatterIndex(documents);
 
 	return {
 		cwd: options.cwd,
@@ -279,6 +284,7 @@ export async function prepareViewerContext(
 		documentMap,
 		navigation,
 		defaultDocument,
+		frontMatterIndex,
 		virtualPathParam: virtualPathConfig.param,
 		virtualPathSeparator: separator,
 		warnings,
@@ -338,9 +344,41 @@ export function createViewerApp(
 		const context = getContext();
 		const requestedId = c.req.query("doc");
 		const document = requestedId
-			? (context.documentMap.get(requestedId) ?? context.defaultDocument)
+			? (context.documentMap.get(requestedId) ?? null)
 			: context.defaultDocument;
+		if (!document) {
+			return c.html(renderEmptyViewerHtml(context));
+		}
 		return c.html(renderViewerHtml(context, document));
+	});
+
+	app.get("/fm", (c) => {
+		const context = getContext();
+		return c.html(renderFrontMatterIndexHtml(context));
+	});
+
+	app.get("/fm/:field", (c) => {
+		const context = getContext();
+		const fieldName = c.req.param("field");
+		const field = context.frontMatterIndex.fieldMap.get(fieldName);
+		if (!field) {
+			return c.json({ error: "Not Found" }, 404);
+		}
+
+		return c.html(renderFrontMatterFieldHtml(context, field));
+	});
+
+	app.get("/fm/:field/:value", (c) => {
+		const context = getContext();
+		const fieldName = c.req.param("field");
+		const valueKey = c.req.param("value");
+		const field = context.frontMatterIndex.fieldMap.get(fieldName);
+		const valueEntry = field?.valueMap.get(valueKey);
+		if (!field || !valueEntry) {
+			return c.json({ error: "Not Found" }, 404);
+		}
+
+		return c.html(renderFrontMatterValueHtml(context, field, valueEntry));
 	});
 
 	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
@@ -601,17 +639,22 @@ function normalizeHeadingComparisonValue(
 	return collapsed.toLowerCase();
 }
 
-export function renderViewerHtml(
+interface RenderViewerPageOptions {
+	pageTitle: string;
+	activeDocumentId?: string | null;
+	mainContentHtml: string;
+}
+
+function renderViewerPage(
 	context: ViewerContext,
-	document: ViewerDocument,
+	options: RenderViewerPageOptions,
 ): string {
-	const title = `${document.meta.title} – mdf viewer`;
-	const navigationHtml = renderNavigation(context.navigation, document.id);
-	const mobileSelector = renderMobileSelector(context, document.id);
-	const descriptionHtml = document.meta.description
-		? `<p class="text-base text-muted-foreground">${escapeHtml(document.meta.description)}</p>`
-		: "";
+	const navigationHtml = renderNavigation(
+		context.navigation,
+		options.activeDocumentId ?? "",
+	);
 	const headerOptionsHtml = renderHeaderOptions(context.headerOptions);
+	const directoryLabelHtml = escapeHtml(context.directoryLabel);
 	const hotReloadScript = `
 <script>
 (function () {
@@ -626,7 +669,7 @@ export function renderViewerHtml(
 })();
 </script>`;
 
-	const directoryLabelHtml = escapeHtml(context.directoryLabel);
+	const pageTitle = `${options.pageTitle} – mdf viewer`;
 
 	return `<!DOCTYPE html>
 <html lang="en" class="dark" data-theme="dark">
@@ -634,47 +677,196 @@ export function renderViewerHtml(
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark" />
-<title>${escapeHtml(title)}</title>
+<title>${escapeHtml(pageTitle)}</title>
 <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 <link rel="stylesheet" href="https://ui.shadcn.com/themes/v0/default.css" />
 </head>
 <body class="min-h-screen bg-background text-foreground">
 <div class="flex min-h-screen flex-col">
-	<header class="border-b border-border bg-card/60 backdrop-blur">
-		<div class="mx-auto w-full max-w-6xl px-6 py-4">
-				<div class="flex flex-wrap items-center justify-between gap-4">
-					<span class="text-lg font-semibold tracking-tight">mdf viewer</span>
-					<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-						<span class="truncate">${directoryLabelHtml}</span>
-						${headerOptionsHtml}
-					</div>
-				</div>
-			</div>
-		</header>
+        <header class="border-b border-border bg-card/60 backdrop-blur">
+                <div class="mx-auto w-full max-w-6xl px-6 py-4">
+                                <div class="flex flex-wrap items-center justify-between gap-4">
+                                        <span class="text-lg font-semibold tracking-tight">mdf viewer</span>
+                                        <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                <span class="truncate">${directoryLabelHtml}</span>
+                                                ${headerOptionsHtml}
+                                        </div>
+                                </div>
+                        </div>
+                </header>
         <div class="flex flex-1">
                 <aside class="hidden w-72 border-r border-border bg-muted/40 lg:block">
                         <nav class="h-full overflow-y-auto px-4 py-6">
                                 ${navigationHtml}
                         </nav>
-		</aside>
-		<main class="flex-1 overflow-y-auto">
-			<div class="mx-auto w-full max-w-4xl px-4 py-8">
-				${mobileSelector}
-				<header class="space-y-4 border-b border-border pb-6">
-					<h1 class="text-3xl font-semibold tracking-tight">${escapeHtml(document.meta.title)}</h1>
-					${descriptionHtml}
-				</header>
-				<article class="prose prose-slate mt-8 max-w-none dark:prose-invert">
-					${document.html}
-				</article>
-				${renderFooter(document)}
-			</div>
-		</main>
+                </aside>
+                <main class="flex-1 overflow-y-auto">
+                        ${options.mainContentHtml}
+                </main>
         </div>
 </div>
 ${hotReloadScript}
 </body>
 </html>`;
+}
+
+export function renderViewerHtml(
+	context: ViewerContext,
+	document: ViewerDocument,
+): string {
+	const descriptionHtml = document.meta.description
+		? `<p class="text-base text-muted-foreground">${escapeHtml(document.meta.description)}</p>`
+		: "";
+	const mobileSelector = renderMobileSelector(context, document.id);
+
+	const mainContentHtml = `<div class="mx-auto w-full max-w-4xl px-4 py-8">
+                ${mobileSelector}
+                <header class="space-y-4 border-b border-border pb-6">
+                        <h1 class="text-3xl font-semibold tracking-tight">${escapeHtml(document.meta.title)}</h1>
+                        ${descriptionHtml}
+                </header>
+                <article class="prose prose-slate mt-8 max-w-none dark:prose-invert">
+                        ${document.html}
+                </article>
+                ${renderFooter(document, context)}
+        </div>`;
+
+	return renderViewerPage(context, {
+		pageTitle: document.meta.title || "Document",
+		activeDocumentId: document.id,
+		mainContentHtml,
+	});
+}
+
+export function renderEmptyViewerHtml(context: ViewerContext): string {
+	const message = `Add Markdown documents to ${escapeHtml(context.directoryLabel)} to see them here.`;
+	const mainContentHtml = `<div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-16">
+                <div class="rounded-lg border border-border bg-card/40 p-10 text-center">
+                        <h1 class="text-2xl font-semibold tracking-tight">No documents available</h1>
+                        <p class="mt-3 text-sm text-muted-foreground">${message}</p>
+                </div>
+        </div>`;
+
+	return renderViewerPage(context, {
+		pageTitle: "Viewer",
+		activeDocumentId: null,
+		mainContentHtml,
+	});
+}
+
+export function renderFrontMatterIndexHtml(context: ViewerContext): string {
+	const mobileSelector = renderMobileSelector(
+		context,
+		context.defaultDocument?.id ?? context.documents[0]?.id ?? "",
+	);
+	let bodyHtml: string;
+	if (!context.frontMatterIndex.fields.length) {
+		bodyHtml = `<div class="rounded-lg border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">No linkable front matter fields found.</div>`;
+	} else {
+		const items = context.frontMatterIndex.fields
+			.map((field) => {
+				const countLabel =
+					field.values.length === 1
+						? "1 value"
+						: `${field.values.length} values`;
+				return `<li class="rounded-md border border-border/60 bg-card/40 px-4 py-3 transition hover:border-border"><div class="flex items-center justify-between gap-4"><a class="text-sm font-medium text-primary underline-offset-4 hover:underline" href="${buildFrontMatterFieldUrl(field.name)}">${escapeHtml(field.name)}</a><span class="text-xs text-muted-foreground">${escapeHtml(countLabel)}</span></div></li>`;
+			})
+			.join("");
+		bodyHtml = `<ul class="space-y-2">${items}</ul>`;
+	}
+
+	const mainContentHtml = `<div class="mx-auto w-full max-w-4xl px-4 py-8">
+                ${mobileSelector}
+                <header class="space-y-3 border-b border-border pb-6">
+                        <h1 class="text-3xl font-semibold tracking-tight">Front matter</h1>
+                        <p class="text-sm text-muted-foreground">Browse documents grouped by shared front matter fields.</p>
+                </header>
+                <section class="mt-8 space-y-4">
+                        ${bodyHtml}
+                </section>
+        </div>`;
+
+	return renderViewerPage(context, {
+		pageTitle: "Front matter",
+		activeDocumentId: null,
+		mainContentHtml,
+	});
+}
+
+export function renderFrontMatterFieldHtml(
+	context: ViewerContext,
+	field: ViewerFrontMatterField,
+): string {
+	const mobileSelector = renderMobileSelector(
+		context,
+		context.defaultDocument?.id ?? context.documents[0]?.id ?? "",
+	);
+
+	const valuesHtml = field.values.length
+		? `<ul class="space-y-2">${field.values
+				.map((entry) => {
+					const count = entry.documents.length;
+					const countLabel = count === 1 ? "1 document" : `${count} documents`;
+					return `<li class="rounded-md border border-border/60 bg-card/40 px-4 py-3 transition hover:border-border"><div class="flex items-center justify-between gap-4"><a class="text-sm font-medium text-primary underline-offset-4 hover:underline" href="${buildFrontMatterValueUrl(field.name, entry.value)}">${escapeHtml(entry.value)}</a><span class="text-xs text-muted-foreground">${escapeHtml(countLabel)}</span></div></li>`;
+				})
+				.join("")}</ul>`
+		: `<div class="rounded-lg border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">No documents define this field.</div>`;
+
+	const mainContentHtml = `<div class="mx-auto w-full max-w-4xl px-4 py-8">
+                ${mobileSelector}
+                <header class="space-y-2 border-b border-border pb-6">
+                        <div class="text-xs uppercase tracking-wide text-muted-foreground">Front matter field</div>
+                        <h1 class="text-3xl font-semibold tracking-tight">${escapeHtml(field.name)}</h1>
+                </header>
+                <section class="mt-8 space-y-4">
+                        ${valuesHtml}
+                </section>
+        </div>`;
+
+	return renderViewerPage(context, {
+		pageTitle: `Front matter: ${field.name}`,
+		activeDocumentId: null,
+		mainContentHtml,
+	});
+}
+
+export function renderFrontMatterValueHtml(
+	context: ViewerContext,
+	field: ViewerFrontMatterField,
+	value: ViewerFrontMatterValue,
+): string {
+	const mobileSelector = renderMobileSelector(
+		context,
+		context.defaultDocument?.id ?? context.documents[0]?.id ?? "",
+	);
+
+	const documentsHtml = value.documents.length
+		? `<ul class="space-y-2">${value.documents
+				.map((doc) => {
+					return `<li class="rounded-md border border-border/60 bg-card/40 px-4 py-3 transition hover:border-border"><div class="flex flex-col gap-1"><a class="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/?doc=${encodeURIComponent(doc.id)}">${escapeHtml(doc.meta.title)}</a><span class="text-xs text-muted-foreground">${escapeHtml(doc.displayPath)}</span></div></li>`;
+				})
+				.join("")}</ul>`
+		: `<div class="rounded-lg border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">No documents matched this value.</div>`;
+
+	const breadcrumbHtml = `<nav class="text-xs text-muted-foreground"><a class="underline-offset-4 hover:underline" href="/fm">Front matter</a><span class="mx-1 text-muted-foreground/70">/</span><a class="underline-offset-4 hover:underline" href="${buildFrontMatterFieldUrl(field.name)}">${escapeHtml(field.name)}</a><span class="mx-1 text-muted-foreground/70">/</span><span>${escapeHtml(value.value)}</span></nav>`;
+
+	const mainContentHtml = `<div class="mx-auto w-full max-w-4xl px-4 py-8">
+                ${mobileSelector}
+                <header class="space-y-3 border-b border-border pb-6">
+                        ${breadcrumbHtml}
+                        <h1 class="text-3xl font-semibold tracking-tight">${escapeHtml(value.value)}</h1>
+                        <p class="text-sm text-muted-foreground">Documents where <code class="rounded bg-muted px-1 py-0.5">${escapeHtml(field.name)}</code> equals <code class="rounded bg-muted px-1 py-0.5">${escapeHtml(value.value)}</code>.</p>
+                </header>
+                <section class="mt-8 space-y-4">
+                        ${documentsHtml}
+                </section>
+        </div>`;
+
+	return renderViewerPage(context, {
+		pageTitle: `${field.name}: ${value.value}`,
+		activeDocumentId: null,
+		mainContentHtml,
+	});
 }
 
 function renderHeaderOptions(options: readonly ViewerHeaderOption[]): string {
@@ -899,6 +1091,14 @@ function buildDocumentAssetBaseUrl(documentId: string): string {
 	return `/documents/${encodeURIComponent(documentId)}/assets/`;
 }
 
+function buildFrontMatterFieldUrl(field: string): string {
+	return `/fm/${encodeURIComponent(field)}`;
+}
+
+function buildFrontMatterValueUrl(field: string, value: string): string {
+	return `${buildFrontMatterFieldUrl(field)}/${encodeURIComponent(value)}`;
+}
+
 function resolveDocumentAssetPath(
 	documentPath: string,
 	requestedPath: string,
@@ -961,6 +1161,118 @@ function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
 	return a.meta.routePath.localeCompare(b.meta.routePath, undefined, {
 		sensitivity: "base",
 	});
+}
+
+function buildFrontMatterIndex(
+	documents: readonly ViewerDocument[],
+): ViewerFrontMatterIndex {
+	const fieldBuckets = new Map<string, Map<string, ViewerDocument[]>>();
+
+	for (const document of documents) {
+		for (const [field, rawValue] of Object.entries(document.frontMatter)) {
+			const values = extractLinkableFrontMatterValues(rawValue);
+			if (!values.length) {
+				continue;
+			}
+
+			let valueBucket = fieldBuckets.get(field);
+			if (!valueBucket) {
+				valueBucket = new Map();
+				fieldBuckets.set(field, valueBucket);
+			}
+
+			for (const value of values) {
+				let documentsForValue = valueBucket.get(value);
+				if (!documentsForValue) {
+					documentsForValue = [];
+					valueBucket.set(value, documentsForValue);
+				}
+
+				if (!documentsForValue.includes(document)) {
+					documentsForValue.push(document);
+				}
+			}
+		}
+	}
+
+	const fieldMap = new Map<string, ViewerFrontMatterField>();
+	const fields: ViewerFrontMatterField[] = [...fieldBuckets.entries()]
+		.sort((a, b) =>
+			a[0].localeCompare(b[0], undefined, { sensitivity: "base" }),
+		)
+		.map(([name, values]) => {
+			const entries: ViewerFrontMatterValue[] = [...values.entries()]
+				.sort((a, b) =>
+					a[0].localeCompare(b[0], undefined, { sensitivity: "base" }),
+				)
+				.map(([value, docs]) => ({ value, documents: [...docs] }));
+
+			const valueMap = new Map(entries.map((entry) => [entry.value, entry]));
+			const fieldEntry: ViewerFrontMatterField = {
+				name,
+				values: entries,
+				valueMap,
+			};
+			fieldMap.set(name, fieldEntry);
+			return fieldEntry;
+		});
+
+	return { fields, fieldMap };
+}
+
+function extractLinkableFrontMatterValues(value: unknown): string[] {
+	if (value === undefined || value === null) {
+		return [];
+	}
+
+	if (Array.isArray(value)) {
+		const seen = new Set<string>();
+		const results: string[] = [];
+		for (const entry of value) {
+			const coerced = coerceLinkableFrontMatterValue(entry);
+			if (coerced && !seen.has(coerced)) {
+				seen.add(coerced);
+				results.push(coerced);
+			}
+		}
+		return results;
+	}
+
+	const coerced = coerceLinkableFrontMatterValue(value);
+	return coerced ? [coerced] : [];
+}
+
+function coerceLinkableFrontMatterValue(value: unknown): string | null {
+	if (value === undefined || value === null) {
+		return null;
+	}
+
+	if (Array.isArray(value)) {
+		return null;
+	}
+
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	if (typeof value === "object") {
+		return null;
+	}
+
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : null;
+	}
+
+	if (typeof value === "number" || typeof value === "bigint") {
+		return value.toString();
+	}
+
+	if (typeof value === "boolean") {
+		return value ? "true" : "false";
+	}
+
+	return String(value);
 }
 
 function buildNavigation(
@@ -1146,7 +1458,10 @@ function directoryContainsDocument(
 	return false;
 }
 
-function renderFooter(document: ViewerDocument): string {
+function renderFooter(
+	document: ViewerDocument,
+	context: ViewerContext,
+): string {
 	const entries = Object.entries(document.frontMatter)
 		.filter(([key]) => key !== "title")
 		.sort((a, b) =>
@@ -1160,9 +1475,9 @@ function renderFooter(document: ViewerDocument): string {
 	const rows = entries
 		.map(([key, value]) => {
 			return `<div class="grid grid-cols-1 gap-2 border-t border-border py-3 first:border-t-0 md:grid-cols-[160px_1fr]">
-				<div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">${escapeHtml(key)}</div>
-				<div class="text-sm text-foreground">${renderFooterValue(value)}</div>
-			</div>`;
+                                <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">${escapeHtml(key)}</div>
+                                <div class="text-sm text-foreground">${renderFooterValue(key, value, context)}</div>
+                        </div>`;
 		})
 		.join("");
 
@@ -1171,11 +1486,15 @@ function renderFooter(document: ViewerDocument): string {
 			<span class="text-sm font-medium text-muted-foreground">Front matter</span>
 			<span class="text-xs text-muted-foreground">${escapeHtml(document.displayPath)}</span>
 		</div>
-		<div class="mt-4">${rows}</div>
-	</footer>`;
+                <div class="mt-4">${rows}</div>
+        </footer>`;
 }
 
-function renderFooterValue(value: unknown): string {
+function renderFooterValue(
+	fieldName: string,
+	value: unknown,
+	context: ViewerContext,
+): string {
 	if (value === undefined || value === null) {
 		return `<span class="text-muted-foreground">—</span>`;
 	}
@@ -1185,7 +1504,7 @@ function renderFooterValue(value: unknown): string {
 			return `<span class="text-muted-foreground">—</span>`;
 		}
 		return value
-			.map((entry) => renderFooterValue(entry))
+			.map((entry) => renderFooterValue(fieldName, entry, context))
 			.filter((entry) => entry.length > 0)
 			.join("<br />");
 	}
@@ -1203,13 +1522,63 @@ function renderFooterValue(value: unknown): string {
 		}
 	}
 
-	return escapeHtml(String(value));
+	const displayValue = formatFooterPrimitive(value);
+	const linkTarget = buildFrontMatterLink(context, fieldName, value);
+
+	if (linkTarget) {
+		return `<a class="text-primary underline-offset-4 hover:underline" href="${linkTarget}">${escapeHtml(displayValue)}</a>`;
+	}
+
+	return escapeHtml(displayValue);
+}
+
+function formatFooterPrimitive(value: unknown): string {
+	if (value === null || value === undefined) {
+		return "";
+	}
+
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	if (typeof value === "boolean") {
+		return value ? "true" : "false";
+	}
+
+	if (typeof value === "number" || typeof value === "bigint") {
+		return value.toString();
+	}
+
+	return String(value);
+}
+
+function buildFrontMatterLink(
+	context: ViewerContext,
+	fieldName: string,
+	value: unknown,
+): string | null {
+	const normalized = coerceLinkableFrontMatterValue(value);
+	if (!normalized) {
+		return null;
+	}
+
+	const field = context.frontMatterIndex.fieldMap.get(fieldName);
+	const entry = field?.valueMap.get(normalized);
+	if (!field || !entry || entry.documents.length === 0) {
+		return null;
+	}
+
+	return buildFrontMatterValueUrl(field.name, entry.value);
 }
 
 function renderMobileSelector(
 	context: ViewerContext,
 	activeId: string,
 ): string {
+	if (!context.documents.length) {
+		return "";
+	}
+
 	const options = context.documents
 		.map((doc) => {
 			const selected = doc.id === activeId ? " selected" : "";

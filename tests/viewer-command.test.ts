@@ -182,6 +182,119 @@ export default defineConfig({
 		}
 	});
 
+	it("renders empty viewer when no documents are present", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string().optional(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents).toHaveLength(0);
+			expect(context.defaultDocument).toBeNull();
+
+			const { app } = createViewerApp(() => context);
+			const response = await app.request("http://localhost/");
+			expect(response.status).toBe(200);
+			const html = await response.text();
+			expect(html).toContain("No documents available");
+			expect(html).toContain("Add Markdown documents");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("links front matter values and exposes field routes", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                tags: z.array(z.string()).optional(),
+                status: z.string().optional(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "design.md"),
+			`---\ntitle: Design\ntags:\n  - design\n  - ux\nstatus: draft\nvpath: docs/design\n---\n# Design`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "research.md"),
+			`---\ntitle: Research\ntags:\n  - research\n  - design\nstatus: done\nvpath: docs/research\n---\n# Research`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.frontMatterIndex.fields.length).toBeGreaterThan(0);
+			const designDoc = context.documents.find(
+				(doc) => doc.meta.title === "Design",
+			);
+			expect(designDoc).toBeDefined();
+			if (!designDoc) {
+				return;
+			}
+
+			const html = renderViewerHtml(context, designDoc);
+			expect(html).toContain('href="/fm/tags/design"');
+			expect(html).toContain('href="/fm/status/draft"');
+
+			const { app } = createViewerApp(() => context);
+
+			const fieldIndexResponse = await app.request("http://localhost/fm");
+			expect(fieldIndexResponse.status).toBe(200);
+			const fieldIndexHtml = await fieldIndexResponse.text();
+			expect(fieldIndexHtml).toContain("Front matter");
+			expect(fieldIndexHtml).toContain("tags");
+
+			const tagsResponse = await app.request("http://localhost/fm/tags");
+			expect(tagsResponse.status).toBe(200);
+			const tagsHtml = await tagsResponse.text();
+			expect(tagsHtml).toContain("design");
+			expect(tagsHtml).toContain("research");
+
+			const valueResponse = await app.request(
+				"http://localhost/fm/tags/design",
+			);
+			expect(valueResponse.status).toBe(200);
+			const valueHtml = await valueResponse.text();
+			expect(valueHtml).toContain("Design");
+			expect(valueHtml).toContain("Research");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("renders collapsible navigation and enforces depth limit", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
@@ -382,7 +495,8 @@ export default defineConfig({
 				"First",
 				"Third",
 			]);
-			expect(context.defaultDocument.meta.title).toBe("Second");
+			expect(context.defaultDocument?.meta.title).toBe("Second");
+			expect(context.defaultDocument).not.toBeNull();
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -504,7 +618,8 @@ export default defineConfig({
 				"Mu",
 				"Zeta",
 			]);
-			expect(context.defaultDocument.meta.title).toBe("Alpha");
+			expect(context.defaultDocument?.meta.title).toBe("Alpha");
+			expect(context.defaultDocument).not.toBeNull();
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

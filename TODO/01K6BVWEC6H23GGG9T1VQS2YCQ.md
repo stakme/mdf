@@ -1,10 +1,10 @@
 ---
 title: Link by Frontmatter field
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T23:10:50.278Z
-updated_at: 2025-09-29T23:10:50.279Z
+updated_at: 2025-09-30T05:17:30.000Z
 ---
 
 # Link by Frontmatter field
