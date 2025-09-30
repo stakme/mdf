@@ -122,6 +122,7 @@ function createProgram(version: string): Command {
 			"--format <template>",
 			"Output template using {{field}} placeholders",
 		)
+		.option("-q, --quiet", "Print only document IDs")
 		.option("--strict", "Treat invalid Markdown files as errors")
 		.argument("<directory>", "Directory containing Markdown files to list")
 		.action(
@@ -132,6 +133,7 @@ function createProgram(version: string): Command {
 					filter?: string[];
 					format?: string;
 					strict?: boolean;
+					quiet?: boolean;
 				},
 			) => {
 				try {
@@ -143,6 +145,7 @@ function createProgram(version: string): Command {
 						filters,
 						format: command.format,
 						strict: command.strict === true,
+						quiet: command.quiet === true,
 					});
 
 					for (const line of result.lines) {

@@ -26,6 +26,7 @@ export interface ListCommandOptions {
 	filters?: readonly string[];
 	format?: string;
 	strict?: boolean;
+	quiet?: boolean;
 }
 
 export interface ListCommandResult {
@@ -79,7 +80,7 @@ export async function runListCommand(
 	}
 
 	const needsVirtualPath =
-		!options.format || Boolean(options.virtualPathPrefix);
+		(!options.format && !options.quiet) || Boolean(options.virtualPathPrefix);
 	const virtualPathConfig = config.virtualPath;
 
 	if (needsVirtualPath && !virtualPathConfig) {
@@ -184,6 +185,13 @@ export async function runListCommand(
 			sensitivity: "base",
 		}),
 	);
+
+	if (options.quiet) {
+		const lines = sortedDocuments.map((entry) =>
+			path.basename(entry.filePath, path.extname(entry.filePath)),
+		);
+		return { lines, warnings };
+	}
 
 	if (template) {
 		const lines = sortedDocuments.map((entry) =>

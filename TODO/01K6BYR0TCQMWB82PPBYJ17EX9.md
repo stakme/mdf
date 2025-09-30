@@ -1,10 +1,10 @@
 ---
 title: "`--quiet` flag in `list` command"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-30T00:00:51.050Z
-updated_at: 2025-09-30T00:00:51.051Z
+updated_at: 2025-09-30T00:00:51.052Z
 ---
 
 # `--quiet` flag in `list` command
