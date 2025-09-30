@@ -70,3 +70,72 @@ Updated ./TODO/01998ffb-72eb-73ba-ac94-8937607fe3b1.md
       alter existing guidance.
 
 Read @README.md for more information on this project.
+
+## Release Management
+
+The project follows SemVer and publishes to npm from GitHub Releases. AI developers are responsible for preparing release artifacts and metadata, not for pushing the publish button unless explicitly asked.
+
+### Files AI Developers Manage
+
+- `package.json` — bump the `version` field to the target release (e.g., `1.0.0`).
+- `CHANGELOG.md` — add a new entry for the version with the date and categorized changes. Create this file if it doesn’t exist.
+- `README.md` — update any versioned snippets, flags, or docs that changed since the last release.
+- `TODO/` briefs — ensure any release‑related TODOs are updated (e.g., set `status` appropriately) when their scoped work is done.
+
+Do not edit build outputs under `dist/`. The CI and `npm run build` regenerate them.
+
+### Versioning Rules (SemVer)
+
+- Major (`x.0.0`)
+  - Backward‑incompatible changes to the CLI UX or library API (renamed/removed commands, flags, exports, or behavior changes that break consumers).
+  - Raising the minimum supported Node.js version in `engines.node`.
+- Minor (`x.y.0`)
+  - Backward‑compatible features (new commands/options, new exports, new capabilities) and deprecations.
+- Patch (`x.y.z`)
+  - Backward‑compatible bug fixes, performance improvements, refactors, and documentation/test updates.
+
+Pre‑releases use SemVer identifiers like `1.0.0‑beta.1` or `1.0.0‑rc.1`. When creating a GitHub Release marked as a prerelease, the workflow publishes with the `next` dist‑tag automatically.
+
+Tip: Conventional Commits can guide bump decisions:
+
+- `feat:` → usually Minor; add `!` or `BREAKING CHANGE:` footer to signal Major.
+- `fix:` → Patch.
+- `docs:`, `refactor:`, `perf:`, `test:` → Patch unless breaking behavior.
+
+### Changelog Format
+
+Keep a concise, user‑facing log per version with sections (use those that apply):
+
+```
+## [1.0.0] - 2025-09-30
+### Added
+- 
+### Changed
+- 
+### Deprecated
+- 
+### Removed
+- 
+### Fixed
+- 
+### Security
+- 
+```
+
+If `CHANGELOG.md` is missing, create it with a top‑level `# Changelog` header and the latest entry first. Summarize changes since the previous tag/release.
+
+### Release Prep Checklist
+
+- Decide bump: Major/Minor/Patch based on rules above.
+- Update `CHANGELOG.md` with a new dated section for the version.
+- Bump `package.json:version` to the new version.
+- Run quality gates locally:
+  - `npx @biomejs/biome check --fix`
+  - `npm run check`
+  - `npm run build`
+  - `npm test`
+- Commit with a clear message, e.g., `chore: release v1.0.0`.
+- Create a Git tag `v1.0.0` and a GitHub Release. For prereleases, include a pre‑release suffix and mark the release as a prerelease.
+- Let CI publish on release, or use `node scripts/publish.mjs --dry-run` to sanity‑check locally (omit `--dry-run` to publish manually when asked).
+
+These practices aim to keep releases predictable and minimize manual steps.
