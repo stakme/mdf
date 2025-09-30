@@ -497,4 +497,65 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("sorts formatted output using schema-defined comparator", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: {
+                docs: {
+                        glob: "notes/**",
+                        schema: z.object({
+                                title: z.string(),
+                                created_at: z.string(),
+                        }),
+                        sort: (a, b) => b.created_at.localeCompare(a.created_at),
+                },
+                default: {
+                        schema: z.object({
+                                title: z.string(),
+                        }),
+                },
+        },
+        defaultSchema: "default",
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "alpha.md"),
+			`---\ntitle: Alpha\ncreated_at: 2024-01-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "beta.md"),
+			`---\ntitle: Beta\ncreated_at: 2025-01-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "gamma.md"),
+			`---\ntitle: Gamma\ncreated_at: 2023-06-15T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const { stdout } = await execa(
+				nodeBinary,
+				[cliPath, "list", "--format", "{{title}}|{{created_at}}", "notes"],
+				{ cwd: tempDir },
+			);
+
+			expect(stdout.trim().split("\n")).toEqual([
+				"Beta|2025-01-01T00:00:00.000Z",
+				"Alpha|2024-01-01T00:00:00.000Z",
+				"Gamma|2023-06-15T00:00:00.000Z",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

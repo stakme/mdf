@@ -19,6 +19,10 @@ export default defineConfig({
 				draft: z.boolean().default(false),
 				author: z.string().optional(),
 			}),
+			sort: (a, b) =>
+				(a as { title: string }).title.localeCompare(
+					(b as { title: string }).title,
+				),
 		},
 		default: {
 			glob: "**",

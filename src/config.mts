@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { defineConfig, z } from "./index.mts";
 import type {
+	DocumentSort,
 	IdGeneratorName,
 	LoadedConfig,
 	LoadedSchema,
@@ -595,6 +596,7 @@ function normalizeSchemaEntry(
 		name,
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
+		sort: normalizeSortFunction(record.sort, name, configPath),
 	};
 }
 
@@ -658,7 +660,26 @@ function normalizeSchemaRecordEntry(
 		name: trimmedName,
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
+		sort: normalizeSortFunction(record.sort, trimmedName, configPath),
 	};
+}
+
+function normalizeSortFunction(
+	value: unknown,
+	schemaName: string,
+	configPath: string,
+): DocumentSort<unknown> | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (typeof value !== "function") {
+		throw new Error(
+			`Schema entry "${schemaName}" in ${configPath} must define "sort" as a function when provided`,
+		);
+	}
+
+	return value as DocumentSort<unknown>;
 }
 
 function finalizeSchemaEntries(
@@ -718,6 +739,7 @@ function mergeSchemaDefinitions(
 			name: entry.name,
 			schema: mergedSchema,
 			glob: entry.glob ?? existing.glob,
+			sort: entry.sort ?? existing.sort,
 		});
 	}
 

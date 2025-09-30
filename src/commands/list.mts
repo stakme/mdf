@@ -5,7 +5,8 @@ import {
 	type MarkdownDocument,
 	readMarkdownDocument,
 } from "../front-matter.mts";
-import type { InvalidFileWarning } from "../types.mts";
+import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
+import { sortSchemaDocuments } from "../utils/document-sort.mts";
 import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
@@ -35,6 +36,19 @@ export interface ListCommandResult {
 interface VirtualPathEntry {
 	segments: readonly string[];
 	label: string;
+	order: number;
+}
+
+interface ListDocument {
+	filePath: string;
+	relativePath: string;
+	relativeDisplayPath: string;
+	displayPath: string;
+	fileName: string;
+	frontMatter: Record<string, unknown>;
+	schema: LoadedSchema;
+	segments: string[];
+	label: string;
 }
 
 interface DirectoryNode {
@@ -47,6 +61,7 @@ interface DirectoryNode {
 interface FileNode {
 	type: "file";
 	name: string;
+	order?: number;
 }
 
 type TreeNode = DirectoryNode | FileNode;
@@ -93,9 +108,8 @@ export async function runListCommand(
 			: undefined;
 
 	const template = options.format;
-	const entries: VirtualPathEntry[] = [];
-	const formatted: string[] = [];
 	const warnings: InvalidFileWarning[] = [];
+	const documents: ListDocument[] = [];
 
 	for (const filePath of files) {
 		let document: MarkdownDocument;
@@ -142,35 +156,55 @@ export async function runListCommand(
 			}
 		}
 
-		if (template) {
-			const displayPath = formatDisplayPath(filePath, options.cwd);
-			const relativePath = formatRelativePath(filePath, options.cwd);
-			const output = renderTemplate(template, {
-				frontMatter,
-				paths: {
-					absolutePath: filePath,
-					displayPath,
-					filename: path.basename(filePath),
-					relativePath,
-				},
-			});
-			formatted.push(output);
-			continue;
-		}
-
-		const fileName = path.basename(filePath);
+		const relativePath = path.relative(options.cwd, filePath);
+		const schemaEntry = config.getSchemaForRelativePath(relativePath);
 		const displayPath = formatDisplayPath(filePath, options.cwd);
+		const relativeDisplayPath = formatRelativePath(filePath, options.cwd);
+		const fileName = path.basename(filePath);
 		const titleValue = frontMatter.title;
 		const title = typeof titleValue === "string" ? titleValue.trim() : "";
 		const labelBase = title.length > 0 ? title : fileName;
 		const label = `${labelBase} (${displayPath})`;
-		entries.push({ segments, label });
+
+		documents.push({
+			filePath,
+			relativePath,
+			relativeDisplayPath,
+			displayPath,
+			fileName,
+			frontMatter,
+			schema: schemaEntry,
+			segments,
+			label,
+		});
 	}
+
+	const sortedDocuments = sortSchemaDocuments(documents, (a, b) =>
+		a.relativePath.localeCompare(b.relativePath, undefined, {
+			sensitivity: "base",
+		}),
+	);
 
 	if (template) {
-		return { lines: formatted, warnings };
+		const lines = sortedDocuments.map((entry) =>
+			renderTemplate(template, {
+				frontMatter: entry.frontMatter,
+				paths: {
+					absolutePath: entry.filePath,
+					displayPath: entry.displayPath,
+					filename: entry.fileName,
+					relativePath: entry.relativeDisplayPath,
+				},
+			}),
+		);
+		return { lines, warnings };
 	}
 
+	const entries = sortedDocuments.map((entry, index) => ({
+		segments: entry.segments,
+		label: entry.label,
+		order: index,
+	}));
 	const tree = buildTree(entries);
 	return { lines: tree, warnings };
 }
@@ -212,7 +246,11 @@ function buildTree(entries: VirtualPathEntry[]): string[] {
 			current = next;
 		}
 
-		const fileNode: FileNode = { type: "file", name: entry.label };
+		const fileNode: FileNode = {
+			type: "file",
+			name: entry.label,
+			order: entry.order,
+		};
 		current.children.push(fileNode);
 	}
 
@@ -251,6 +289,23 @@ function sortNodes(nodes: TreeNode[]): TreeNode[] {
 		if (a.type !== b.type) {
 			return a.type === "dir" ? -1 : 1;
 		}
+
+		if (a.type === "file" && b.type === "file") {
+			const orderA = a.order;
+			const orderB = b.order;
+			if (orderA !== undefined || orderB !== undefined) {
+				if (orderA === undefined) {
+					return 1;
+				}
+				if (orderB === undefined) {
+					return -1;
+				}
+				if (orderA !== orderB) {
+					return orderA - orderB;
+				}
+			}
+		}
+
 		return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 	});
 }

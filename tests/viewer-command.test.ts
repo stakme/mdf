@@ -184,7 +184,7 @@ export default defineConfig({
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-		schema: z.object({
+                schema: z.object({
 			title: z.string(),
 			vpath: z.string().optional(),
 		}),
@@ -321,6 +321,119 @@ export default defineConfig({
 					strict: true,
 				});
 			}).rejects.toThrow(/Front matter not found/);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("orders viewer documents using schema-defined sort comparator", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: {
+                posts: {
+                        glob: "notes/**",
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                created_at: z.string(),
+                        }),
+                        sort: (a, b) => b.created_at.localeCompare(a.created_at),
+                },
+        },
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "first.md"),
+			`---\ntitle: First\nvpath: posts/first\ncreated_at: 2024-02-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "second.md"),
+			`---\ntitle: Second\nvpath: posts/second\ncreated_at: 2025-01-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "third.md"),
+			`---\ntitle: Third\nvpath: posts/third\ncreated_at: 2023-12-01T00:00:00.000Z\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents.map((doc) => doc.meta.title)).toEqual([
+				"Second",
+				"First",
+				"Third",
+			]);
+			expect(context.defaultDocument.meta.title).toBe("Second");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("falls back to sorting viewer documents by title when no comparator is provided", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "zeta.md"),
+			`---\ntitle: Zeta\nvpath: posts/zeta\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "alpha.md"),
+			`---\ntitle: Alpha\nvpath: posts/alpha\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "mu.md"),
+			`---\ntitle: Mu\nvpath: posts/mu\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents.map((doc) => doc.meta.title)).toEqual([
+				"Alpha",
+				"Mu",
+				"Zeta",
+			]);
+			expect(context.defaultDocument.meta.title).toBe("Alpha");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

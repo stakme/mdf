@@ -1,5 +1,10 @@
 import type { z } from "zod";
 
+export type DocumentSort<TData = Record<string, unknown>> = (
+	a: TData,
+	b: TData,
+) => number;
+
 export type IdGeneratorName = "uuid" | "ulid";
 
 export interface DefaultsContext {
@@ -48,6 +53,7 @@ export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 	name: string;
 	glob?: string;
 	schema: TSchema;
+	sort?: DocumentSort<z.infer<TSchema>>;
 }
 
 export type AnySchemaDefinition = SchemaDefinition<z.ZodTypeAny>;
@@ -139,6 +145,10 @@ export interface MdfConfig<
 	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
 }
+
+export type MdfConfigWithRecord<
+	TSchemaRecord extends SchemaRecordInput = SchemaRecordInput,
+> = Omit<MdfConfig<TSchemaRecord>, "schema"> & { schema: TSchemaRecord };
 
 export interface LoadedSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
 	extends SchemaDefinition<TSchema> {}

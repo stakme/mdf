@@ -20,7 +20,7 @@
 			"import": "./dist/index.mjs"
 		},
 		"./config": {
-			"types": "./dist/config.d.mts",
+			"types": "./dist/index.d.mts",
 			"import": "./dist/config.mjs"
 		},
 		"./package.json": "./package.json"
@@ -33,7 +33,7 @@
 	"scripts": {
 		"build": "tsdown --config tsdown.config.ts",
 		"postbuild": "node ./scripts/ensure-cli-shebang.mjs",
-		"check": "tsc --noEmit",
+		"check": "tsc --noEmit && tsc --noEmit -p tsconfig.types.json",
 		"prepare": "npm run build",
 		"prepublishOnly": "npm run build",
 		"test": "npm run build && vitest run",

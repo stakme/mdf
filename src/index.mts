@@ -1,11 +1,17 @@
 import { z } from "zod";
-import type { MdfConfig, SchemaRecordInput } from "./types.mts";
+import type {
+	MdfConfig,
+	MdfConfigWithRecord,
+	SchemaRecordInput,
+} from "./types.mts";
 
 export { z };
 export type {
 	AnySchemaDefinition,
+	DocumentSort,
 	LoadedVirtualPathConfig,
 	MdfConfig,
+ 	MdfConfigWithRecord,
 	SchemaConfig,
 	SchemaDefinition,
 	SchemaEntryInput,
@@ -16,6 +22,12 @@ export type {
 	VirtualPathConfig,
 } from "./types.mts";
 
+export function defineConfig<TSchemaRecord extends SchemaRecordInput>(
+	config: MdfConfigWithRecord<TSchemaRecord>,
+): MdfConfig<TSchemaRecord>;
+export function defineConfig<TSchemaRecord extends SchemaRecordInput>(
+	config: MdfConfig<TSchemaRecord>,
+): MdfConfig<TSchemaRecord>;
 export function defineConfig<TSchemaRecord extends SchemaRecordInput>(
 	config: MdfConfig<TSchemaRecord>,
 ): MdfConfig<TSchemaRecord> {

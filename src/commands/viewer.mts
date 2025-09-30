@@ -12,7 +12,8 @@ import {
 	type MarkdownDocument,
 	readMarkdownDocument,
 } from "../front-matter.mts";
-import type { InvalidFileWarning } from "../types.mts";
+import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
+import { sortSchemaDocuments } from "../utils/document-sort.mts";
 import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
@@ -52,6 +53,12 @@ export interface ViewerDocument {
 	markdown: string;
 	virtualPathSegments: string[];
 	navigationSegments: string[];
+}
+
+interface ViewerDocumentEntry {
+	schema: LoadedSchema;
+	frontMatter: ViewerDocument["frontMatter"];
+	document: ViewerDocument;
 }
 
 export interface ViewerContext {
@@ -170,7 +177,7 @@ export async function prepareViewerContext(
 		: undefined;
 	const headerOptions = buildViewerHeaderOptions(options);
 
-	const documents: ViewerDocument[] = [];
+	const collected: ViewerDocumentEntry[] = [];
 	const warnings: InvalidFileWarning[] = [];
 	for (const filePath of files) {
 		let document: MarkdownDocument;
@@ -219,7 +226,11 @@ export async function prepareViewerContext(
 			? [...segments]
 			: slugSegments(meta.routePath);
 
-		documents.push({
+		const schemaEntry = config.getSchemaForRelativePath(
+			path.relative(options.cwd, filePath),
+		);
+
+		const viewerDocument: ViewerDocument = {
 			id,
 			filePath,
 			displayPath: formatDisplayPath(filePath, options.cwd),
@@ -234,21 +245,26 @@ export async function prepareViewerContext(
 			markdown: document.body,
 			virtualPathSegments: segments,
 			navigationSegments,
+		};
+
+		collected.push({
+			schema: schemaEntry,
+			frontMatter,
+			document: viewerDocument,
 		});
 	}
 
-	if (!documents.length) {
+	if (!collected.length) {
 		throw new MdfError(
 			"VIEWER_NO_DOCUMENTS",
 			"No documents matched the current viewer filters",
 		);
 	}
 
-	documents.sort((a, b) =>
-		a.meta.routePath.localeCompare(b.meta.routePath, undefined, {
-			sensitivity: "base",
-		}),
+	const sortedEntries = sortSchemaDocuments(collected, (a, b) =>
+		compareViewerDocuments(a.document, b.document),
 	);
+	const documents = sortedEntries.map((entry) => entry.document);
 
 	const navigation = buildNavigation(documents);
 	const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
@@ -930,6 +946,21 @@ function determineContentType(filePath: string): string {
 		default:
 			return "application/octet-stream";
 	}
+}
+
+function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
+	const titleA = a.meta.title || "";
+	const titleB = b.meta.title || "";
+	const titleResult = titleA.localeCompare(titleB, undefined, {
+		sensitivity: "base",
+	});
+	if (titleResult !== 0) {
+		return titleResult;
+	}
+
+	return a.meta.routePath.localeCompare(b.meta.routePath, undefined, {
+		sensitivity: "base",
+	});
 }
 
 function buildNavigation(
