@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
 	MdfConfig,
 	MdfConfigWithRecord,
+	SchemaDefinitionInput,
 	SchemaRecordInput,
 } from "./types.mts";
 
@@ -11,9 +12,10 @@ export type {
 	DocumentSort,
 	LoadedVirtualPathConfig,
 	MdfConfig,
- 	MdfConfigWithRecord,
+	MdfConfigWithRecord,
 	SchemaConfig,
 	SchemaDefinition,
+	SchemaDefinitionInput,
 	SchemaEntryInput,
 	SchemaRecordInput,
 	TemplateBodyResolver,
@@ -21,6 +23,12 @@ export type {
 	TemplatesConfig,
 	VirtualPathConfig,
 } from "./types.mts";
+
+export function defineSchema<TSchema extends z.ZodTypeAny>(
+	definition: SchemaDefinitionInput<TSchema>,
+): SchemaDefinitionInput<TSchema> {
+	return definition;
+}
 
 export function defineConfig<TSchemaRecord extends SchemaRecordInput>(
 	config: MdfConfigWithRecord<TSchemaRecord>,

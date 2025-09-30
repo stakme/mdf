@@ -1,11 +1,11 @@
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 import { describe, expectTypeOf, it } from "vitest";
-import { defineConfig, z } from "@stakme/mdf/config";
 
 describe("config sort typing", () => {
 	it("infers schema data for sort comparator", () => {
 		defineConfig({
 			schema: {
-				typed: {
+				typed: defineSchema({
 					schema: z.object({
 						title: z.string(),
 						created_at: z.iso.datetime(),
@@ -19,7 +19,7 @@ describe("config sort typing", () => {
 						void left.missing;
 						return left.created_at.localeCompare(right.created_at);
 					},
-				},
+				}),
 			},
 		});
 	});

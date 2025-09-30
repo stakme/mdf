@@ -1,14 +1,11 @@
 {
-        "extends": "./tsconfig.json",
-        "compilerOptions": {
-                "rootDir": ".",
-                "noEmit": true,
-                "paths": {
-                        "@stakme/mdf/config": [
-                                "./dist/index.d.mts",
-                                "./src/index.mts"
-                        ]
-                }
-        },
-        "include": ["tests/types/**/*.ts"]
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"noEmit": true,
+		"paths": {
+			"@stakme/mdf/config": ["./dist/index.d.mts", "./src/index.mts"]
+		}
+	},
+	"include": ["tests/types/**/*.ts"]
 }

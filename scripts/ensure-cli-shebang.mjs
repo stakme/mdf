@@ -33,14 +33,19 @@ async function rewriteConfigDtsImport() {
 		if (!original.includes(INDEX_IMPORT_TARGET)) {
 			return;
 		}
-		const updated = original.replaceAll(INDEX_IMPORT_TARGET, INDEX_TYPES_TARGET);
+		const updated = original.replaceAll(
+			INDEX_IMPORT_TARGET,
+			INDEX_TYPES_TARGET,
+		);
 		if (updated === original) {
 			return;
 		}
 		await fs.writeFile(DIST_CONFIG_DTS, updated, "utf8");
 	} catch (error) {
 		if (isMissingFileError(error)) {
-			console.warn(`warn: ${DIST_CONFIG_DTS} missing; skipped config type rewrite`);
+			console.warn(
+				`warn: ${DIST_CONFIG_DTS} missing; skipped config type rewrite`,
+			);
 			return;
 		}
 		throw error;
@@ -50,7 +55,10 @@ async function rewriteConfigDtsImport() {
 function isMissingFileError(error) {
 	return (
 		(error instanceof Error && "code" in error && error.code === "ENOENT") ||
-		(error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+		(error &&
+			typeof error === "object" &&
+			"code" in error &&
+			error.code === "ENOENT")
 	);
 }
 

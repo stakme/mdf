@@ -1,4 +1,4 @@
-import { defineConfig, z } from "@stakme/mdf/config";
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
 	aliases: {
@@ -8,7 +8,7 @@ export default defineConfig({
 	},
 
 	schema: {
-		docs: {
+		docs: defineSchema({
 			glob: "docs/**",
 			schema: z.object({
 				title: z.string().min(1),
@@ -19,12 +19,9 @@ export default defineConfig({
 				draft: z.boolean().default(false),
 				author: z.string().optional(),
 			}),
-			sort: (a, b) =>
-				(a as { title: string }).title.localeCompare(
-					(b as { title: string }).title,
-				),
-		},
-		default: {
+			sort: (a, b) => a.title.localeCompare(b.title),
+		}),
+		default: defineSchema({
 			glob: "**",
 			schema: z.object({
 				title: z.string(),
@@ -35,7 +32,7 @@ export default defineConfig({
 				created_at: z.iso.datetime().default(() => new Date().toISOString()),
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
 			}),
-		},
+		}),
 	},
 	defaultSchema: "default",
 

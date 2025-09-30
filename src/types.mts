@@ -49,18 +49,24 @@ export interface LoadedVirtualPathConfig extends VirtualPathConfig {
 	separator: string;
 }
 
-export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
-	name: string;
+export interface SchemaDefinitionInput<
+	TSchema extends z.ZodTypeAny = z.ZodTypeAny,
+> {
 	glob?: string;
 	schema: TSchema;
 	sort?: DocumentSort<z.infer<TSchema>>;
+}
+
+export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny>
+	extends SchemaDefinitionInput<TSchema> {
+	name: string;
 }
 
 export type AnySchemaDefinition = SchemaDefinition<z.ZodTypeAny>;
 
 export type SchemaEntryInput<TSchema extends z.ZodTypeAny = z.ZodTypeAny> =
 	| TSchema
-	| (Omit<SchemaDefinition<TSchema>, "name"> & { schema: TSchema });
+	| SchemaDefinitionInput<TSchema>;
 
 export type SchemaRecordInput = Record<string, SchemaEntryInput>;
 

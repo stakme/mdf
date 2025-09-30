@@ -1,1 +1,1 @@
-export { defineConfig, z } from "./index.mts";
+export { defineConfig, defineSchema, z } from "./index.mts";
