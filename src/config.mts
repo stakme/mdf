@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
-import { defineConfig, z } from "./index.mts";
+import { defineConfig, defineSchema, z } from "./index.mts";
 import type {
 	DocumentSort,
 	IdGeneratorName,
@@ -426,7 +426,7 @@ function createResolver(configFile: string) {
 	const localRequire = Module.createRequire(configFile);
 	return function resolve(request: string) {
 		if (request === "@stakme/mdf/config") {
-			return { defineConfig, z };
+			return { defineConfig, defineSchema, z };
 		}
 
 		try {

@@ -80,4 +80,44 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("exposes defineSchema helper to TypeScript configs", async () => {
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                vpath: z.string().optional(),
+                        }),
+                }),
+        },
+        defaultSchema: "default",
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const todoDir = path.join(tempDir, "TODO");
+		await fs.mkdir(todoDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(todoDir, "task.md"),
+			`---\ntitle: Fix schema import\nstatus: todo\nvpath: todo/fix-schema-import\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const { stdout } = await execa(nodeBinary, [cliPath, "list", "TODO"], {
+				cwd: tempDir,
+			});
+			expect(stdout).toContain("Fix schema import (./TODO/task.md)");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });
