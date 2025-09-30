@@ -213,6 +213,9 @@ mdf viewer ./docs --vpath blog --filter "status=done" --port 4173
 - Requires `virtualPath.param` in your config (for navigation).
 - Supports the same filter expressions as `mdf list`.
 - Prints the local URL on start (defaults to `http://127.0.0.1:4173`).
+- Troubleshooting: add `--access-log` to print per-request access logs.
+- If you experience hanging navigation in certain environments, try `--no-reload`
+  to disable hot reload (SSE) and file watching.
 
 ## Programmatic usage
 

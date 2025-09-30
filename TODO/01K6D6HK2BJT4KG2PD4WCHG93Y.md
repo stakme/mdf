@@ -1,10 +1,10 @@
 ---
 title: "`viewer` server gets stacked when I access"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-30T11:36:23.398Z
-updated_at: 2025-09-30T11:36:23.398Z
+updated_at: 2025-09-30T11:48:39.730Z
 ---
 
 # `viewer` server gets stacked when I access

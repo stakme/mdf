@@ -40,6 +40,10 @@ export interface ViewerCommandOptions {
 	host?: string;
 	strict?: boolean;
 	ignoreInvalid?: boolean;
+	/** Enable per-request access logs in the viewer server */
+	accessLog?: boolean;
+	/** Enable hot reload (SSE + file watchers). Defaults to true. */
+	reload?: boolean;
 }
 
 export interface ViewerDocument {
@@ -129,7 +133,10 @@ export async function runViewerCommand(
 ): Promise<void> {
 	let context = await prepareViewerContext(options);
 	logInvalidFileWarnings(context.warnings, options.cwd);
-	const appControls = createViewerApp(() => context);
+	const appControls = createViewerApp(() => context, {
+		accessLog: options.accessLog === true,
+		enableHotReload: options.reload !== false,
+	});
 	const port = options.port ?? 4173;
 	const hostname = options.host ?? "127.0.0.1";
 
@@ -141,16 +148,19 @@ export async function runViewerCommand(
 		},
 	);
 
-	const stopWatching = await enableHotReload(context.directory, async () => {
-		try {
-			const next = await prepareViewerContext(options);
-			context = next;
-			logInvalidFileWarnings(next.warnings, options.cwd);
-			appControls.notifyReload();
-		} catch (error) {
-			console.error("Failed to reload viewer after change:", error);
-		}
-	});
+	const shouldWatch = options.reload !== false;
+	const stopWatching = shouldWatch
+		? await enableHotReload(context.directory, async () => {
+				try {
+					const next = await prepareViewerContext(options);
+					context = next;
+					logInvalidFileWarnings(next.warnings, options.cwd);
+					appControls.notifyReload();
+				} catch (error) {
+					console.error("Failed to reload viewer after change:", error);
+				}
+			})
+		: async () => {};
 
 	try {
 		await waitForShutdown(server);
@@ -379,9 +389,26 @@ function buildViewerHeaderOptions(
 
 export function createViewerApp(
 	getContext: () => ViewerContext,
+	options?: { accessLog?: boolean; enableHotReload?: boolean },
 ): ViewerAppControls {
 	const app = new Hono();
 	const reloadListeners = new Set<() => boolean>();
+	const enableHotReload = options?.enableHotReload !== false;
+
+	if (options?.accessLog) {
+		app.use("*", async (c, next) => {
+			const start = Date.now();
+			const method = c.req.method;
+			const path = c.req.path;
+			try {
+				await next();
+			} finally {
+				const elapsed = Date.now() - start;
+				const status = c.res.status;
+				console.log(`[viewer] ${method} ${path} -> ${status} ${elapsed}ms`);
+			}
+		});
+	}
 
 	function broadcastReload(): void {
 		for (const listener of [...reloadListeners]) {
@@ -398,14 +425,14 @@ export function createViewerApp(
 			? (context.documentMap.get(requestedId) ?? null)
 			: context.defaultDocument;
 		if (!document) {
-			return c.html(renderEmptyViewerHtml(context));
+			return c.html(renderEmptyViewerHtml(context, { enableHotReload }));
 		}
-		return c.html(renderViewerHtml(context, document));
+		return c.html(renderViewerHtml(context, document, { enableHotReload }));
 	});
 
 	app.get("/fm", (c) => {
 		const context = getContext();
-		return c.html(renderFrontMatterIndexHtml(context));
+		return c.html(renderFrontMatterIndexHtml(context, { enableHotReload }));
 	});
 
 	app.get("/fm/:field", (c) => {
@@ -416,7 +443,9 @@ export function createViewerApp(
 			return c.json({ error: "Not Found" }, 404);
 		}
 
-		return c.html(renderFrontMatterFieldHtml(context, field));
+		return c.html(
+			renderFrontMatterFieldHtml(context, field, { enableHotReload }),
+		);
 	});
 
 	app.get("/fm/:field/:value", (c) => {
@@ -429,7 +458,11 @@ export function createViewerApp(
 			return c.json({ error: "Not Found" }, 404);
 		}
 
-		return c.html(renderFrontMatterValueHtml(context, field, valueEntry));
+		return c.html(
+			renderFrontMatterValueHtml(context, field, valueEntry, {
+				enableHotReload,
+			}),
+		);
 	});
 
 	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
@@ -495,46 +528,54 @@ export function createViewerApp(
 		});
 	});
 
-	app.get("/events", (c) => {
-		const encoder = new TextEncoder();
-		let closed = false;
-		let removeListener: (() => void) | null = null;
+	if (enableHotReload) {
+		app.get("/events", (c) => {
+			const encoder = new TextEncoder();
+			let closed = false;
+			let removeListener: (() => void) | null = null;
 
-		const stream = new ReadableStream<Uint8Array>({
-			start(controller) {
-				const send = (message: string): boolean => {
-					if (closed) {
-						return false;
+			const stream = new ReadableStream<Uint8Array>({
+				start(controller) {
+					if (options?.accessLog) {
+						console.log("[viewer] sse: connect");
 					}
+					const send = (message: string): boolean => {
+						if (closed) {
+							return false;
+						}
 
-					try {
-						controller.enqueue(encoder.encode(message));
-						return true;
-					} catch {
-						closed = true;
-						return false;
+						try {
+							controller.enqueue(encoder.encode(message));
+							return true;
+						} catch {
+							closed = true;
+							return false;
+						}
+					};
+
+					send(": connected\n\n");
+					send("retry: 2000\n\n");
+
+					const listener = (): boolean => send("event: reload\ndata: {}\n\n");
+					reloadListeners.add(listener);
+					removeListener = () => reloadListeners.delete(listener);
+				},
+				cancel() {
+					closed = true;
+					removeListener?.();
+					if (options?.accessLog) {
+						console.log("[viewer] sse: disconnect");
 					}
-				};
+				},
+			});
 
-				send(": connected\n\n");
-				send("retry: 2000\n\n");
-
-				const listener = (): boolean => send("event: reload\ndata: {}\n\n");
-				reloadListeners.add(listener);
-				removeListener = () => reloadListeners.delete(listener);
-			},
-			cancel() {
-				closed = true;
-				removeListener?.();
-			},
+			return c.newResponse(stream, 200, {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache, no-transform",
+				Connection: "keep-alive",
+			});
 		});
-
-		return c.newResponse(stream, 200, {
-			"Content-Type": "text/event-stream",
-			"Cache-Control": "no-cache",
-			Connection: "keep-alive",
-		});
-	});
+	}
 
 	return { app, notifyReload: broadcastReload };
 }
@@ -699,6 +740,7 @@ interface RenderViewerPageOptions {
 function renderViewerPage(
 	context: ViewerContext,
 	options: RenderViewerPageOptions,
+	extras?: { enableHotReload?: boolean },
 ): string {
 	const navigationHtml = renderNavigation(
 		context.navigation,
@@ -706,7 +748,10 @@ function renderViewerPage(
 	);
 	const headerOptionsHtml = renderHeaderOptions(context.headerOptions);
 	const directoryLabelHtml = escapeHtml(context.directoryLabel);
-	const hotReloadScript = `
+	const hotReloadEnabled = extras?.enableHotReload !== false;
+	const hotReloadScript = !hotReloadEnabled
+		? ""
+		: `
 <script>
 (function () {
         if (!("EventSource" in window)) {
@@ -714,6 +759,8 @@ function renderViewerPage(
         }
 
         var source = new EventSource("/events");
+        // Ensure the SSE connection doesn't leak across navigations
+        window.addEventListener("beforeunload", function () { try { source.close(); } catch (e) { /* ignore */ } });
         source.addEventListener("reload", function () {
                 window.location.reload();
         });
@@ -764,6 +811,7 @@ ${hotReloadScript}
 export function renderViewerHtml(
 	context: ViewerContext,
 	document: ViewerDocument,
+	options?: { enableHotReload?: boolean },
 ): string {
 	const descriptionHtml = document.meta.description
 		? `<p class="text-base text-muted-foreground">${escapeHtml(document.meta.description)}</p>`
@@ -782,14 +830,21 @@ export function renderViewerHtml(
                 ${renderFooter(document, context)}
         </div>`;
 
-	return renderViewerPage(context, {
-		pageTitle: document.meta.title || "Document",
-		activeDocumentId: document.id,
-		mainContentHtml,
-	});
+	return renderViewerPage(
+		context,
+		{
+			pageTitle: document.meta.title || "Document",
+			activeDocumentId: document.id,
+			mainContentHtml,
+		},
+		{ enableHotReload: options?.enableHotReload !== false },
+	);
 }
 
-export function renderEmptyViewerHtml(context: ViewerContext): string {
+export function renderEmptyViewerHtml(
+	context: ViewerContext,
+	options?: { enableHotReload?: boolean },
+): string {
 	const message = `Add Markdown documents to ${escapeHtml(context.directoryLabel)} to see them here.`;
 	const mainContentHtml = `<div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-16">
                 <div class="rounded-lg border border-border bg-card/40 p-10 text-center">
@@ -798,14 +853,21 @@ export function renderEmptyViewerHtml(context: ViewerContext): string {
                 </div>
         </div>`;
 
-	return renderViewerPage(context, {
-		pageTitle: "Viewer",
-		activeDocumentId: null,
-		mainContentHtml,
-	});
+	return renderViewerPage(
+		context,
+		{
+			pageTitle: "Viewer",
+			activeDocumentId: null,
+			mainContentHtml,
+		},
+		{ enableHotReload: options?.enableHotReload !== false },
+	);
 }
 
-export function renderFrontMatterIndexHtml(context: ViewerContext): string {
+export function renderFrontMatterIndexHtml(
+	context: ViewerContext,
+	options?: { enableHotReload?: boolean },
+): string {
 	const mobileSelector = renderMobileSelector(
 		context,
 		context.defaultDocument?.id ?? context.documents[0]?.id ?? "",
@@ -837,16 +899,21 @@ export function renderFrontMatterIndexHtml(context: ViewerContext): string {
                 </section>
         </div>`;
 
-	return renderViewerPage(context, {
-		pageTitle: "Front matter",
-		activeDocumentId: null,
-		mainContentHtml,
-	});
+	return renderViewerPage(
+		context,
+		{
+			pageTitle: "Front matter",
+			activeDocumentId: null,
+			mainContentHtml,
+		},
+		{ enableHotReload: options?.enableHotReload !== false },
+	);
 }
 
 export function renderFrontMatterFieldHtml(
 	context: ViewerContext,
 	field: ViewerFrontMatterField,
+	options?: { enableHotReload?: boolean },
 ): string {
 	const mobileSelector = renderMobileSelector(
 		context,
@@ -874,17 +941,22 @@ export function renderFrontMatterFieldHtml(
                 </section>
         </div>`;
 
-	return renderViewerPage(context, {
-		pageTitle: `Front matter: ${field.name}`,
-		activeDocumentId: null,
-		mainContentHtml,
-	});
+	return renderViewerPage(
+		context,
+		{
+			pageTitle: `Front matter: ${field.name}`,
+			activeDocumentId: null,
+			mainContentHtml,
+		},
+		{ enableHotReload: options?.enableHotReload !== false },
+	);
 }
 
 export function renderFrontMatterValueHtml(
 	context: ViewerContext,
 	field: ViewerFrontMatterField,
 	value: ViewerFrontMatterValue,
+	options?: { enableHotReload?: boolean },
 ): string {
 	const mobileSelector = renderMobileSelector(
 		context,
@@ -913,11 +985,15 @@ export function renderFrontMatterValueHtml(
                 </section>
         </div>`;
 
-	return renderViewerPage(context, {
-		pageTitle: `${field.name}: ${value.value}`,
-		activeDocumentId: null,
-		mainContentHtml,
-	});
+	return renderViewerPage(
+		context,
+		{
+			pageTitle: `${field.name}: ${value.value}`,
+			activeDocumentId: null,
+			mainContentHtml,
+		},
+		{ enableHotReload: options?.enableHotReload !== false },
+	);
 }
 
 function renderHeaderOptions(options: readonly ViewerHeaderOption[]): string {

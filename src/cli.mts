@@ -213,6 +213,8 @@ function createProgram(version: string): Command {
 			"Port to bind the viewer server (defaults to 4173)",
 		)
 		.option("--host <hostname>", "Hostname to bind the viewer server")
+		.option("--access-log", "Enable per-request access logs")
+		.option("--no-reload", "Disable hot reload (SSE + file watchers)")
 		.option("--strict", "Treat invalid Markdown files as errors")
 		.option("--ignore-invalid", "Skip Markdown files that fail to parse")
 		.argument("<directory>", "Directory containing Markdown files to render")
@@ -224,6 +226,8 @@ function createProgram(version: string): Command {
 					filter?: string[];
 					port?: string;
 					host?: string;
+					accessLog?: boolean;
+					reload?: boolean;
 					strict?: boolean;
 					ignoreInvalid?: boolean;
 				},
@@ -239,6 +243,8 @@ function createProgram(version: string): Command {
 						virtualPathPrefix: command.vpath,
 						port,
 						host: command.host,
+						accessLog: command.accessLog === true,
+						reload: command.reload !== false,
 						strict: command.strict === true,
 						ignoreInvalid: command.ignoreInvalid === true,
 					});
