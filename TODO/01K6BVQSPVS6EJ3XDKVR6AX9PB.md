@@ -1,5 +1,5 @@
 ---
-title: No error with no documents
+title: No error with no valid documents
 status: todo
 author: "@stakme"
 tags: []
@@ -11,7 +11,7 @@ updated_at: 2025-09-29T23:08:18.043Z
 
 ## What I need
 
-- I wouldn't expect an error when there are no documents
+- I wouldn't expect an error even when there are no valid documents.
 
 ## So I will create...
 
@@ -19,3 +19,6 @@ updated_at: 2025-09-29T23:08:18.043Z
 
 - Don't throw error when there are no documents. The server should show a empty
   page.
+- Also, because purpose of `viewer` command is to display as many documents as
+  possible, it should show all documents with no valid front matters by default.
+- Add `--ignore-invalid` option to ignore invalid documents explicitly.
