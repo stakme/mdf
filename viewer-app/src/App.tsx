@@ -418,13 +418,13 @@ function DocumentFrontMatter({
 			{entries.map(([key, value]) => (
 				<div
 					key={key}
-					className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 transition-colors hover:border-slate-700"
+					className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60 transition-colors hover:border-slate-700"
 				>
-					<dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+					<dt className="border-b border-slate-800/50 bg-slate-900/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
 						{key}
 					</dt>
-					<dd className="mt-2 text-sm leading-relaxed text-slate-100">
-						{renderFrontMatterValue(value)}
+					<dd className="px-4 py-3">
+						{renderFrontMatterValue(key, value)}
 					</dd>
 				</div>
 			))}
@@ -432,24 +432,49 @@ function DocumentFrontMatter({
 	);
 }
 
-function renderFrontMatterValue(value: unknown): string {
+function renderFrontMatterValue(fieldName: string, value: unknown): JSX.Element {
+	const renderSingleValue = (val: unknown): JSX.Element => {
+		if (val === null || val === undefined) {
+			return <span className="text-sm text-slate-500">—</span>;
+		}
+
+		const stringValue = val instanceof Date ? val.toISOString() : String(val);
+		
+		return (
+			<a
+				href={`#/fm/${encodeURIComponent(fieldName)}/${encodeURIComponent(stringValue)}`}
+				className="inline-block text-sm text-sky-400 transition-colors hover:text-sky-300 hover:underline"
+			>
+				{stringValue}
+			</a>
+		);
+	};
+
 	if (Array.isArray(value)) {
-		return value.map(renderFrontMatterValue).join(", ");
+		if (value.length === 0) {
+			return <span className="text-sm text-slate-500">—</span>;
+		}
+		return (
+			<div className="flex flex-wrap gap-2">
+				{value.map((item) => {
+					const stringValue = item instanceof Date ? item.toISOString() : String(item);
+					return (
+						<span key={stringValue}>{renderSingleValue(item)}</span>
+					);
+				})}
+			</div>
+		);
 	}
-	if (value instanceof Date) {
-		return value.toISOString();
-	}
-	if (value === null || value === undefined) {
-		return "—";
-	}
-	if (typeof value === "object") {
+
+	if (typeof value === "object" && value !== null) {
 		try {
-			return JSON.stringify(value);
+			return <code className="block overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-300">{JSON.stringify(value, null, 2)}</code>;
 		} catch {
-			return String(value);
+			return <span className="text-sm text-slate-300">{String(value)}</span>;
 		}
 	}
-	return String(value);
+
+	return renderSingleValue(value);
 }
 
 type Route =
@@ -766,7 +791,6 @@ export default function App(): JSX.Element {
 									</span>
 									{activeDocument.meta.routePath && (
 										<>
-											<span>·</span>
 											<span className="flex items-center gap-1">
 												<svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -778,16 +802,16 @@ export default function App(): JSX.Element {
 								</div>
 							</header>
 							<section
-								className="prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
-								// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
-								dangerouslySetInnerHTML={{ __html: activeDocument.html }}
-							/>
-							<section className="space-y-4 border-t border-slate-800 pt-8">
-								<h3 className="text-xl font-bold tracking-tight text-slate-200">
-									Front matter
-								</h3>
-								<DocumentFrontMatter document={activeDocument} />
-							</section>
+							className="article-body prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
+							dangerouslySetInnerHTML={{ __html: activeDocument.html }}
+						/>
+						<section className="space-y-4 border-t border-slate-800 pt-8">
+							<h3 className="text-xl font-bold tracking-tight text-slate-200">
+								Front matter
+							</h3>
+							<DocumentFrontMatter document={activeDocument} />
+						</section>
 						</article>
 					)}
 				</main>
