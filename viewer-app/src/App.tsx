@@ -245,7 +245,12 @@ function FrontMatterPanel({ fields }: FrontMatterPanelProps) {
 			{fields.map((field) => (
 				<div key={field.name} className="rounded-lg border border-slate-800 bg-slate-900/60">
 					<div className="border-b border-slate-800 px-4 py-3">
-						<h3 className="font-bold text-slate-200">{field.name}</h3>
+						<a
+							href={`#/fm/${encodeURIComponent(field.name)}`}
+							className="block font-bold text-slate-200 transition-colors hover:text-sky-400"
+						>
+							{field.name}
+						</a>
 						<p className="mt-0.5 text-xs text-slate-500">
 							{field.values.length} {field.values.length === 1 ? "value" : "values"}
 						</p>
@@ -385,6 +390,80 @@ function FrontMatterValueView({
 						</div>
 					</button>
 				))}
+			</div>
+		</div>
+	);
+}
+
+interface FrontMatterFieldViewProps {
+	field: string;
+	fields: ViewerFrontMatterFieldPayload[];
+}
+
+function FrontMatterFieldView({ field, fields }: FrontMatterFieldViewProps) {
+	const fieldData = fields.find((f) => f.name === field);
+
+	if (!fieldData) {
+		return (
+			<div className="mx-auto w-full max-w-4xl">
+				<div className="rounded-lg border border-red-700/50 bg-red-500/10 p-4 text-sm text-red-200">
+					Field "{field}" not found
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="mx-auto w-full max-w-4xl space-y-6">
+			<div>
+				<div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
+					<a href="#/fm" className="transition-colors hover:text-slate-300">
+						Properties
+					</a>
+					<span>›</span>
+					<span className="text-slate-300">{field}</span>
+				</div>
+				<h1 className="text-3xl font-bold tracking-tight text-slate-50">
+					{field}
+				</h1>
+				<p className="mt-2 text-sm text-slate-400">
+					{fieldData.values.length} {fieldData.values.length === 1 ? "value" : "values"}
+				</p>
+			</div>
+
+			<div className="rounded-lg border border-slate-800 bg-slate-900/60">
+				<div className="overflow-hidden">
+					<table className="w-full text-sm">
+						<thead className="border-b border-slate-800 bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+							<tr>
+								<th className="px-4 py-3">Value</th>
+								<th className="px-4 py-3 text-right">Count</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-slate-800/50">
+							{fieldData.values.map((value) => (
+								<tr key={value.value} className="group">
+									<td className="px-4 py-3">
+										<a
+											href={`#/fm/${encodeURIComponent(field)}/${encodeURIComponent(value.value)}`}
+											className="flex items-center gap-2 text-slate-200 transition-colors hover:text-sky-400"
+										>
+											<svg className="size-3 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+											</svg>
+											<span className="font-medium">{value.value}</span>
+										</a>
+									</td>
+									<td className="px-4 py-3 text-right">
+										<span className="inline-flex items-center justify-center rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+											{value.documentCount}
+										</span>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);
@@ -750,6 +829,12 @@ export default function App(): JSX.Element {
 							field={route.field}
 							value={route.value}
 							onSelectDocument={setSelectedId}
+						/>
+					)}
+					{route.type === "fm-field" && context && (
+						<FrontMatterFieldView
+							field={route.field}
+							fields={context.frontMatter}
 						/>
 					)}
 					{route.type === "document" && context && !selectedId && (
