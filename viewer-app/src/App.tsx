@@ -72,14 +72,16 @@ async function fetchJson<T>(
 function NavigationTree({ navigation, selectedId, onSelect }: NavigationProps) {
 	if (!navigation.children.length) {
 		return (
-			<p className="text-sm text-slate-400">
-				No documents matched the current filters.
-			</p>
+			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-center">
+				<p className="text-sm text-slate-400">
+					No documents matched the current filters.
+				</p>
+			</div>
 		);
 	}
 
 	return (
-		<ul className="space-y-1">
+		<ul className="space-y-0.5">
 			{navigation.children.map((child, index) => (
 				<NavigationNode
 					key={`${child.type}-${child.type === "dir" ? child.name : child.documentId}-${index}`}
@@ -108,14 +110,22 @@ function NavigationNode({
 				<button
 					type="button"
 					onClick={() => onSelect(node.documentId)}
-					className={`flex w-full items-center justify-between rounded-md px-2 py-1 text-sm transition-colors ${
+					className={`group flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-sm transition-all ${
 						isActive
-							? "bg-sky-500/90 text-white shadow"
-							: "text-slate-300 hover:bg-slate-800 hover:text-white"
+							? "bg-sky-600 text-white shadow-lg shadow-sky-500/20"
+							: "text-slate-300 hover:bg-slate-800/70 hover:text-white"
 					}`}
 				>
-					<span className="truncate">{node.name}</span>
-					<span className="text-xs text-slate-400">{node.routePath}</span>
+					<div className="flex-1 overflow-hidden">
+						<div className="truncate font-medium">{node.name}</div>
+						{node.routePath && (
+							<div className={`mt-0.5 truncate text-xs ${
+								isActive ? "text-sky-100" : "text-slate-500 group-hover:text-slate-400"
+							}`}>
+								{node.routePath}
+							</div>
+						)}
+					</div>
 				</button>
 			</li>
 		);
@@ -130,15 +140,20 @@ function NavigationNode({
 	return (
 		<li>
 			<details className="group" open={containsSelected || depth === 0}>
-				<summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white">
-					<span className="truncate">
+				<summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-slate-200">
+					<svg className="size-4 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+					</svg>
+					<span className="truncate font-semibold">
 						{node.name || (depth === 0 ? "Documents" : "(untitled)")}
 					</span>
-					<span className="text-xs text-slate-500">{currentPath || "/"}</span>
+					{currentPath && (
+						<span className="ml-auto text-xs text-slate-600">{currentPath}</span>
+					)}
 				</summary>
-				<div className="mt-1 border-l border-slate-800 pl-3">
+				<div className="mt-1 border-l-2 border-slate-800/50 pl-4">
 					{hasChildren ? (
-						<ul className="space-y-1">
+						<ul className="space-y-0.5">
 							{node.children.map((child, index) => (
 								<NavigationNode
 									key={`${child.type}-${
@@ -153,7 +168,7 @@ function NavigationNode({
 							))}
 						</ul>
 					) : (
-						<p className="px-2 py-2 text-xs text-slate-500">
+						<p className="rounded-md bg-slate-900/50 px-3 py-2 text-xs italic text-slate-500">
 							No documents in this directory.
 						</p>
 					)}
@@ -210,47 +225,53 @@ function NavigationSelect({
 function FrontMatterPanel({ fields, onSelectDocument }: FrontMatterPanelProps) {
 	if (!fields.length) {
 		return (
-			<p className="text-sm text-slate-400">
-				No linkable front matter fields available.
-			</p>
+			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-center">
+				<p className="text-sm text-slate-400">
+					No linkable front matter fields available.
+				</p>
+			</div>
 		);
 	}
 
 	return (
-		<div className="space-y-3">
+		<div className="space-y-4">
 			{fields.map((field) => (
 				<details
 					key={field.name}
-					className="rounded-md border border-slate-800 bg-slate-900/60"
+					className="group rounded-lg border border-slate-800 bg-slate-900/60 transition-colors hover:border-slate-700"
 				>
-					<summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium text-slate-200">
-						{field.name}
+					<summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:text-white">
+						<span>{field.name}</span>
+						<svg className="size-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+						</svg>
 					</summary>
-					<div className="space-y-3 px-3 pb-3 pt-2 text-sm">
+					<div className="space-y-2 px-4 pb-4 pt-1">
 						{field.values.map((value) => (
 							<div
 								key={value.value}
-								className="rounded-md border border-slate-800 bg-slate-900/70 p-2"
+								className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-3"
 							>
-								<div className="flex items-center justify-between">
-									<span className="font-medium text-slate-100">
+								<div className="mb-2 flex items-center justify-between gap-2">
+									<span className="font-semibold text-slate-100">
 										{value.value}
 									</span>
-									<span className="text-xs text-slate-400">
-										{value.documentCount === 1
-											? "1 document"
-											: `${value.documentCount} documents`}
+									<span className="shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+										{value.documentCount}
 									</span>
 								</div>
-								<div className="mt-2 space-y-1 text-xs">
+								<div className="space-y-1">
 									{value.documents.map((doc) => (
 										<button
 											key={doc.id}
 											type="button"
 											onClick={() => onSelectDocument(doc.id)}
-											className="w-full truncate rounded px-2 py-1 text-left text-slate-300 transition hover:bg-slate-800 hover:text-white"
+											className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
 										>
-											{doc.meta.title || doc.displayPath}
+											<svg className="size-3 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+											</svg>
+											<span className="truncate">{doc.meta.title || doc.displayPath}</span>
 										</button>
 									))}
 								</div>
@@ -278,23 +299,25 @@ function DocumentFrontMatter({
 
 	if (!entries.length) {
 		return (
-			<p className="text-sm text-slate-400">
-				This document has no additional front matter.
-			</p>
+			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 text-center">
+				<p className="text-sm text-slate-400">
+					This document has no additional front matter.
+				</p>
+			</div>
 		);
 	}
 
 	return (
-		<dl className="space-y-3">
+		<dl className="grid gap-4 sm:grid-cols-2">
 			{entries.map(([key, value]) => (
 				<div
 					key={key}
-					className="rounded-md border border-slate-800 bg-slate-900/60 px-3 py-2"
+					className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 transition-colors hover:border-slate-700"
 				>
-					<dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+					<dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
 						{key}
 					</dt>
-					<dd className="mt-1 text-sm text-slate-100">
+					<dd className="mt-2 text-sm leading-relaxed text-slate-100">
 						{renderFrontMatterValue(value)}
 					</dd>
 				</div>
@@ -437,31 +460,33 @@ export default function App(): JSX.Element {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
-			<header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
-				<div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
+			<header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm">
+				<div className="mx-auto flex w-full flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
 					<div>
-						<h1 className="text-xl font-semibold">mdf viewer</h1>
+						<h1 className="text-xl font-bold tracking-tight">mdf viewer</h1>
 						{context?.directoryLabel ? (
-							<p className="text-sm text-slate-400">{context.directoryLabel}</p>
+							<p className="mt-0.5 text-sm text-slate-400">{context.directoryLabel}</p>
 						) : null}
 					</div>
-					<div className="flex flex-wrap gap-2 text-xs text-slate-300">
-						{headerOptions.map((option) => (
-							<span
-								key={`${option.label}-${option.value}`}
-								className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1"
-							>
-								<span className="font-semibold uppercase tracking-wide text-slate-400">
-									{option.label}
+					{headerOptions.length > 0 && (
+						<div className="flex flex-wrap gap-2 text-xs">
+							{headerOptions.map((option) => (
+								<span
+									key={`${option.label}-${option.value}`}
+									className="inline-flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 transition-colors hover:border-slate-700"
+								>
+									<span className="font-semibold uppercase tracking-wider text-slate-500">
+										{option.label}
+									</span>
+									<span className="font-mono text-slate-300">{option.value}</span>
 								</span>
-								<span className="font-mono">{option.value}</span>
-							</span>
-						))}
-					</div>
+							))}
+						</div>
+					)}
 				</div>
 			</header>
 			<div className="flex flex-1 flex-col md:flex-row">
-				<aside className="border-b border-slate-800 bg-slate-900/60 px-4 py-6 md:sticky md:top-0 md:h-screen md:w-72 md:border-b-0 md:border-r md:overflow-y-auto">
+				<aside className="border-b border-slate-800 bg-slate-900/60 px-4 py-5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-80 md:border-b-0 md:border-r md:overflow-y-auto">
 					{context ? (
 						<>
 							<NavigationSelect
@@ -470,6 +495,14 @@ export default function App(): JSX.Element {
 								onSelect={setSelectedId}
 							/>
 							<div className="hidden md:block">
+								<div className="mb-3 flex items-center justify-between">
+									<h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+										Documents
+									</h2>
+									<span className="text-xs text-slate-600">
+										{context.documents.length}
+									</span>
+								</div>
 								<NavigationTree
 									navigation={context.navigation}
 									selectedId={selectedId}
@@ -478,92 +511,151 @@ export default function App(): JSX.Element {
 							</div>
 						</>
 					) : (
-						<p className="text-sm text-slate-400">Loading documents…</p>
+						<div className="flex items-center gap-2 text-sm text-slate-400">
+							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							</svg>
+							Loading documents…
+						</div>
 					)}
 				</aside>
-				<main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
-					{warnings.length > 0 ? (
-						<div className="mb-6 space-y-3 rounded-md border border-yellow-700 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-							<p className="font-semibold uppercase tracking-wide">
-								{warnings.length === 1
-									? "1 warning detected"
-									: `${warnings.length} warnings detected`}
-							</p>
-							<ul className="space-y-2">
+				<main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+					{warnings.length > 0 && (
+						<div className="mb-8 overflow-hidden rounded-lg border border-yellow-700/50 bg-yellow-500/10">
+							<div className="border-b border-yellow-700/30 bg-yellow-600/20 px-4 py-3">
+								<div className="flex items-center gap-2">
+									<svg className="size-5 shrink-0 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+									</svg>
+									<p className="font-bold text-yellow-100">
+										{warnings.length === 1
+											? "1 Warning"
+											: `${warnings.length} Warnings`}
+									</p>
+								</div>
+							</div>
+							<div className="space-y-3 p-4">
 								{warnings.map((warning) => (
-									<li key={warning.filePath}>
-										<p className="font-medium text-yellow-100">
+									<div key={warning.filePath} className="rounded-md bg-yellow-500/5 p-3">
+										<p className="mb-2 font-mono text-sm font-semibold text-yellow-100">
 											{warning.filePath}
 										</p>
-										<ul className="list-disc pl-5 text-yellow-200/90">
+										<ul className="space-y-1 pl-4">
 											{warning.messages.map((message, index) => (
-												<li key={`${warning.filePath}-${index}`}>{message}</li>
+												<li key={`${warning.filePath}-${index}`} className="text-sm text-yellow-200/90">
+													• {message}
+												</li>
 											))}
 										</ul>
-									</li>
+									</div>
 								))}
-							</ul>
+							</div>
 						</div>
-					) : null}
-					{error ? (
-						<div className="rounded-md border border-red-700 bg-red-500/10 p-4 text-sm text-red-200">
-							{error}
+					)}
+					{error && (
+						<div className="mb-8 overflow-hidden rounded-lg border border-red-700/50 bg-red-500/10">
+							<div className="flex items-center gap-2 border-b border-red-700/30 bg-red-600/20 px-4 py-3">
+								<svg className="size-5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<p className="font-bold text-red-100">Error</p>
+							</div>
+							<p className="p-4 text-sm text-red-200">{error}</p>
 						</div>
-					) : null}
-					{!context ? (
-						<p className="text-sm text-slate-400">Preparing viewer context…</p>
-					) : null}
-					{context && !selectedId ? (
-						<p className="text-sm text-slate-400">
-							No document selected. Choose one from the navigation.
-						</p>
-					) : null}
-					{loadingDocument ? (
-						<p className="text-sm text-slate-400">Loading document…</p>
-					) : null}
-					{activeDocument ? (
-						<article className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-							<header className="border-b border-slate-800 pb-4">
-								<h2 className="text-3xl font-semibold">
+					)}
+					{!context && (
+						<div className="flex items-center gap-2 text-sm text-slate-400">
+							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							</svg>
+							Preparing viewer context…
+						</div>
+					)}
+					{context && !selectedId && (
+						<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center">
+							<svg className="mx-auto size-12 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							</svg>
+							<p className="mt-4 text-sm text-slate-400">
+								No document selected. Choose one from the navigation.
+							</p>
+						</div>
+					)}
+					{loadingDocument && (
+						<div className="flex items-center gap-2 text-sm text-slate-400">
+							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							</svg>
+							Loading document…
+						</div>
+					)}
+					{activeDocument && (
+						<article className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+							<header className="space-y-3 border-b border-slate-800 pb-6">
+								<h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-50 md:text-4xl">
 									{activeDocument.meta.title || activeDocument.displayPath}
 								</h2>
-								{activeDocument.meta.description ? (
-									<p className="mt-2 text-base text-slate-300">
+								{activeDocument.meta.description && (
+									<p className="text-lg leading-relaxed text-slate-300">
 										{activeDocument.meta.description}
 									</p>
-								) : null}
-								<div className="mt-2 text-xs text-slate-500">
-									<span>{activeDocument.displayPath}</span>
-									{activeDocument.meta.routePath ? (
-										<span className="ml-2">
-											· {activeDocument.meta.routePath}
-										</span>
-									) : null}
+								)}
+								<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+									<span className="flex items-center gap-1">
+										<svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+										</svg>
+										{activeDocument.displayPath}
+									</span>
+									{activeDocument.meta.routePath && (
+										<>
+											<span>·</span>
+											<span className="flex items-center gap-1">
+												<svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+												</svg>
+												{activeDocument.meta.routePath}
+											</span>
+										</>
+									)}
 								</div>
 							</header>
 							<section
-								className="prose prose-invert max-w-none"
+								className="prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
 								dangerouslySetInnerHTML={{ __html: activeDocument.html }}
 							/>
-							<section>
-								<h3 className="text-xl font-semibold">Front matter</h3>
-								<div className="mt-3">
-									<DocumentFrontMatter document={activeDocument} />
-								</div>
+							<section className="space-y-4 border-t border-slate-800 pt-8">
+								<h3 className="text-xl font-bold tracking-tight text-slate-200">
+									Front matter
+								</h3>
+								<DocumentFrontMatter document={activeDocument} />
 							</section>
 						</article>
-					) : null}
+					)}
 				</main>
-				<aside className="border-t border-slate-800 bg-slate-900/60 px-4 py-6 md:w-80 md:border-t-0 md:border-l md:overflow-y-auto">
-					{context ? (
-						<FrontMatterPanel
-							fields={context.frontMatter}
-							onSelectDocument={(id) => {
-								setSelectedId(id);
-							}}
-						/>
-					) : null}
+				<aside className="border-t border-slate-800 bg-slate-900/60 px-4 py-5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-80 md:border-t-0 md:border-l md:overflow-y-auto">
+					{context && (
+						<>
+							<div className="mb-4 flex items-center justify-between">
+								<h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+									{context.frontMatter.length === 1 ? "Filter" : "Filters"}
+								</h2>
+								<span className="text-xs text-slate-600">
+									{context.frontMatter.length}
+								</span>
+							</div>
+							<FrontMatterPanel
+								fields={context.frontMatter}
+								onSelectDocument={(id) => {
+									setSelectedId(id);
+								}}
+							/>
+						</>
+					)}
 				</aside>
 			</div>
 		</div>
