@@ -41,3 +41,18 @@ export function defineConfig<TSchemaRecord extends SchemaRecordInput>(
 ): MdfConfig<TSchemaRecord> {
 	return config;
 }
+
+export type {
+	ViewerCommandOptions,
+	ViewerContext,
+	ViewerContextPayload,
+	ViewerDocument,
+	ViewerDocumentPayload,
+	ViewerDocumentSummary,
+	ViewerFrontMatterFieldPayload,
+	ViewerFrontMatterValuePayload,
+	ViewerHeaderOption,
+	ViewerNavigationDirectory,
+	ViewerNavigationFile,
+	ViewerNavigationNode,
+} from "./viewer/types.mts";

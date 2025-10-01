@@ -44,7 +44,7 @@ export default defineConfig({
 			const html = renderViewerHtml(context, doc, { enableHotReload: false });
 			expect(html).not.toContain('EventSource("/events")');
 
-			const { app } = createViewerApp(() => context, {
+			const { app } = await createViewerApp(() => context, {
 				enableHotReload: false,
 			});
 			const eventsResponse = await app.request("http://localhost/events");
@@ -86,7 +86,9 @@ export default defineConfig({
 
 			const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 			try {
-				const { app } = createViewerApp(() => context, { accessLog: true });
+				const { app } = await createViewerApp(() => context, {
+					accessLog: true,
+				});
 				const response = await app.request(
 					`http://localhost/?doc=${encodeURIComponent(context.documents[0]?.id ?? "")}`,
 				);

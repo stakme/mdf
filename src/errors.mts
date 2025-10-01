@@ -19,7 +19,9 @@ export type MdfErrorCode =
 	| "ALIAS_CYCLE"
 	| "INVALID_ALIAS_COMMAND"
 	| "VIEWER_NO_DOCUMENTS"
-	| "INVALID_VIEWER_PORT";
+	| "INVALID_VIEWER_PORT"
+	| "VIEWER_ASSETS_MISSING"
+	| "VIEWER_ASSETS_NOT_BUILT";
 
 export class MdfError extends Error {
 	constructor(

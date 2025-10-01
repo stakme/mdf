@@ -1,0 +1,25 @@
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind base directive */
+@tailwind base;
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind components directive */
+@tailwind components;
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind utilities directive */
+@tailwind utilities;
+
+:root {
+	color-scheme: dark;
+}
+
+body {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply utility */
+	@apply min-h-screen bg-slate-950 text-slate-100 antialiased;
+}
+
+a {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply utility */
+	@apply text-sky-400 underline-offset-4 hover:underline;
+}
+
+button {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply utility */
+	@apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400;
+}

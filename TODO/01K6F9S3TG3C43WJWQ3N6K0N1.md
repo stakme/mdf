@@ -1,11 +1,11 @@
 ---
 title: Modernize viewer UI with React bundle
 vpath: backlog/refactor
-status: todo
+status: done
 author: "@assistant"
 tags: [viewer, frontend]
 created_at: 2025-09-30T12:30:00.000Z
-updated_at: 2025-09-30T12:30:00.000Z
+updated_at: 2025-09-30T12:30:01.000Z
 ---
 
 # Modernize viewer UI with React bundle

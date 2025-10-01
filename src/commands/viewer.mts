@@ -2,7 +2,9 @@ import type { FSWatcher } from "node:fs";
 import { promises as fs, watch as watchDirectory } from "node:fs";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { type ServerType, serve } from "@hono/node-server";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import type { TokensList } from "marked";
 import { marked } from "marked";
@@ -26,97 +28,45 @@ import {
 	formatDisplayPath,
 	formatRelativePath,
 } from "../utils/path-format.mts";
-import {
-	buildViewerEntryFromRecord,
-	type ViewerMeta,
-} from "../viewer/meta.mts";
+import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
+import type {
+	ViewerCommandOptions,
+	ViewerContext,
+	ViewerContextPayload,
+	ViewerDocument,
+	ViewerDocumentPayload,
+	ViewerDocumentSummary,
+	ViewerFrontMatterField,
+	ViewerFrontMatterFieldPayload,
+	ViewerFrontMatterIndex,
+	ViewerFrontMatterValue,
+	ViewerFrontMatterValuePayload,
+	ViewerHeaderOption,
+	ViewerNavigationDirectory,
+	ViewerNavigationFile,
+} from "../viewer/types.mts";
 
-export interface ViewerCommandOptions {
-	cwd: string;
-	directory: string;
-	filters?: readonly string[];
-	virtualPathPrefix?: string;
-	port?: number;
-	host?: string;
-	strict?: boolean;
-	ignoreInvalid?: boolean;
-	/** Enable per-request access logs in the viewer server */
-	accessLog?: boolean;
-	/** Enable hot reload (SSE + file watchers). Defaults to true. */
-	reload?: boolean;
-}
-
-export interface ViewerDocument {
-	id: string;
-	filePath: string;
-	displayPath: string;
-	relativePath: string;
-	slug: string;
-	meta: ViewerMeta;
-	frontMatter: Record<string, unknown>;
-	html: string;
-	markdown: string;
-	virtualPathSegments: string[];
-	navigationSegments: string[];
-}
+export type {
+	ViewerCommandOptions,
+	ViewerContext,
+	ViewerContextPayload,
+	ViewerDocument,
+	ViewerDocumentPayload,
+	ViewerDocumentSummary,
+	ViewerFrontMatterField,
+	ViewerFrontMatterFieldPayload,
+	ViewerFrontMatterIndex,
+	ViewerFrontMatterValue,
+	ViewerFrontMatterValuePayload,
+	ViewerHeaderOption,
+	ViewerNavigationDirectory,
+	ViewerNavigationFile,
+} from "../viewer/types.mts";
 
 interface ViewerDocumentEntry {
 	schema: LoadedSchema;
 	frontMatter: ViewerDocument["frontMatter"];
 	document: ViewerDocument;
-}
-
-export interface ViewerContext {
-	cwd: string;
-	directory: string;
-	directoryLabel: string;
-	headerOptions: ViewerHeaderOption[];
-	documents: ViewerDocument[];
-	documentMap: Map<string, ViewerDocument>;
-	navigation: ViewerNavigationDirectory;
-	defaultDocument: ViewerDocument | null;
-	frontMatterIndex: ViewerFrontMatterIndex;
-	virtualPathParam: string;
-	virtualPathSeparator: string;
-	warnings: InvalidFileWarning[];
-}
-
-export interface ViewerHeaderOption {
-	label: string;
-	value: string;
-}
-
-export interface ViewerNavigationDirectory {
-	type: "dir";
-	name: string;
-	children: ViewerNavigationNode[];
-}
-
-export interface ViewerNavigationFile {
-	type: "file";
-	name: string;
-	documentId: string;
-	routePath: string;
-}
-
-export type ViewerNavigationNode =
-	| ViewerNavigationDirectory
-	| ViewerNavigationFile;
-
-export interface ViewerFrontMatterIndex {
-	fields: ViewerFrontMatterField[];
-	fieldMap: Map<string, ViewerFrontMatterField>;
-}
-
-export interface ViewerFrontMatterField {
-	name: string;
-	values: ViewerFrontMatterValue[];
-	valueMap: Map<string, ViewerFrontMatterValue>;
-}
-
-export interface ViewerFrontMatterValue {
-	value: string;
-	documents: ViewerDocument[];
 }
 
 interface PrepareViewerContextOptions extends ViewerCommandOptions {}
@@ -133,7 +83,7 @@ export async function runViewerCommand(
 ): Promise<void> {
 	let context = await prepareViewerContext(options);
 	logInvalidFileWarnings(context.warnings, options.cwd);
-	const appControls = createViewerApp(() => context, {
+	const appControls = await createViewerApp(() => context, {
 		accessLog: options.accessLog === true,
 		enableHotReload: options.reload !== false,
 	});
@@ -357,6 +307,16 @@ interface ViewerAppControls {
 	notifyReload(): void;
 }
 
+interface ViewerStaticAssets {
+	root: string;
+	indexHtml: string;
+}
+
+interface StaticFileCacheEntry {
+	data: ArrayBuffer;
+	contentType: string;
+}
+
 function buildViewerHeaderOptions(
 	options: ViewerCommandOptions,
 ): ViewerHeaderOption[] {
@@ -387,10 +347,12 @@ function buildViewerHeaderOptions(
 	return items;
 }
 
-export function createViewerApp(
+export async function createViewerApp(
 	getContext: () => ViewerContext,
 	options?: { accessLog?: boolean; enableHotReload?: boolean },
-): ViewerAppControls {
+): Promise<ViewerAppControls> {
+	const staticAssets = await loadViewerStaticAssets();
+	const assetCache = new Map<string, StaticFileCacheEntry>();
 	const app = new Hono();
 	const reloadListeners = new Set<() => boolean>();
 	const enableHotReload = options?.enableHotReload !== false;
@@ -418,24 +380,31 @@ export function createViewerApp(
 		}
 	}
 
-	app.get("/", (c) => {
+	app.get("/api/context", (c) => {
 		const context = getContext();
-		const requestedId = c.req.query("doc");
-		const document = requestedId
-			? (context.documentMap.get(requestedId) ?? null)
-			: context.defaultDocument;
+		return c.json(buildViewerContextPayload(context));
+	});
+
+	app.get("/api/documents/:id", (c) => {
+		const context = getContext();
+		const document = context.documentMap.get(c.req.param("id"));
 		if (!document) {
-			return c.html(renderEmptyViewerHtml(context, { enableHotReload }));
+			return c.json({ error: "Not Found" }, 404);
 		}
-		return c.html(renderViewerHtml(context, document, { enableHotReload }));
+
+		return c.json(buildViewerDocumentPayload(document));
 	});
 
-	app.get("/fm", (c) => {
+	app.get("/api/front-matter", (c) => {
 		const context = getContext();
-		return c.html(renderFrontMatterIndexHtml(context, { enableHotReload }));
+		return c.json({
+			fields: context.frontMatterIndex.fields.map((field) =>
+				buildViewerFrontMatterFieldPayload(field),
+			),
+		});
 	});
 
-	app.get("/fm/:field", (c) => {
+	app.get("/api/front-matter/:field", (c) => {
 		const context = getContext();
 		const fieldName = c.req.param("field");
 		const field = context.frontMatterIndex.fieldMap.get(fieldName);
@@ -443,12 +412,10 @@ export function createViewerApp(
 			return c.json({ error: "Not Found" }, 404);
 		}
 
-		return c.html(
-			renderFrontMatterFieldHtml(context, field, { enableHotReload }),
-		);
+		return c.json(buildViewerFrontMatterFieldPayload(field));
 	});
 
-	app.get("/fm/:field/:value", (c) => {
+	app.get("/api/front-matter/:field/:value", (c) => {
 		const context = getContext();
 		const fieldName = c.req.param("field");
 		const valueKey = c.req.param("value");
@@ -458,11 +425,10 @@ export function createViewerApp(
 			return c.json({ error: "Not Found" }, 404);
 		}
 
-		return c.html(
-			renderFrontMatterValueHtml(context, field, valueEntry, {
-				enableHotReload,
-			}),
-		);
+		return c.json({
+			field: field.name,
+			...buildViewerFrontMatterValuePayload(valueEntry),
+		});
 	});
 
 	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
@@ -473,59 +439,41 @@ export function createViewerApp(
 		}
 
 		const requestedPath = c.req.param("assetPath") ?? "";
-		const assetPath = resolveDocumentAssetPath(
+		const resolvedPath = resolveDocumentAssetPath(
 			document.filePath,
 			requestedPath,
 			context.directory,
 		);
-
-		if (!assetPath) {
+		if (!resolvedPath) {
 			return c.json({ error: "Not Found" }, 404);
 		}
 
 		try {
-			const stats = await fs.stat(assetPath);
-			if (!stats.isFile()) {
-				return c.json({ error: "Not Found" }, 404);
-			}
-
-			const contents = await fs.readFile(assetPath);
-			const arrayBuffer = (contents.buffer as ArrayBuffer).slice(
-				contents.byteOffset,
-				contents.byteOffset + contents.byteLength,
-			);
-			return c.newResponse(arrayBuffer, 200, {
-				"Content-Type": determineContentType(assetPath),
-				"Cache-Control": "no-cache",
+			const buffer = await fs.readFile(resolvedPath);
+			const contentType = determineContentType(resolvedPath);
+			return c.newResponse(toArrayBuffer(buffer), 200, {
+				"Content-Type": contentType,
 			});
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+			const code = (error as NodeJS.ErrnoException | undefined)?.code;
+			if (code === "ENOENT" || code === "EISDIR") {
 				return c.json({ error: "Not Found" }, 404);
 			}
 			throw error;
 		}
 	});
 
-	app.get("/documents/:id", (c) => {
-		const context = getContext();
-		const document = context.documentMap.get(c.req.param("id"));
-		if (!document) {
+	app.get("/assets/:assetPath{.+}", async (c) => {
+		const requested = c.req.param("assetPath") ?? "";
+		const resolved = await resolveViewerAssetPath(
+			staticAssets.root,
+			`assets/${requested}`,
+		);
+		if (!resolved) {
 			return c.json({ error: "Not Found" }, 404);
 		}
-		return c.json({
-			id: document.id,
-			title: document.meta.title,
-			description: document.meta.description,
-			tags: document.meta.tags,
-			author: document.meta.author,
-			createdAt: document.meta.createdAt,
-			updatedAt: document.meta.updatedAt,
-			frontMatter: document.frontMatter,
-			displayPath: document.displayPath,
-			relativePath: document.relativePath,
-			routePath: document.meta.routePath,
-			html: document.html,
-		});
+
+		return serveStaticAsset(c, resolved, assetCache);
 	});
 
 	if (enableHotReload) {
@@ -577,7 +525,251 @@ export function createViewerApp(
 		});
 	}
 
+	app.get("*", (c) => {
+		return c.newResponse(staticAssets.indexHtml, 200, {
+			"Content-Type": "text/html; charset=utf-8",
+		});
+	});
+
 	return { app, notifyReload: broadcastReload };
+}
+
+export function buildViewerContextPayload(
+	context: ViewerContext,
+): ViewerContextPayload {
+	return {
+		directoryLabel: context.directoryLabel,
+		headerOptions: context.headerOptions.map((option) => ({ ...option })),
+		navigation: context.navigation,
+		documents: context.documents.map((doc) => buildViewerDocumentSummary(doc)),
+		defaultDocumentId: context.defaultDocument?.id ?? null,
+		frontMatter: context.frontMatterIndex.fields.map((field) =>
+			buildViewerFrontMatterFieldPayload(field),
+		),
+		virtualPath: {
+			param: context.virtualPathParam,
+			separator: context.virtualPathSeparator,
+		},
+		warnings: context.warnings.map((warning) => ({
+			filePath: warning.filePath,
+			messages: [...warning.messages],
+		})),
+	};
+}
+
+export function buildViewerDocumentPayload(
+	document: ViewerDocument,
+): ViewerDocumentPayload {
+	return {
+		...buildViewerDocumentSummary(document),
+		frontMatter: document.frontMatter,
+		html: document.html,
+		markdown: document.markdown,
+	};
+}
+
+function buildViewerDocumentSummary(
+	document: ViewerDocument,
+): ViewerDocumentSummary {
+	return {
+		id: document.id,
+		slug: document.slug,
+		displayPath: document.displayPath,
+		relativePath: document.relativePath,
+		meta: document.meta,
+	};
+}
+
+export function buildViewerFrontMatterFieldPayload(
+	field: ViewerFrontMatterField,
+): ViewerFrontMatterFieldPayload {
+	return {
+		name: field.name,
+		values: field.values.map((value) =>
+			buildViewerFrontMatterValuePayload(value),
+		),
+	};
+}
+
+export function buildViewerFrontMatterValuePayload(
+	value: ViewerFrontMatterValue,
+): ViewerFrontMatterValuePayload {
+	const documents = value.documents.map((doc) =>
+		buildViewerDocumentSummary(doc),
+	);
+	return {
+		value: value.value,
+		documentIds: documents.map((doc) => doc.id),
+		documentCount: documents.length,
+		documents,
+	};
+}
+
+async function loadViewerStaticAssets(): Promise<ViewerStaticAssets> {
+	const root = await resolveViewerStaticRoot();
+	const indexPath = path.join(root, "index.html");
+
+	try {
+		const indexHtml = await fs.readFile(indexPath, "utf8");
+		return { root, indexHtml };
+	} catch {
+		throw new MdfError(
+			"VIEWER_ASSETS_MISSING",
+			"Viewer assets were not found. Run `npm run viewer:build` before launching the viewer.",
+		);
+	}
+}
+
+async function resolveViewerStaticRoot(): Promise<string> {
+	const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+	const repoRoot = await resolvePackageRoot(moduleDirectory);
+	const searchRoots = new Set<string>();
+	if (repoRoot) {
+		searchRoots.add(repoRoot);
+	}
+	searchRoots.add(path.resolve(moduleDirectory, ".."));
+	searchRoots.add(moduleDirectory);
+
+	const candidates = new Set<string>();
+	for (const root of searchRoots) {
+		candidates.add(path.resolve(root, "dist", "viewer"));
+		candidates.add(path.resolve(root, "viewer"));
+		candidates.add(path.resolve(root, "viewer-app", "dist"));
+	}
+
+	for (const candidate of candidates) {
+		if (await pathExists(candidate)) {
+			return candidate;
+		}
+	}
+
+	throw new MdfError(
+		"VIEWER_ASSETS_NOT_BUILT",
+		"Viewer assets are missing. Build them with `npm run viewer:build`.",
+	);
+}
+
+async function resolvePackageRoot(start: string): Promise<string | null> {
+	let current = path.resolve(start);
+	for (let depth = 0; depth < 6; depth += 1) {
+		const candidate = path.join(current, "package.json");
+		if (await pathExists(candidate)) {
+			return current;
+		}
+		const parent = path.dirname(current);
+		if (parent === current) {
+			break;
+		}
+		current = parent;
+	}
+	return null;
+}
+
+async function resolveViewerAssetPath(
+	root: string,
+	requestPath: string,
+): Promise<string | null> {
+	const normalized = requestPath.replace(/\+/gu, "/");
+	const safeSegments = normalized
+		.split("/")
+		.filter((segment) => segment && segment !== ".")
+		.map((segment) =>
+			segment === ".." ? segment : decodeURIComponent(segment),
+		);
+	const resolved = path.resolve(root, ...safeSegments);
+	if (!isPathWithinRoot(resolved, root)) {
+		return null;
+	}
+
+	try {
+		const stats = await fs.stat(resolved);
+		if (!stats.isFile()) {
+			return null;
+		}
+		return resolved;
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException | undefined)?.code;
+		if (code === "ENOENT") {
+			return null;
+		}
+		throw error;
+	}
+}
+
+async function serveStaticAsset(
+	c: Context,
+	filePath: string,
+	cache: Map<string, StaticFileCacheEntry>,
+): Promise<Response> {
+	let entry = cache.get(filePath);
+	if (!entry) {
+		const buffer = await fs.readFile(filePath);
+		entry = {
+			data: toArrayBuffer(buffer),
+			contentType: determineViewerAssetContentType(filePath),
+		};
+		cache.set(filePath, entry);
+	}
+
+	return c.newResponse(entry.data, 200, {
+		"Content-Type": entry.contentType,
+		"Cache-Control": "no-cache",
+	});
+}
+
+function determineViewerAssetContentType(filePath: string): string {
+	switch (path.extname(filePath).toLowerCase()) {
+		case ".js":
+		case ".mjs":
+		case ".cjs":
+			return "text/javascript; charset=utf-8";
+		case ".css":
+			return "text/css; charset=utf-8";
+		case ".html":
+			return "text/html; charset=utf-8";
+		case ".json":
+			return "application/json; charset=utf-8";
+		case ".svg":
+			return "image/svg+xml";
+		case ".png":
+			return "image/png";
+		case ".jpg":
+		case ".jpeg":
+			return "image/jpeg";
+		case ".gif":
+			return "image/gif";
+		case ".webp":
+			return "image/webp";
+		case ".avif":
+			return "image/avif";
+		case ".ico":
+			return "image/x-icon";
+		case ".woff":
+			return "font/woff";
+		case ".woff2":
+			return "font/woff2";
+		case ".ttf":
+			return "font/ttf";
+		case ".map":
+			return "application/json; charset=utf-8";
+		default:
+			return "application/octet-stream";
+	}
+}
+
+async function pathExists(target: string): Promise<boolean> {
+	try {
+		await fs.access(target);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function toArrayBuffer(view: Uint8Array): ArrayBuffer {
+	const copy = new Uint8Array(view.byteLength);
+	copy.set(view);
+	return copy.buffer;
 }
 
 interface RenderDocumentMarkdownOptions {
@@ -1010,6 +1202,125 @@ function renderHeaderOptions(options: readonly ViewerHeaderOption[]): string {
 		.join("");
 }
 
+function renderNavigation(
+	navigation: ViewerNavigationDirectory,
+	activeDocumentId: string,
+): string {
+	if (!navigation.children.length) {
+		return '<div class="text-sm text-muted-foreground">No documents yet.</div>';
+	}
+
+	const renderNodes = (
+		nodes: readonly (ViewerNavigationDirectory | ViewerNavigationFile)[],
+		depth: number,
+	): string => {
+		const items = nodes
+			.map((node) => renderNavigationNode(node, depth, activeDocumentId))
+			.filter((item) => item.length > 0)
+			.join("");
+		return items
+			? `<ul class="space-y-1 ${depth > 0 ? "pl-4" : ""}">${items}</ul>`
+			: "";
+	};
+
+	const renderNavigationNode = (
+		node: ViewerNavigationDirectory | ViewerNavigationFile,
+		depth: number,
+		activeId: string,
+	): string => {
+		if (node.type === "dir") {
+			const label = node.name ? escapeHtml(node.name) : "";
+			const children = renderNodes(node.children, depth + 1);
+			if (!children) {
+				return "";
+			}
+			const heading = label
+				? `<div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">${label}</div>`
+				: "";
+			return `<li class="space-y-1">${heading}${children}</li>`;
+		}
+
+		const isActive = node.documentId === activeId;
+		const label = escapeHtml(node.name || node.routePath);
+		return `<li><a class="block rounded-md px-2 py-1 text-sm transition ${
+			isActive
+				? "bg-primary/10 text-primary"
+				: "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+		}" href="/?doc=${encodeURIComponent(node.documentId)}">${label}</a></li>`;
+	};
+
+	return renderNodes(navigation.children, 0);
+}
+
+function renderMobileSelector(
+	context: ViewerContext,
+	activeDocumentId: string,
+): string {
+	if (!context.documents.length) {
+		return "";
+	}
+
+	const options = context.documents
+		.map((document) => {
+			const label = escapeHtml(document.meta.title || document.displayPath);
+			const selected = document.id === activeDocumentId ? " selected" : "";
+			return `<option value="${encodeURIComponent(document.id)}"${selected}>${label}</option>`;
+		})
+		.join("");
+
+	return `<div class="mb-6 lg:hidden"><label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground" for="viewer-document-select">Document</label><select id="viewer-document-select" class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" onchange="const value = this.value; if (value) { window.location.href = '/?doc=' + value; }">${options}</select></div>`;
+}
+
+function renderFooter(
+	document: ViewerDocument,
+	context: ViewerContext,
+): string {
+	const entries = Object.entries(document.frontMatter);
+	const frontMatterSummary = entries.length
+		? `<dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">${entries
+				.map(([key, value]) => {
+					const displayValue = escapeHtml(formatFrontMatterValue(value));
+					return `<div><dt class="text-xs uppercase tracking-wide text-muted-foreground">${escapeHtml(key)}</dt><dd class="text-sm text-muted-foreground">${displayValue}</dd></div>`;
+				})
+				.join("")}</dl>`
+		: `<p class="text-sm text-muted-foreground">No front matter for this document.</p>`;
+
+	return `<footer class="mt-12 space-y-4 border-t border-border pt-6 text-sm text-muted-foreground"><div class="flex flex-col gap-1"><span class="font-semibold">${escapeHtml(document.displayPath)}</span><span>${escapeHtml(context.directoryLabel)}</span></div>${frontMatterSummary}</footer>`;
+}
+
+function formatFrontMatterValue(value: unknown): string {
+	if (value === undefined || value === null) {
+		return "—";
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => formatFrontMatterValue(entry)).join(", ");
+	}
+
+	if (typeof value === "object") {
+		return JSON.stringify(value);
+	}
+
+	return String(value);
+}
+
+function buildFrontMatterFieldUrl(field: string): string {
+	return `/fm/${encodeURIComponent(field)}`;
+}
+
+function buildFrontMatterValueUrl(field: string, value: string): string {
+	return `/fm/${encodeURIComponent(field)}/${encodeURIComponent(value)}`;
+}
+
+function escapeHtml(raw: string): string {
+	return raw
+		.replace(/&/gu, "&amp;")
+		.replace(/</gu, "&lt;")
+		.replace(/>/gu, "&gt;")
+		.replace(/"/gu, "&quot;")
+		.replace(/'/gu, "&#39;");
+}
+
 async function enableHotReload(
 	rootDirectory: string,
 	onChange: () => Promise<void>,
@@ -1216,14 +1527,6 @@ function encodeDocumentId(relativePath: string): string {
 
 function buildDocumentAssetBaseUrl(documentId: string): string {
 	return `/documents/${encodeURIComponent(documentId)}/assets/`;
-}
-
-function buildFrontMatterFieldUrl(field: string): string {
-	return `/fm/${encodeURIComponent(field)}`;
-}
-
-function buildFrontMatterValueUrl(field: string, value: string): string {
-	return `${buildFrontMatterFieldUrl(field)}/${encodeURIComponent(value)}`;
 }
 
 function resolveDocumentAssetPath(
@@ -1474,260 +1777,6 @@ function freezeDirectory(
 			child.type === "dir" ? freezeDirectory(child) : child,
 		),
 	};
-}
-
-const MAX_NAVIGATION_DEPTH = 6;
-
-function renderNavigation(
-	node: ViewerNavigationDirectory,
-	activeId: string,
-): string {
-	if (!node.children.length) {
-		return `<p class="text-sm text-muted-foreground">No documents available</p>`;
-	}
-
-	const items = node.children
-		.map((child) => renderNavigationNode(child, activeId, 0, []))
-		.filter((child) => child.length > 0)
-		.join("");
-	return `<ul class="space-y-1" data-viewer-nav="tree">${items}</ul>`;
-}
-
-function renderNavigationNode(
-	node: ViewerNavigationNode,
-	activeId: string,
-	depth: number,
-	path: readonly string[],
-): string {
-	return node.type === "dir"
-		? renderNavigationDirectory(node, activeId, depth, path)
-		: renderNavigationFile(node, activeId, depth);
-}
-
-function renderNavigationDirectory(
-	node: ViewerNavigationDirectory,
-	activeId: string,
-	depth: number,
-	path: readonly string[],
-): string {
-	const name = node.name || "Untitled";
-	const fullPath = node.name ? [...path, node.name] : path;
-	const containsActive = directoryContainsDocument(node, activeId);
-	const hasChildren = node.children.length > 0;
-	const nextDepth = depth + 1;
-	const canRenderChildren = nextDepth <= MAX_NAVIGATION_DEPTH;
-	const dataPath = fullPath.length
-		? ` data-viewer-nav-path="${escapeHtml(fullPath.join("/"))}"`
-		: "";
-
-	if (!hasChildren) {
-		return `<li data-viewer-nav-node="dir" data-viewer-nav-depth="${depth}"${dataPath}>
-			<div class="rounded-md px-2 py-1 text-sm font-medium text-muted-foreground">${escapeHtml(name)}</div>
-		</li>`;
-	}
-
-	let bodyHtml: string;
-	if (!canRenderChildren) {
-		bodyHtml = `<div class="mt-2 rounded-md border border-border/40 bg-card/40 px-2 py-2 text-xs text-muted-foreground">Nested levels deeper than ${MAX_NAVIGATION_DEPTH} are hidden.</div>`;
-	} else {
-		const childItems = node.children
-			.map((child) =>
-				renderNavigationNode(child, activeId, nextDepth, fullPath),
-			)
-			.filter((child) => child.length > 0)
-			.join("");
-		bodyHtml = childItems.length
-			? `<ul class="mt-1 space-y-1 border-l border-border/40 pl-3" data-viewer-nav-depth="${nextDepth}">${childItems}</ul>`
-			: `<div class="mt-1 pl-3 text-xs text-muted-foreground">No entries</div>`;
-	}
-
-	const openAttribute = containsActive ? " open" : "";
-	const chevronIcon = `<svg class="h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
-	const summaryClasses = containsActive
-		? "flex list-none items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-		: "flex list-none items-center justify-between gap-2 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
-
-	return `<li data-viewer-nav-node="dir" data-viewer-nav-depth="${depth}"${dataPath}>
-		<details class="group"${openAttribute}>
-			<summary class="${summaryClasses}">
-				<span class="truncate">${escapeHtml(name)}</span>
-				${chevronIcon}
-			</summary>
-			${bodyHtml}
-		</details>
-	</li>`;
-}
-
-function renderNavigationFile(
-	node: ViewerNavigationFile,
-	activeId: string,
-	depth: number,
-): string {
-	const isActive = node.documentId === activeId;
-	const variant = isActive
-		? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-		: "text-muted-foreground hover:bg-muted hover:text-foreground";
-	return `<li data-viewer-nav-node="file" data-viewer-nav-depth="${depth}"><a class="block rounded-md px-2 py-1 text-sm transition-colors ${variant}" href="/?doc=${encodeURIComponent(node.documentId)}">${escapeHtml(node.name)}</a></li>`;
-}
-
-function directoryContainsDocument(
-	node: ViewerNavigationDirectory,
-	documentId: string,
-): boolean {
-	for (const child of node.children) {
-		if (child.type === "file" && child.documentId === documentId) {
-			return true;
-		}
-		if (child.type === "dir" && directoryContainsDocument(child, documentId)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-function renderFooter(
-	document: ViewerDocument,
-	context: ViewerContext,
-): string {
-	const entries = Object.entries(document.frontMatter)
-		.filter(([key]) => key !== "title")
-		.sort((a, b) =>
-			a[0].localeCompare(b[0], undefined, { sensitivity: "base" }),
-		);
-
-	if (!entries.length) {
-		return "";
-	}
-
-	const rows = entries
-		.map(([key, value]) => {
-			return `<div class="grid grid-cols-1 gap-2 border-t border-border py-3 first:border-t-0 md:grid-cols-[160px_1fr]">
-                                <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">${escapeHtml(key)}</div>
-                                <div class="text-sm text-foreground">${renderFooterValue(key, value, context)}</div>
-                        </div>`;
-		})
-		.join("");
-
-	return `<footer class="mt-12 rounded-lg border border-border bg-card/40 p-6">
-		<div class="flex flex-wrap items-center justify-between gap-2 pb-4">
-			<span class="text-sm font-medium text-muted-foreground">Front matter</span>
-			<span class="text-xs text-muted-foreground">${escapeHtml(document.displayPath)}</span>
-		</div>
-                <div class="mt-4">${rows}</div>
-        </footer>`;
-}
-
-function renderFooterValue(
-	fieldName: string,
-	value: unknown,
-	context: ViewerContext,
-): string {
-	if (value === undefined || value === null) {
-		return `<span class="text-muted-foreground">—</span>`;
-	}
-
-	if (Array.isArray(value)) {
-		if (!value.length) {
-			return `<span class="text-muted-foreground">—</span>`;
-		}
-		return value
-			.map((entry) => renderFooterValue(fieldName, entry, context))
-			.filter((entry) => entry.length > 0)
-			.join("<br />");
-	}
-
-	if (value instanceof Date) {
-		return escapeHtml(value.toISOString());
-	}
-
-	if (typeof value === "object") {
-		try {
-			const json = JSON.stringify(value, null, 2) ?? "";
-			return `<pre class="whitespace-pre-wrap text-xs text-muted-foreground">${escapeHtml(json)}</pre>`;
-		} catch {
-			return escapeHtml(String(value));
-		}
-	}
-
-	const displayValue = formatFooterPrimitive(value);
-	const linkTarget = buildFrontMatterLink(context, fieldName, value);
-
-	if (linkTarget) {
-		return `<a class="text-primary underline-offset-4 hover:underline" href="${linkTarget}">${escapeHtml(displayValue)}</a>`;
-	}
-
-	return escapeHtml(displayValue);
-}
-
-function formatFooterPrimitive(value: unknown): string {
-	if (value === null || value === undefined) {
-		return "";
-	}
-
-	if (value instanceof Date) {
-		return value.toISOString();
-	}
-
-	if (typeof value === "boolean") {
-		return value ? "true" : "false";
-	}
-
-	if (typeof value === "number" || typeof value === "bigint") {
-		return value.toString();
-	}
-
-	return String(value);
-}
-
-function buildFrontMatterLink(
-	context: ViewerContext,
-	fieldName: string,
-	value: unknown,
-): string | null {
-	const normalized = coerceLinkableFrontMatterValue(value);
-	if (!normalized) {
-		return null;
-	}
-
-	const field = context.frontMatterIndex.fieldMap.get(fieldName);
-	const entry = field?.valueMap.get(normalized);
-	if (!field || !entry || entry.documents.length === 0) {
-		return null;
-	}
-
-	return buildFrontMatterValueUrl(field.name, entry.value);
-}
-
-function renderMobileSelector(
-	context: ViewerContext,
-	activeId: string,
-): string {
-	if (!context.documents.length) {
-		return "";
-	}
-
-	const options = context.documents
-		.map((doc) => {
-			const selected = doc.id === activeId ? " selected" : "";
-			return `<option value="/?doc=${encodeURIComponent(doc.id)}"${selected}>${escapeHtml(doc.meta.title)}</option>`;
-		})
-		.join("");
-
-	return `<div class="mb-6 lg:hidden">
-		<label class="text-sm font-medium text-muted-foreground" for="mdf-viewer-select">Document</label>
-		<select id="mdf-viewer-select" class="mt-2 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm" onchange="if (this.value) window.location.href = this.value;">
-			${options}
-		</select>
-	</div>`;
-}
-
-function escapeHtml(value: string): string {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
 }
 
 function formatAddress(info: AddressInfo): string {

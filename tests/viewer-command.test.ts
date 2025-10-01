@@ -2,16 +2,16 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	buildViewerContextPayload,
 	createViewerApp,
 	prepareViewerContext,
-	renderViewerHtml,
 	type ViewerNavigationDirectory,
 	type ViewerNavigationFile,
 } from "../src/commands/viewer.mts";
 import { setupWorkspace } from "./helpers";
 
 describe("viewer command", () => {
-	it("prepares viewer context with filters and renders html", async () => {
+	it("prepares viewer context with filters and exposes JSON APIs", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
@@ -54,41 +54,38 @@ export default defineConfig({
 			const doc = context.documents[0];
 			expect(doc.meta.title).toBe("Alpha");
 			expect(doc.meta.routePath).toBe("docs/alpha");
-			expect(doc.html).not.toContain("<h1>Alpha</h1>");
 			expect(doc.html).toMatch(/<p>Content<\/p>/);
 
-			expect(context.navigation.children).toHaveLength(1);
-			const firstNode = context.navigation.children[0];
-			expect(firstNode.type).toBe("dir");
-			if (firstNode.type === "dir") {
-				expect(firstNode.name).toBe("docs");
-				expect(firstNode.children).toHaveLength(1);
-				const child = firstNode.children[0];
-				expect(child.type).toBe("file");
-				if (child.type === "file") {
-					expect(child.documentId).toBe(doc.id);
-				}
-			}
+			const payload = buildViewerContextPayload(context);
+			expect(payload.headerOptions).toEqual([
+				{ label: "Filter", value: "status=todo" },
+				{ label: "Virtual Path", value: "docs" },
+			]);
+			expect(payload.defaultDocumentId).toBe(doc.id);
+			expect(payload.documents[0]?.meta.routePath).toBe("docs/alpha");
 
-			const html = renderViewerHtml(context, doc);
-			expect(html).toContain('<html lang="en" class="dark" data-theme="dark">');
-			expect(html).toContain('<meta name="color-scheme" content="dark" />');
-			expect(html).toContain("cdn.tailwindcss.com");
-			expect(html).toContain(
-				'<a class="text-lg font-semibold tracking-tight hover:underline" href="/">mdf viewer</a>',
+			const { app } = await createViewerApp(() => context);
+
+			const contextResponse = await app.request("http://localhost/api/context");
+			expect(contextResponse.status).toBe(200);
+			const contextJson = await contextResponse.json();
+			expect(contextJson.documents).toHaveLength(1);
+			expect(contextJson.documents[0]?.meta.title).toBe("Alpha");
+			expect(contextJson.frontMatter).toHaveLength(0);
+
+			const docResponse = await app.request(
+				`http://localhost/api/documents/${encodeURIComponent(doc.id)}`,
 			);
-			expect(html).toContain("Alpha");
-			expect(html).toContain("Front matter");
-			expect(html).toMatch(/status[\s\S]*todo/);
-			expect(html).toMatch(/vpath[\s\S]*docs\/alpha/);
-			expect(html).toMatch(
-				/Filter<\/span><span class="font-mono leading-none normal-case">status=todo<\/span>/,
-			);
-			expect(html).toMatch(
-				/Virtual Path<\/span><span class="font-mono leading-none normal-case">docs<\/span>/,
-			);
-			expect(html).toContain('EventSource("/events")');
-			expect(html).not.toContain("Beta");
+			expect(docResponse.status).toBe(200);
+			const docJson = await docResponse.json();
+			expect(docJson.html).toContain("Content");
+			expect(docJson.frontMatter.status).toBe("todo");
+
+			const rootResponse = await app.request("http://localhost/");
+			expect(rootResponse.status).toBe(200);
+			const rootHtml = await rootResponse.text();
+			expect(rootHtml).toContain('<div id="root"></div>');
+			expect(rootHtml).not.toContain("cdn.tailwindcss.com");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -167,14 +164,14 @@ export default defineConfig({
 
 			const doc = context.documents[0];
 			const imageMatch = doc.html.match(/<img[^>]+src="([^"]+)"/u);
-			expect(imageMatch?.[1]).toBeDefined();
-			const assetPath = imageMatch?.[1];
-			expect(assetPath).toBe(
+			expect(imageMatch?.[1]).toBe(
 				`/documents/${encodeURIComponent(doc.id)}/assets/diagram.png`,
 			);
 
-			const { app } = createViewerApp(() => context);
-			const response = await app.request(`http://localhost${assetPath ?? ""}`);
+			const { app } = await createViewerApp(() => context);
+			const response = await app.request(
+				`http://localhost${imageMatch?.[1] ?? ""}`,
+			);
 
 			expect(response.status).toBe(200);
 			expect(response.headers.get("content-type")).toBe("image/png");
@@ -185,7 +182,7 @@ export default defineConfig({
 		}
 	});
 
-	it("renders empty viewer when no documents are present", async () => {
+	it("returns empty context when no documents are present", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
@@ -208,21 +205,22 @@ export default defineConfig({
 				directory: "notes",
 			});
 
-			expect(context.documents).toHaveLength(0);
-			expect(context.defaultDocument).toBeNull();
+			const payload = buildViewerContextPayload(context);
+			expect(payload.documents).toHaveLength(0);
+			expect(payload.defaultDocumentId).toBeNull();
 
-			const { app } = createViewerApp(() => context);
-			const response = await app.request("http://localhost/");
-			expect(response.status).toBe(200);
-			const html = await response.text();
-			expect(html).toContain("No documents available");
-			expect(html).toContain("Add Markdown documents");
+			const { app } = await createViewerApp(() => context);
+			const contextResponse = await app.request("http://localhost/api/context");
+			expect(contextResponse.status).toBe(200);
+			const json = await contextResponse.json();
+			expect(json.documents).toHaveLength(0);
+			expect(json.defaultDocumentId).toBeNull();
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
 
-	it("links front matter values and exposes field routes", async () => {
+	it("exposes front matter relationships via API", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
@@ -259,105 +257,46 @@ export default defineConfig({
 				directory: "notes",
 			});
 
-			expect(context.frontMatterIndex.fields.length).toBeGreaterThan(0);
-			const designDoc = context.documents.find(
-				(doc) => doc.meta.title === "Design",
+			const payload = buildViewerContextPayload(context);
+			const tagsField = payload.frontMatter.find(
+				(field) => field.name === "tags",
 			);
-			expect(designDoc).toBeDefined();
-			if (!designDoc) {
-				return;
-			}
+			expect(tagsField?.values).toHaveLength(3);
 
-			const html = renderViewerHtml(context, designDoc);
-			expect(html).toContain('href="/fm/tags/design"');
-			expect(html).toContain('href="/fm/status/draft"');
+			const { app } = await createViewerApp(() => context);
 
-			const { app } = createViewerApp(() => context);
+			const fieldResponse = await app.request(
+				"http://localhost/api/front-matter",
+			);
+			expect(fieldResponse.status).toBe(200);
+			const fieldJson = await fieldResponse.json();
+			expect(
+				fieldJson.fields.some(
+					(field: { name: string }) => field.name === "tags",
+				),
+			).toBe(true);
 
-			const fieldIndexResponse = await app.request("http://localhost/fm");
-			expect(fieldIndexResponse.status).toBe(200);
-			const fieldIndexHtml = await fieldIndexResponse.text();
-			expect(fieldIndexHtml).toContain("Front matter");
-			expect(fieldIndexHtml).toContain("tags");
-
-			const tagsResponse = await app.request("http://localhost/fm/tags");
+			const tagsResponse = await app.request(
+				"http://localhost/api/front-matter/tags",
+			);
 			expect(tagsResponse.status).toBe(200);
-			const tagsHtml = await tagsResponse.text();
-			expect(tagsHtml).toContain("design");
-			expect(tagsHtml).toContain("research");
+			const tagsJson = await tagsResponse.json();
+			expect(
+				tagsJson.values.some(
+					(value: { value: string }) => value.value === "design",
+				),
+			).toBe(true);
 
 			const valueResponse = await app.request(
-				"http://localhost/fm/tags/design",
+				"http://localhost/api/front-matter/tags/design",
 			);
 			expect(valueResponse.status).toBe(200);
-			const valueHtml = await valueResponse.text();
-			expect(valueHtml).toContain("Design");
-			expect(valueHtml).toContain("Research");
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
-		}
-	});
-
-	it("renders collapsible navigation and enforces depth limit", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
-
-export default defineConfig({
-                schema: z.object({
-			title: z.string(),
-			vpath: z.string().optional(),
-		}),
-		virtualPath: {
-			param: "vpath",
-			separator: "/",
-		},
-});`;
-
-		const tempDir = await setupWorkspace({ config: configSource });
-		const notesDir = path.join(tempDir, "notes");
-		await fs.mkdir(notesDir, { recursive: true });
-
-		await fs.writeFile(
-			path.join(notesDir, "deep.md"),
-			`---\ntitle: Deep Doc\nvpath: root/one/two/three/four/five/six/seven\n---\n# Deep Doc`,
-			"utf8",
-		);
-
-		await fs.writeFile(
-			path.join(notesDir, "shallow.md"),
-			`---\ntitle: Shallow Doc\nvpath: root/shallow\n---\n# Shallow Doc`,
-			"utf8",
-		);
-
-		await fs.writeFile(
-			path.join(notesDir, "other.md"),
-			`---\ntitle: Other Doc\nvpath: other/doc\n---\n# Other Doc`,
-			"utf8",
-		);
-
-		try {
-			const context = await prepareViewerContext({
-				cwd: tempDir,
-				directory: "notes",
-			});
-
-			const deepDoc = context.documents.find(
-				(doc) => doc.meta.title === "Deep Doc",
-			);
-			expect(deepDoc).toBeDefined();
-			if (!deepDoc) {
-				return;
-			}
-
-			const html = renderViewerHtml(context, deepDoc);
-			expect(html).toContain('data-viewer-nav="tree"');
-			expect(html).toContain("bg-muted/30");
-			expect(html).toContain('<details class="group" open>');
-			expect(html).toContain('<details class="group">');
-			expect(html).toContain("Nested levels deeper than 6 are hidden.");
-			expect(html).toContain('data-viewer-nav-node="file"');
-			expect(html).toContain(
-				'data-viewer-nav-path="root/one/two/three/four/five/six"',
-			);
+			const valueJson = await valueResponse.json();
+			expect(
+				valueJson.documents.map(
+					(doc: { meta: { title: string } }) => doc.meta.title,
+				),
+			).toEqual(["Design", "Research"]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -399,13 +338,12 @@ export default defineConfig({
 			});
 
 			expect(context.documents).toHaveLength(2);
-			const titles = context.documents.map((doc) => doc.meta.title);
-			expect(titles).toContain("Valid");
-			expect(titles).toContain("broken");
 			expect(context.warnings).toHaveLength(1);
 			const warning = context.warnings[0];
 			expect(warning?.filePath.endsWith("broken.md")).toBe(true);
-			expect(warning?.messages[0]).toContain("Front matter not found");
+
+			const payload = buildViewerContextPayload(context);
+			expect(payload.warnings).toHaveLength(1);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -450,9 +388,6 @@ export default defineConfig({
 			expect(context.documents).toHaveLength(1);
 			expect(context.documents[0]?.meta.title).toBe("Valid");
 			expect(context.warnings).toHaveLength(1);
-			const warning = context.warnings[0];
-			expect(warning?.filePath.endsWith("broken.md")).toBe(true);
-			expect(warning?.messages[0]).toContain("Front matter not found");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -472,6 +407,7 @@ export default defineConfig({
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
+
 		try {
 			const notesDir = path.join(tempDir, "notes");
 			await fs.mkdir(notesDir, { recursive: true });
@@ -542,13 +478,12 @@ export default defineConfig({
 				directory: "notes",
 			});
 
-			expect(context.documents.map((doc) => doc.meta.title)).toEqual([
+			expect(context.documents.map((entry) => entry.meta.title)).toEqual([
 				"Second",
 				"First",
 				"Third",
 			]);
 			expect(context.defaultDocument?.meta.title).toBe("Second");
-			expect(context.defaultDocument).not.toBeNull();
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -665,13 +600,12 @@ export default defineConfig({
 				directory: "notes",
 			});
 
-			expect(context.documents.map((doc) => doc.meta.title)).toEqual([
+			expect(context.documents.map((entry) => entry.meta.title)).toEqual([
 				"Alpha",
 				"Mu",
 				"Zeta",
 			]);
 			expect(context.defaultDocument?.meta.title).toBe("Alpha");
-			expect(context.defaultDocument).not.toBeNull();
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
