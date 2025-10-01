@@ -71,7 +71,9 @@ export default defineConfig({
 			const contextJson = await contextResponse.json();
 			expect(contextJson.documents).toHaveLength(1);
 			expect(contextJson.documents[0]?.meta.title).toBe("Alpha");
-			expect(contextJson.frontMatter).toHaveLength(0);
+			expect(
+				contextJson.frontMatter.map((field: { name: string }) => field.name),
+			).toEqual(["status", "title", "vpath"]);
 
 			const docResponse = await app.request(
 				`http://localhost/api/documents/${encodeURIComponent(doc.id)}`,

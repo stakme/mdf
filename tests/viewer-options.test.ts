@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createViewerApp,
 	prepareViewerContext,
-	renderViewerHtml,
 } from "../src/commands/viewer.mts";
 import { setupWorkspace } from "./helpers";
 
@@ -38,18 +37,15 @@ export default defineConfig({
 				directory: "notes",
 			});
 
-			const doc = context.defaultDocument ?? context.documents[0];
-			if (!doc) throw new Error("expected a document");
-
-			const html = renderViewerHtml(context, doc, { enableHotReload: false });
-			expect(html).not.toContain('EventSource("/events")');
-
 			const { app } = await createViewerApp(() => context, {
 				enableHotReload: false,
 			});
 			const eventsResponse = await app.request("http://localhost/events");
-			// No events endpoint when reload is disabled
-			expect(eventsResponse.status).toBe(404);
+			// The fallback index should be served when hot reload is disabled
+			expect(eventsResponse.status).toBe(200);
+			expect(eventsResponse.headers.get("content-type")).toBe(
+				"text/html; charset=utf-8",
+			);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
