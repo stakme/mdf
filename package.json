@@ -1,6 +1,6 @@
 {
 	"name": "@stakme/mdf",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "Lightweight utility to organize Markdown files with front matter",
 	"author": "@stakme",
 	"repository": {
