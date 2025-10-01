@@ -1,7 +1,9 @@
 import type {
 	ViewerContextPayload,
 	ViewerDocumentPayload,
+	ViewerDocumentSummary,
 	ViewerFrontMatterFieldPayload,
+	ViewerFrontMatterValuePayload,
 	ViewerNavigationDirectory,
 	ViewerNavigationNode,
 } from "@stakme/mdf/viewer-types";
@@ -30,6 +32,11 @@ interface NavigationNodeProps {
 
 interface FrontMatterPanelProps {
 	fields: ViewerFrontMatterFieldPayload[];
+}
+
+interface FrontMatterValueViewProps {
+	field: string;
+	value: string;
 	onSelectDocument(id: string): void;
 }
 
@@ -222,7 +229,7 @@ function NavigationSelect({
 	);
 }
 
-function FrontMatterPanel({ fields, onSelectDocument }: FrontMatterPanelProps) {
+function FrontMatterPanel({ fields }: FrontMatterPanelProps) {
 	if (!fields.length) {
 		return (
 			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 text-center">
@@ -255,29 +262,15 @@ function FrontMatterPanel({ fields, onSelectDocument }: FrontMatterPanelProps) {
 								{field.values.map((value) => (
 									<tr key={value.value} className="group">
 										<td className="px-4 py-2">
-											<details className="group/details">
-												<summary className="flex cursor-pointer items-center gap-2 text-slate-200 transition-colors hover:text-white">
-													<svg className="size-3 shrink-0 text-slate-600 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-													</svg>
-													<span className="font-medium">{value.value}</span>
-												</summary>
-												<div className="ml-5 mt-2 space-y-1">
-													{value.documents.map((doc) => (
-														<button
-															key={doc.id}
-															type="button"
-															onClick={() => onSelectDocument(doc.id)}
-															className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-sky-400"
-														>
-															<svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-																<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-															</svg>
-															<span className="truncate">{doc.meta.title || doc.displayPath}</span>
-														</button>
-													))}
-												</div>
-											</details>
+											<a
+												href={`#/fm/${encodeURIComponent(field.name)}/${encodeURIComponent(value.value)}`}
+												className="flex items-center gap-2 text-slate-200 transition-colors hover:text-sky-400"
+											>
+												<svg className="size-3 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+												</svg>
+												<span className="font-medium">{value.value}</span>
+											</a>
 										</td>
 										<td className="px-4 py-2 text-right">
 											<span className="inline-flex items-center justify-center rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
@@ -291,6 +284,108 @@ function FrontMatterPanel({ fields, onSelectDocument }: FrontMatterPanelProps) {
 					</div>
 				</div>
 			))}
+		</div>
+	);
+}
+
+function FrontMatterValueView({
+	field,
+	value,
+	onSelectDocument,
+}: FrontMatterValueViewProps) {
+	const [data, setData] = useState<ViewerFrontMatterValuePayload | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		setLoading(true);
+		setError(null);
+		fetchJson<ViewerFrontMatterValuePayload>(
+			`/api/front-matter/${encodeURIComponent(field)}/${encodeURIComponent(value)}`,
+		)
+			.then((payload) => {
+				setData(payload);
+				setLoading(false);
+			})
+			.catch((err) => {
+				setError(err instanceof Error ? err.message : String(err));
+				setLoading(false);
+			});
+	}, [field, value]);
+
+	if (loading) {
+		return (
+			<div className="flex items-center gap-2 text-sm text-slate-400">
+				<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+					<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+					<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+				</svg>
+				Loading...
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="rounded-lg border border-red-700/50 bg-red-500/10 p-4 text-sm text-red-200">
+				{error}
+			</div>
+		);
+	}
+
+	if (!data) {
+		return null;
+	}
+
+	return (
+		<div className="mx-auto w-full max-w-4xl space-y-6">
+			<div>
+				<div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
+					<a href="#/fm" className="transition-colors hover:text-slate-300">
+						Properties
+					</a>
+					<span>›</span>
+					<a
+						href={`#/fm/${encodeURIComponent(field)}`}
+						className="transition-colors hover:text-slate-300"
+					>
+						{field}
+					</a>
+					<span>›</span>
+					<span className="text-slate-300">{value}</span>
+				</div>
+				<h1 className="text-3xl font-bold tracking-tight text-slate-50">
+					{value}
+				</h1>
+				<p className="mt-2 text-sm text-slate-400">
+					{data.documentCount} {data.documentCount === 1 ? "document" : "documents"} with {field} = {value}
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				{data.documents.map((doc) => (
+					<button
+						key={doc.id}
+						type="button"
+						onClick={() => {
+							window.location.hash = "/";
+							onSelectDocument(doc.id);
+						}}
+						className="flex w-full items-start gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900/80"
+					>
+						<svg className="mt-1 size-5 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						</svg>
+						<div className="flex-1 overflow-hidden">
+							<div className="font-semibold text-slate-100">{doc.meta.title || doc.displayPath}</div>
+							{doc.meta.description && (
+								<p className="mt-1 text-sm text-slate-400">{doc.meta.description}</p>
+							)}
+							<div className="mt-2 text-xs text-slate-600">{doc.displayPath}</div>
+						</div>
+					</button>
+				))}
+			</div>
 		</div>
 	);
 }
@@ -357,8 +452,41 @@ function renderFrontMatterValue(value: unknown): string {
 	return String(value);
 }
 
+type Route =
+	| { type: "document"; documentId: string | null }
+	| { type: "fm-index" }
+	| { type: "fm-field"; field: string }
+	| { type: "fm-value"; field: string; value: string };
+
+function parseRoute(): Route {
+	const hash = window.location.hash.slice(1); // Remove #
+	if (!hash || hash === "/") {
+		return { type: "document", documentId: null };
+	}
+
+	const parts = hash.split("/").filter(Boolean);
+	if (parts[0] === "fm") {
+		if (parts.length === 1) {
+			return { type: "fm-index" };
+		}
+		if (parts.length === 2) {
+			return { type: "fm-field", field: decodeURIComponent(parts[1]) };
+		}
+		if (parts.length === 3) {
+			return {
+				type: "fm-value",
+				field: decodeURIComponent(parts[1]),
+				value: decodeURIComponent(parts[2]),
+			};
+		}
+	}
+
+	return { type: "document", documentId: null };
+}
+
 export default function App(): JSX.Element {
 	const [context, setContext] = useState<ViewerContextPayload | null>(null);
+	const [route, setRoute] = useState<Route>(parseRoute());
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [document, setDocument] = useState<ViewerDocumentPayload | null>(null);
 	const [loadingDocument, setLoadingDocument] = useState(false);
@@ -400,6 +528,14 @@ export default function App(): JSX.Element {
 	useEffect(() => {
 		void fetchContext(false);
 	}, [fetchContext]);
+
+	useEffect(() => {
+		const handleHashChange = () => {
+			setRoute(parseRoute());
+		};
+		window.addEventListener("hashchange", handleHashChange);
+		return () => window.removeEventListener("hashchange", handleHashChange);
+	}, []);
 
 	useEffect(() => {
 		selectedIdRef.current = selectedId;
@@ -584,7 +720,14 @@ export default function App(): JSX.Element {
 							Preparing viewer context…
 						</div>
 					)}
-					{context && !selectedId && (
+					{route.type === "fm-value" && (
+						<FrontMatterValueView
+							field={route.field}
+							value={route.value}
+							onSelectDocument={setSelectedId}
+						/>
+					)}
+					{route.type === "document" && context && !selectedId && (
 						<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center">
 							<svg className="mx-auto size-12 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -594,7 +737,7 @@ export default function App(): JSX.Element {
 							</p>
 						</div>
 					)}
-					{loadingDocument && (
+					{route.type === "document" && loadingDocument && (
 						<div className="flex items-center gap-2 text-sm text-slate-400">
 							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -603,7 +746,7 @@ export default function App(): JSX.Element {
 							Loading document…
 						</div>
 					)}
-					{activeDocument && (
+					{route.type === "document" && activeDocument && (
 						<article className="mx-auto flex w-full max-w-4xl flex-col gap-10">
 							<header className="space-y-3 border-b border-slate-800 pb-6">
 								<h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-50 md:text-4xl">
@@ -659,12 +802,7 @@ export default function App(): JSX.Element {
 									Browse documents by property
 								</p>
 							</div>
-							<FrontMatterPanel
-								fields={context.frontMatter}
-								onSelectDocument={(id) => {
-									setSelectedId(id);
-								}}
-							/>
+							<FrontMatterPanel fields={context.frontMatter} />
 						</>
 					)}
 				</aside>
