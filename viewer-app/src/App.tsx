@@ -30,10 +30,6 @@ interface NavigationNodeProps {
 	path: string;
 }
 
-interface FrontMatterPanelProps {
-	fields: ViewerFrontMatterFieldPayload[];
-}
-
 interface FrontMatterValueViewProps {
 	field: string;
 	value: string;
@@ -225,70 +221,6 @@ function NavigationSelect({
 					</option>
 				))}
 			</select>
-		</div>
-	);
-}
-
-function FrontMatterPanel({ fields }: FrontMatterPanelProps) {
-	if (!fields.length) {
-		return (
-			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 text-center">
-				<p className="text-sm text-slate-400">
-					No front matter fields available.
-				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div className="space-y-6">
-			{fields.map((field) => (
-				<div key={field.name} className="rounded-lg border border-slate-800 bg-slate-900/60">
-					<div className="border-b border-slate-800 px-4 py-3">
-						<a
-							href={`#/fm/${encodeURIComponent(field.name)}`}
-							className="block font-bold text-slate-200 transition-colors hover:text-sky-400"
-						>
-							{field.name}
-						</a>
-						<p className="mt-0.5 text-xs text-slate-500">
-							{field.values.length} {field.values.length === 1 ? "value" : "values"}
-						</p>
-					</div>
-					<div className="overflow-hidden">
-						<table className="w-full text-sm">
-							<thead className="border-b border-slate-800 bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-								<tr>
-									<th className="px-4 py-2">Value</th>
-									<th className="px-4 py-2 text-right">Count</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-slate-800/50">
-								{field.values.map((value) => (
-									<tr key={value.value} className="group">
-										<td className="px-4 py-2">
-											<a
-												href={`#/fm/${encodeURIComponent(field.name)}/${encodeURIComponent(value.value)}`}
-												className="flex items-center gap-2 text-slate-200 transition-colors hover:text-sky-400"
-											>
-												<svg className="size-3 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-												</svg>
-												<span className="font-medium">{value.value}</span>
-											</a>
-										</td>
-										<td className="px-4 py-2 text-right">
-											<span className="inline-flex items-center justify-center rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
-												{value.documentCount}
-											</span>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			))}
 		</div>
 	);
 }
@@ -887,34 +819,19 @@ export default function App(): JSX.Element {
 								</div>
 							</header>
 							<section
-							className="article-body prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
-							// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
-							dangerouslySetInnerHTML={{ __html: activeDocument.html }}
-						/>
-						<section className="space-y-4 border-t border-slate-800 pt-8">
-							<h3 className="text-xl font-bold tracking-tight text-slate-200">
-								Front matter
-							</h3>
-							<DocumentFrontMatter document={activeDocument} />
-						</section>
+								className="article-body prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
+								// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
+								dangerouslySetInnerHTML={{ __html: activeDocument.html }}
+							/>
+							<section className="space-y-4 border-t border-slate-800 pt-8">
+								<h3 className="text-xl font-bold tracking-tight text-slate-200">
+									Front matter
+								</h3>
+								<DocumentFrontMatter document={activeDocument} />
+							</section>
 						</article>
 					)}
 				</main>
-				<aside className="border-t border-slate-800 bg-slate-900/60 px-4 py-5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-96 md:border-t-0 md:border-l md:overflow-y-auto">
-					{context && (
-						<>
-							<div className="mb-4">
-								<h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-									Properties
-								</h2>
-								<p className="mt-1 text-xs text-slate-600">
-									Browse documents by property
-								</p>
-							</div>
-							<FrontMatterPanel fields={context.frontMatter} />
-						</>
-					)}
-				</aside>
 			</div>
 		</div>
 	);
