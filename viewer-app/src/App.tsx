@@ -110,22 +110,20 @@ function NavigationNode({
 				<button
 					type="button"
 					onClick={() => onSelect(node.documentId)}
-					className={`group flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-sm transition-all ${
+					className={`group flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2.5 text-left text-sm transition-all ${
 						isActive
 							? "bg-sky-600 text-white shadow-lg shadow-sky-500/20"
 							: "text-slate-300 hover:bg-slate-800/70 hover:text-white"
 					}`}
 				>
-					<div className="flex-1 overflow-hidden">
-						<div className="truncate font-medium">{node.name}</div>
-						{node.routePath && (
-							<div className={`mt-0.5 truncate text-xs ${
-								isActive ? "text-sky-100" : "text-slate-500 group-hover:text-slate-400"
-							}`}>
-								{node.routePath}
-							</div>
-						)}
-					</div>
+					<div className="w-full truncate font-medium">{node.name}</div>
+					{node.routePath && (
+						<div className={`w-full truncate text-xs ${
+							isActive ? "text-sky-100" : "text-slate-500 group-hover:text-slate-400"
+						}`}>
+							{node.routePath}
+						</div>
+					)}
 				</button>
 			</li>
 		);
@@ -144,12 +142,14 @@ function NavigationNode({
 					<svg className="size-4 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
 					</svg>
-					<span className="truncate font-semibold">
-						{node.name || (depth === 0 ? "Documents" : "(untitled)")}
-					</span>
-					{currentPath && (
-						<span className="ml-auto text-xs text-slate-600">{currentPath}</span>
-					)}
+					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+						<span className="truncate font-semibold">
+							{node.name || (depth === 0 ? "Documents" : "(untitled)")}
+						</span>
+						{currentPath && (
+							<span className="truncate text-xs text-slate-600">{currentPath}</span>
+						)}
+					</div>
 				</summary>
 				<div className="mt-1 border-l-2 border-slate-800/50 pl-4">
 					{hasChildren ? (
@@ -225,60 +225,71 @@ function NavigationSelect({
 function FrontMatterPanel({ fields, onSelectDocument }: FrontMatterPanelProps) {
 	if (!fields.length) {
 		return (
-			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-center">
+			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 text-center">
 				<p className="text-sm text-slate-400">
-					No linkable front matter fields available.
+					No front matter fields available.
 				</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-6">
 			{fields.map((field) => (
-				<details
-					key={field.name}
-					className="group rounded-lg border border-slate-800 bg-slate-900/60 transition-colors hover:border-slate-700"
-				>
-					<summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:text-white">
-						<span>{field.name}</span>
-						<svg className="size-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-						</svg>
-					</summary>
-					<div className="space-y-2 px-4 pb-4 pt-1">
-						{field.values.map((value) => (
-							<div
-								key={value.value}
-								className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-3"
-							>
-								<div className="mb-2 flex items-center justify-between gap-2">
-									<span className="font-semibold text-slate-100">
-										{value.value}
-									</span>
-									<span className="shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
-										{value.documentCount}
-									</span>
-								</div>
-								<div className="space-y-1">
-									{value.documents.map((doc) => (
-										<button
-											key={doc.id}
-											type="button"
-											onClick={() => onSelectDocument(doc.id)}
-											className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-										>
-											<svg className="size-3 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-											</svg>
-											<span className="truncate">{doc.meta.title || doc.displayPath}</span>
-										</button>
-									))}
-								</div>
-							</div>
-						))}
+				<div key={field.name} className="rounded-lg border border-slate-800 bg-slate-900/60">
+					<div className="border-b border-slate-800 px-4 py-3">
+						<h3 className="font-bold text-slate-200">{field.name}</h3>
+						<p className="mt-0.5 text-xs text-slate-500">
+							{field.values.length} {field.values.length === 1 ? "value" : "values"}
+						</p>
 					</div>
-				</details>
+					<div className="overflow-hidden">
+						<table className="w-full text-sm">
+							<thead className="border-b border-slate-800 bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+								<tr>
+									<th className="px-4 py-2">Value</th>
+									<th className="px-4 py-2 text-right">Count</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-800/50">
+								{field.values.map((value) => (
+									<tr key={value.value} className="group">
+										<td className="px-4 py-2">
+											<details className="group/details">
+												<summary className="flex cursor-pointer items-center gap-2 text-slate-200 transition-colors hover:text-white">
+													<svg className="size-3 shrink-0 text-slate-600 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+													</svg>
+													<span className="font-medium">{value.value}</span>
+												</summary>
+												<div className="ml-5 mt-2 space-y-1">
+													{value.documents.map((doc) => (
+														<button
+															key={doc.id}
+															type="button"
+															onClick={() => onSelectDocument(doc.id)}
+															className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-sky-400"
+														>
+															<svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+																<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+															</svg>
+															<span className="truncate">{doc.meta.title || doc.displayPath}</span>
+														</button>
+													))}
+												</div>
+											</details>
+										</td>
+										<td className="px-4 py-2 text-right">
+											<span className="inline-flex items-center justify-center rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+												{value.documentCount}
+											</span>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</div>
 			))}
 		</div>
 	);
@@ -637,16 +648,16 @@ export default function App(): JSX.Element {
 						</article>
 					)}
 				</main>
-				<aside className="border-t border-slate-800 bg-slate-900/60 px-4 py-5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-80 md:border-t-0 md:border-l md:overflow-y-auto">
+				<aside className="border-t border-slate-800 bg-slate-900/60 px-4 py-5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-96 md:border-t-0 md:border-l md:overflow-y-auto">
 					{context && (
 						<>
-							<div className="mb-4 flex items-center justify-between">
+							<div className="mb-4">
 								<h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-									{context.frontMatter.length === 1 ? "Filter" : "Filters"}
+									Properties
 								</h2>
-								<span className="text-xs text-slate-600">
-									{context.frontMatter.length}
-								</span>
+								<p className="mt-1 text-xs text-slate-600">
+									Browse documents by property
+								</p>
 							</div>
 							<FrontMatterPanel
 								fields={context.frontMatter}
