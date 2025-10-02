@@ -6,8 +6,6 @@ import { fileURLToPath } from "node:url";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import type { TokensList } from "marked";
-import { marked } from "marked";
 import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
 import {
@@ -24,6 +22,7 @@ import {
 	parseFilterExpression,
 } from "../utils/filters.mts";
 import { logInvalidFileWarnings } from "../utils/invalid-file-warning.mts";
+import { renderDocumentMarkdown } from "../utils/markdown-renderer.mts";
 import {
 	formatDisplayPath,
 	formatRelativePath,
@@ -380,12 +379,15 @@ export async function createViewerApp(
 		}
 	}
 
-	app.get("/api/context", (c) => {
+	const handleContextRequest = (c: Context) => {
 		const context = getContext();
 		return c.json(buildViewerContextPayload(context));
-	});
+	};
 
-	app.get("/api/documents/:id", (c) => {
+	app.get("/api/context", handleContextRequest);
+	app.get("/api/context/index.json", handleContextRequest);
+
+	const handleDocumentRequest = (c: Context) => {
 		const context = getContext();
 		const document = context.documentMap.get(c.req.param("id"));
 		if (!document) {
@@ -393,18 +395,24 @@ export async function createViewerApp(
 		}
 
 		return c.json(buildViewerDocumentPayload(document));
-	});
+	};
 
-	app.get("/api/front-matter", (c) => {
+	app.get("/api/documents/:id", handleDocumentRequest);
+	app.get("/api/documents/:id/index.json", handleDocumentRequest);
+
+	const handleFrontMatterIndexRequest = (c: Context) => {
 		const context = getContext();
 		return c.json({
 			fields: context.frontMatterIndex.fields.map((field) =>
 				buildViewerFrontMatterFieldPayload(field),
 			),
 		});
-	});
+	};
 
-	app.get("/api/front-matter/:field", (c) => {
+	app.get("/api/front-matter", handleFrontMatterIndexRequest);
+	app.get("/api/front-matter/index.json", handleFrontMatterIndexRequest);
+
+	const handleFrontMatterFieldRequest = (c: Context) => {
 		const context = getContext();
 		const fieldName = c.req.param("field");
 		const field = context.frontMatterIndex.fieldMap.get(fieldName);
@@ -413,9 +421,12 @@ export async function createViewerApp(
 		}
 
 		return c.json(buildViewerFrontMatterFieldPayload(field));
-	});
+	};
 
-	app.get("/api/front-matter/:field/:value", (c) => {
+	app.get("/api/front-matter/:field", handleFrontMatterFieldRequest);
+	app.get("/api/front-matter/:field/index.json", handleFrontMatterFieldRequest);
+
+	const handleFrontMatterValueRequest = (c: Context) => {
 		const context = getContext();
 		const fieldName = c.req.param("field");
 		const valueKey = c.req.param("value");
@@ -429,7 +440,13 @@ export async function createViewerApp(
 			field: field.name,
 			...buildViewerFrontMatterValuePayload(valueEntry),
 		});
-	});
+	};
+
+	app.get("/api/front-matter/:field/:value", handleFrontMatterValueRequest);
+	app.get(
+		"/api/front-matter/:field/:value/index.json",
+		handleFrontMatterValueRequest,
+	);
 
 	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
 		const context = getContext();
@@ -605,7 +622,7 @@ export function buildViewerFrontMatterValuePayload(
 	};
 }
 
-async function loadViewerStaticAssets(): Promise<ViewerStaticAssets> {
+export async function loadViewerStaticAssets(): Promise<ViewerStaticAssets> {
 	const root = await resolveViewerStaticRoot();
 	const indexPath = path.join(root, "index.html");
 
@@ -770,157 +787,6 @@ function toArrayBuffer(view: Uint8Array): ArrayBuffer {
 	const copy = new Uint8Array(view.byteLength);
 	copy.set(view);
 	return copy.buffer;
-}
-
-interface RenderDocumentMarkdownOptions {
-	assetBaseUrl?: string;
-}
-
-function renderDocumentMarkdown(
-	markdown: string,
-	title: string | null,
-	options: RenderDocumentMarkdownOptions = {},
-): string {
-	const tokens = marked.lexer(markdown);
-	stripLeadingTitleHeading(tokens, title);
-	if (options.assetBaseUrl) {
-		rewriteDocumentAssetTokens(tokens, options.assetBaseUrl);
-	}
-	const rendered = marked.parser(tokens);
-	return typeof rendered === "string" ? rendered : String(rendered);
-}
-
-function rewriteDocumentAssetTokens(
-	tokens: TokensList,
-	assetBaseUrl: string,
-): void {
-	marked.walkTokens(tokens, (token) => {
-		if (token.type === "image") {
-			token.href = rewriteRelativeAssetHref(token.href, assetBaseUrl);
-		}
-	});
-}
-
-function rewriteRelativeAssetHref(
-	href: string | null | undefined,
-	baseUrl: string,
-): string {
-	if (href === null || href === undefined) {
-		return "";
-	}
-
-	const trimmed = href.trim();
-	if (!trimmed) {
-		return trimmed;
-	}
-
-	if (trimmed.startsWith("#")) {
-		return trimmed;
-	}
-
-	if (trimmed.startsWith("//")) {
-		return trimmed;
-	}
-
-	if (trimmed.startsWith("/")) {
-		return trimmed;
-	}
-
-	if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/u.test(trimmed)) {
-		return trimmed;
-	}
-
-	const { path: pathPart, suffix } = splitHref(trimmed);
-	const encodedSegments: string[] = [];
-	for (const segment of pathPart.split("/")) {
-		if (!segment || segment === ".") {
-			continue;
-		}
-
-		if (segment === "..") {
-			encodedSegments.push(segment);
-			continue;
-		}
-
-		encodedSegments.push(encodeURIComponent(segment));
-	}
-
-	const encodedPath = encodedSegments.join("/");
-	return `${baseUrl}${encodedPath}${suffix}`;
-}
-
-function splitHref(value: string): { path: string; suffix: string } {
-	let pathPart = value;
-	let suffix = "";
-
-	const hashIndex = pathPart.indexOf("#");
-	if (hashIndex >= 0) {
-		suffix = pathPart.slice(hashIndex);
-		pathPart = pathPart.slice(0, hashIndex);
-	}
-
-	const queryIndex = pathPart.indexOf("?");
-	if (queryIndex >= 0) {
-		suffix = pathPart.slice(queryIndex) + suffix;
-		pathPart = pathPart.slice(0, queryIndex);
-	}
-
-	return { path: pathPart, suffix };
-}
-
-function stripLeadingTitleHeading(
-	tokens: TokensList,
-	title: string | null,
-): void {
-	const normalizedTitle = normalizeHeadingComparisonValue(title);
-	if (!normalizedTitle) {
-		return;
-	}
-
-	for (let index = 0; index < tokens.length; index += 1) {
-		const token = tokens[index];
-		if (!token) {
-			break;
-		}
-
-		if (token.type === "space") {
-			continue;
-		}
-
-		if (token.type === "heading" && token.depth === 1) {
-			const normalizedHeading = normalizeHeadingComparisonValue(token.text);
-			if (normalizedHeading === normalizedTitle) {
-				tokens.splice(index, 1);
-				removeLeadingSpaceTokens(tokens, index);
-			}
-		}
-
-		break;
-	}
-}
-
-function removeLeadingSpaceTokens(
-	tokens: TokensList,
-	startIndex: number,
-): void {
-	while (startIndex < tokens.length && tokens[startIndex]?.type === "space") {
-		tokens.splice(startIndex, 1);
-	}
-}
-
-function normalizeHeadingComparisonValue(
-	value: string | null | undefined,
-): string | null {
-	if (!value) {
-		return null;
-	}
-
-	const collapsed = value.replace(/\s+/gu, " ").trim();
-	if (!collapsed) {
-		return null;
-	}
-
-	return collapsed.toLowerCase();
 }
 
 async function enableHotReload(

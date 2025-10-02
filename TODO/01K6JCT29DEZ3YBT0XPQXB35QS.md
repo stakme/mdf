@@ -1,6 +1,6 @@
 ---
 title: "`export` command"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-02T12:02:04.748Z

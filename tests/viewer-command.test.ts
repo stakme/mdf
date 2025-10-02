@@ -75,6 +75,15 @@ export default defineConfig({
 				contextJson.frontMatter.map((field: { name: string }) => field.name),
 			).toEqual(["status", "title", "vpath"]);
 
+			const contextIndexResponse = await app.request(
+				"http://localhost/api/context/index.json",
+			);
+			expect(contextIndexResponse.status).toBe(200);
+			const contextIndexJson = await contextIndexResponse.json();
+			expect(contextIndexJson.documents[0]?.id).toBe(
+				contextJson.documents[0]?.id,
+			);
+
 			const docResponse = await app.request(
 				`http://localhost/api/documents/${encodeURIComponent(doc.id)}`,
 			);
@@ -82,6 +91,38 @@ export default defineConfig({
 			const docJson = await docResponse.json();
 			expect(docJson.html).toContain("Content");
 			expect(docJson.frontMatter.status).toBe("todo");
+
+			const docIndexResponse = await app.request(
+				`http://localhost/api/documents/${encodeURIComponent(doc.id)}/index.json`,
+			);
+			expect(docIndexResponse.status).toBe(200);
+			const docIndexJson = await docIndexResponse.json();
+			expect(docIndexJson.frontMatter.status).toBe("todo");
+
+			const frontMatterIndexResponse = await app.request(
+				"http://localhost/api/front-matter/index.json",
+			);
+			expect(frontMatterIndexResponse.status).toBe(200);
+			const frontMatterIndexJson = await frontMatterIndexResponse.json();
+			expect(
+				frontMatterIndexJson.fields.map(
+					(field: { name: string }) => field.name,
+				),
+			).toEqual(["status", "title", "vpath"]);
+
+			const statusFieldResponse = await app.request(
+				"http://localhost/api/front-matter/status/index.json",
+			);
+			expect(statusFieldResponse.status).toBe(200);
+			const statusFieldJson = await statusFieldResponse.json();
+			expect(statusFieldJson.name).toBe("status");
+
+			const statusValueResponse = await app.request(
+				"http://localhost/api/front-matter/status/todo/index.json",
+			);
+			expect(statusValueResponse.status).toBe(200);
+			const statusValueJson = await statusValueResponse.json();
+			expect(statusValueJson.value).toBe("todo");
 
 			const rootResponse = await app.request("http://localhost/");
 			expect(rootResponse.status).toBe(200);

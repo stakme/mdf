@@ -238,7 +238,7 @@ function FrontMatterValueView({
 		setLoading(true);
 		setError(null);
 		fetchJson<ViewerFrontMatterValuePayload>(
-			`/api/front-matter/${encodeURIComponent(field)}/${encodeURIComponent(value)}`,
+			`/api/front-matter/${encodeURIComponent(field)}/${encodeURIComponent(value)}/index.json`,
 		)
 			.then((payload) => {
 				setData(payload);
@@ -536,7 +536,7 @@ export default function App(): JSX.Element {
 			preserveSelection: boolean,
 		): Promise<ViewerContextPayload | null> => {
 			try {
-				const payload = await fetchJson<ViewerContextPayload>("/api/context");
+				const payload = await fetchJson<ViewerContextPayload>("/api/context/index.json");
 				setContext(payload);
 				setError(null);
 				setSelectedId((previous) => {
@@ -584,7 +584,7 @@ export default function App(): JSX.Element {
 
 		try {
 			const payload = await fetchJson<ViewerDocumentPayload>(
-				`/api/documents/${encodeURIComponent(id)}`,
+				`/api/documents/${encodeURIComponent(id)}/index.json`,
 			);
 			if (fetchDocumentRequestId.current === requestId) {
 				setDocument(payload);

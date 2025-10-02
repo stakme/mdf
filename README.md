@@ -56,19 +56,33 @@ When you are ready to publish new notes, validate the collection with
 
 ## CLI overview
 
-| Command                     | Description |
-| --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `mdf init [directory]`      | Create a starter `.config/mdf.mts` in the target directory. |
-| `mdf new <directory>`       | Scaffold Markdown files that match your schema and optional template defaults. |
-| `mdf list <directory>`      | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
-| `mdf validate <directory>`  | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
-| `mdf fix <directory>`       | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
-| `mdf update <files...>`     | Update specific front matter keys on targeted files (explicit values or schema/config defaults). |
-| `mdf viewer <directory>`    | Launch a local web viewer with navigation, filters, and virtual-path scoping. |
-| `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command. |
-
+| Command                     | Description                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `mdf init [directory]`      | Create a starter `.config/mdf.mts` in the target directory.                                        |
+| `mdf new <directory>`       | Scaffold Markdown files that match your schema and optional template defaults.                     |
+| `mdf list <directory>`      | Inspect existing notes with virtual-path trees, filters, and custom output templates.              |
+| `mdf validate <directory>`  | Confirm every file conforms to your schema, exiting non-zero when issues arise.                    |
+| `mdf fix <directory>`       | Apply schema defaults and CLI overrides in-place to repair invalid notes.                          |
+| `mdf update <files...>`     | Update specific front matter keys on targeted files (explicit values or schema/config defaults).   |
+| `mdf viewer <directory>`    | Launch a local web viewer with navigation, filters, and virtual-path scoping.                      |
+| `mdf export <directory>`    | Generate a static viewer site for your notes (use `--output` to choose the destination directory). |
+| `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command.                                  |
 
 Run any command with `--help` for the full option list.
+
+### Export a static viewer
+
+Use `mdf export <directory>` when you want to publish the same experience the
+`viewer` command provides, but as a static site. The command copies the built
+viewer assets, writes JSON responses under `api/**/index.json` that mirror the
+viewer API, and replicates document filters such as `--filter` and `--vpath`.
+Relative image references are rewritten to serve from `documents/<id>/assets/`,
+so the exported site can host local screenshots or diagrams alongside each note.
+
+The output directory defaults to `mdf-export`, but you can provide your own path
+with `--output`. The export reuses `--strict` and `--ignore-invalid` flags to
+match the viewer's parsing behavior, and it requires a `virtualPath` definition
+in your config just like the live viewer.
 
 ## Configuration
 
@@ -79,17 +93,13 @@ your schema with Zod and optional helpers:
 import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                created_at: z.iso.datetime().default(() =>
-                        new Date().toISOString()
-                ),
-                updated_at: z.iso.datetime().default(() =>
-                        new Date().toISOString()
-                ),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                tags: z.array(z.string()).default(() => []),
-        }),
+  schema: z.object({
+    title: z.string(),
+    created_at: z.iso.datetime().default(() => new Date().toISOString()),
+    updated_at: z.iso.datetime().default(() => new Date().toISOString()),
+    status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+    tags: z.array(z.string()).default(() => []),
+  }),
 });
 ```
 
@@ -152,17 +162,17 @@ name:
 import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]),
-                vpath: z.string(),
-        }),
-        virtualPath: {
-                param: "vpath",
-        },
-        aliases: {
-                todo: 'list --filter "status=todo" ./TODO',
-        },
+  schema: z.object({
+    title: z.string(),
+    status: z.enum(["todo", "in_progress", "done"]),
+    vpath: z.string(),
+  }),
+  virtualPath: {
+    param: "vpath",
+  },
+  aliases: {
+    todo: 'list --filter "status=todo" ./TODO',
+  },
 });
 ```
 
@@ -217,8 +227,8 @@ mdf viewer ./docs --vpath blog --filter "status=done" --port 4173
 - Supports the same filter expressions as `mdf list`.
 - Prints the local URL on start (defaults to `http://127.0.0.1:4173`).
 - Troubleshooting: add `--access-log` to print per-request access logs.
-- If you experience hanging navigation in certain environments, try `--no-reload`
-  to disable hot reload (SSE) and file watching.
+- If you experience hanging navigation in certain environments, try
+  `--no-reload` to disable hot reload (SSE) and file watching.
 
 ## Programmatic usage
 

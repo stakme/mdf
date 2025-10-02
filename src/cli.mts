@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
 import { runInitCommand } from "./commands/init.mts";
+import { runExportCommand } from "./commands/export.mts";
 import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
@@ -129,6 +130,65 @@ function createProgram(version: string): Command {
 				handleError(error);
 			}
 		});
+
+	program
+		.command("export")
+		.description("Generate a static viewer from Markdown documents")
+		.option(
+			"--output <directory>",
+			"Directory where generated HTML files will be written",
+		)
+		.option(
+			"-f, --filter <expression>",
+			"Filter expression supporting =, ~=, ^=, $= operators",
+			collectFilters,
+			[] as string[],
+		)
+		.option("--vpath <prefix>", "Filter entries by virtual path prefix")
+		.option("--strict", "Treat invalid Markdown files as errors")
+		.option("--ignore-invalid", "Skip Markdown files that fail to parse")
+		.argument("<directory>", "Directory containing Markdown files to export")
+		.action(
+			async (
+				directory: string,
+				command: {
+					output?: string;
+					filter?: string[];
+					vpath?: string;
+					strict?: boolean;
+					ignoreInvalid?: boolean;
+				},
+			) => {
+				try {
+					const filters = command.filter ?? [];
+					const outputDirectory = command.output ?? "mdf-export";
+					const result = await runExportCommand({
+						cwd: process.cwd(),
+						directory,
+						outputDirectory,
+						filters,
+						virtualPathPrefix: command.vpath,
+						strict: command.strict === true,
+						ignoreInvalid: command.ignoreInvalid === true,
+					});
+
+					const outputLabel = formatDisplayPath(
+						path.resolve(process.cwd(), outputDirectory),
+					);
+					const documentCount = result.exported.length;
+					const noun = documentCount === 1 ? "document" : "documents";
+					console.log(
+						`Exported viewer with ${documentCount} ${noun} to ${outputLabel}`,
+					);
+
+					if (result.warnings.length > 0) {
+						logInvalidFileWarnings(result.warnings, process.cwd());
+					}
+				} catch (error) {
+					handleError(error);
+				}
+			},
+		);
 
 	program
 		.command("list")
