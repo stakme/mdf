@@ -12,16 +12,74 @@ export interface InitCommandResult {
 	configPath: string;
 }
 
-export const DEFAULT_CONFIG_SOURCE = `import { defineConfig, z } from "@stakme/mdf/config";
+export const DEFAULT_CONFIG_SOURCE = `
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-	schema: z.object({
-		title: z.string(),
-		status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-		tags: z.array(z.string()).default(() => []),
-		created_at: z.string().datetime().default(() => new Date().toISOString()),
-		updated_at: z.string().datetime().default(() => new Date().toISOString()),
-	}),
+	aliases: {
+		todo: \`list --filter "status=todo" ./\`,
+		new_bug: \`new ./ticket --template bug_report\`,
+		close: \`update --fm "status=done" --fm updated_at\`,
+	},
+
+	schema: {
+		default: defineSchema({
+			glob: "**/*.md",
+			schema: z.object({
+				title: z.string(),
+				vpath: z.string().optional(),
+				status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+				tags: z.array(z.string()).optional(),
+				created_at: z.iso.datetime().default(() => new Date().toISOString()),
+				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
+			}),
+			sort: (a, b) => a.created_at.localeCompare(b.created_at),
+		})
+	},
+	defaultSchema: "default",
+
+	templates: {
+		bug_report: {
+			schema: "default",
+			frontmatter: {
+				title: "[Bug] Brief summary",
+				vpath: "bug_reports",
+				status: "todo",
+				tags: ["bug"],
+			},
+			body: (title: string) => \`# \${title}
+
+## Summary
+Provide a concise description of the issue.
+
+## Steps to Reproduce
+
+1. 
+2. 
+3. 
+
+## Expected Behavior
+What you expected to happen.
+
+## Actual Behavior
+What actually happened.
+
+## Environment
+- OS:
+- Node.js:
+- App/Package Version:
+
+## Additional Context
+Logs, screenshots, or notes.
+\`,
+		},
+	},
+	defaultTemplate: undefined,
+
+	virtualPath: {
+		param: "vpath",
+		separator: "/",
+	}
 });
 `;
 
