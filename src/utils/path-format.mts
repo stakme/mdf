@@ -5,7 +5,7 @@ export function formatDisplayPath(filePath: string, cwd: string): string {
 	if (relative.startsWith("..")) {
 		return relative;
 	}
-	return relative.startsWith(".") ? relative : `./${relative}`;
+	return relative.startsWith("./") ? relative : `./${relative}`;
 }
 
 export function formatRelativePath(filePath: string, cwd: string): string {

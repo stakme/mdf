@@ -41,8 +41,9 @@ Add the CLI to your package scripts or run it via `npx @stakme/mdf`.
 
 ## Quick start
 
-1. **Create a config:** place `.config/mdf.mts` anywhere under your workspace
-   with a schema describing the front matter every file should include.
+1. **Create a config:** run `mdf init` to scaffold `.config/mdf.mts` (or author
+   your own) anywhere under your workspace with a schema describing the front
+   matter every file should include.
 2. **Generate a note:** run `mdf new <directory>` and provide overrides with
    `--fm` flags or a named template.
 3. **Surface the right notes:** explore your collection with `mdf list` filters,
@@ -55,15 +56,17 @@ When you are ready to publish new notes, validate the collection with
 
 ## CLI overview
 
-| Command                     | Description                                                                                      |
+| Command                     | Description |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `mdf new <directory>`       | Scaffold Markdown files that match your schema and optional template defaults.                   |
-| `mdf list <directory>`      | Inspect existing notes with virtual-path trees, filters, and custom output templates.            |
-| `mdf validate <directory>`  | Confirm every file conforms to your schema, exiting non-zero when issues arise.                  |
-| `mdf fix <directory>`       | Apply schema defaults and CLI overrides in-place to repair invalid notes.                        |
+| `mdf init [directory]`      | Create a starter `.config/mdf.mts` in the target directory. |
+| `mdf new <directory>`       | Scaffold Markdown files that match your schema and optional template defaults. |
+| `mdf list <directory>`      | Inspect existing notes with virtual-path trees, filters, and custom output templates. |
+| `mdf validate <directory>`  | Confirm every file conforms to your schema, exiting non-zero when issues arise. |
+| `mdf fix <directory>`       | Apply schema defaults and CLI overrides in-place to repair invalid notes. |
 | `mdf update <files...>`     | Update specific front matter keys on targeted files (explicit values or schema/config defaults). |
-| `mdf viewer <directory>`    | Launch a local web viewer with navigation, filters, and virtual-path scoping.                    |
-| `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command.                                |
+| `mdf viewer <directory>`    | Launch a local web viewer with navigation, filters, and virtual-path scoping. |
+| `mdf run <alias> [args...]` | Execute a configured alias that expands to another `mdf` command. |
+
 
 Run any command with `--help` for the full option list.
 

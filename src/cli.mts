@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
+import { runInitCommand } from "./commands/init.mts";
 import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
@@ -33,6 +34,27 @@ function createProgram(version: string): Command {
 		.version(version)
 		.showHelpAfterError()
 		.enablePositionalOptions();
+
+	program
+		.command("init")
+		.description("Create a starter mdf config in the target directory")
+		.argument(
+			"[directory]",
+			"Directory where the config should be created",
+			".",
+		)
+		.action(async (directory: string) => {
+			try {
+				const result = await runInitCommand({
+					cwd: process.cwd(),
+					directory,
+				});
+
+				console.log(`Created ${formatDisplayPath(result.configPath)}`);
+			} catch (error) {
+				handleError(error);
+			}
+		});
 
 	program
 		.command("new")
@@ -381,7 +403,7 @@ function formatDisplayPath(filePath: string): string {
 	if (relative.startsWith("..")) {
 		return relative;
 	}
-	return relative.startsWith(".") ? relative : `./${relative}`;
+	return relative.startsWith("./") ? relative : `./${relative}`;
 }
 
 async function readPackageVersion(): Promise<string> {

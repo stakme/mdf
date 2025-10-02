@@ -1,10 +1,10 @@
 ---
 title: init command
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-01T07:01:38.989Z
-updated_at: 2025-10-01T07:01:38.990Z
+updated_at: 2025-10-01T07:05:00.000Z
 ---
 
 # init command
