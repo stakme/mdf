@@ -187,9 +187,12 @@ export async function runListCommand(
 	);
 
 	if (options.quiet) {
-		const lines = sortedDocuments.map((entry) =>
-			path.basename(entry.filePath, path.extname(entry.filePath)),
-		);
+		const lines = sortedDocuments.map((entry) => {
+			const relativePath =
+				path.relative(resolvedDirectory, entry.filePath) ||
+				path.basename(entry.filePath);
+			return relativePath.split(path.sep).join(path.posix.sep);
+		});
 		return { lines, warnings };
 	}
 

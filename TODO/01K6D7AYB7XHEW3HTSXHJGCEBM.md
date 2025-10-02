@@ -1,6 +1,6 @@
 ---
 title: "`list --quiet` does not show file extensions"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-30T11:50:14.145Z

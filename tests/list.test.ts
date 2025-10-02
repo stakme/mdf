@@ -167,6 +167,14 @@ export default defineConfig({
 			"utf8",
 		);
 
+		const nestedDir = path.join(notesDir, "nested");
+		await fs.mkdir(nestedDir, { recursive: true });
+		await fs.writeFile(
+			path.join(nestedDir, "note.md"),
+			`---\ntitle: Nested note\nvpath: backlog/nested\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
+
 		try {
 			const { stdout } = await execa(
 				nodeBinary,
@@ -177,7 +185,12 @@ export default defineConfig({
 			);
 
 			const lines = stdout.trim().split("\n");
-			expect(lines).toEqual(["bug", "todo-a", "todo-b"]);
+			expect(lines).toEqual([
+				"bug.md",
+				"nested/note.md",
+				"todo-a.md",
+				"todo-b.md",
+			]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
