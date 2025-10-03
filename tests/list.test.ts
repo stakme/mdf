@@ -55,6 +55,7 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./TODO",
 				"├── backlog",
 				"│   ├── feature",
 				"│   │   └── Feature work (./TODO/todo-a.md)",
@@ -115,6 +116,7 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./TODO",
 				"└── backlog",
 				"    └── feature",
 				"        └── Feature work (./TODO/todo-a.md)",
@@ -237,6 +239,7 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./notes",
 				"├── backlog",
 				"│   └── With Path (./notes/with.md)",
 				"└── Root Path (./notes/root.md)",
@@ -294,6 +297,7 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./TODO",
 				"└── backlog",
 				"    └── todo",
 				"        └── Todo Task (./TODO/todo-task.md)",
@@ -339,6 +343,7 @@ export default defineConfig({
 
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout.trim().split("\n")).toEqual([
+				"./notes",
 				"└── backlog",
 				"    └── Valid (./notes/valid.md)",
 			]);

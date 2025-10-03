@@ -217,7 +217,9 @@ export async function runListCommand(
 		order: index,
 	}));
 	const tree = buildTree(entries);
-	return { lines: tree, warnings };
+	const directoryHeader = formatDisplayPath(resolvedDirectory, options.cwd);
+	const lines = tree.length > 0 ? [directoryHeader, ...tree] : tree;
+	return { lines, warnings };
 }
 
 function splitVirtualPath(value: string, separator: string): string[] {
