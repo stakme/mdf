@@ -17,8 +17,9 @@ export default defineConfig({
 				date: z.iso.date().optional(),
 				tags: z.array(z.string()).default(() => []),
 				draft: z.boolean().default(false),
-				author: z.string().optional(),
+				sortIndex: z.number(),
 			}),
+			sort: (a, b) => a.sortIndex - b.sortIndex,
 		}),
 		default: defineSchema({
 			glob: "**",
