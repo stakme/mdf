@@ -5,7 +5,7 @@ tags:
   - configuration
   - reference
 draft: false
-sortIndex: 3
+chapter: 1.2
 ---
 
 # Configuration Guide

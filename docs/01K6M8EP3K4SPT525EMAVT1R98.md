@@ -5,7 +5,7 @@ tags:
   - onboarding
   - docs
 draft: false
-sortIndex: 2
+chapter: 1.1
 ---
 
 # Getting Started

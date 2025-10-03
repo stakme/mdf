@@ -4,7 +4,7 @@ vpath: /
 tags:
   - docs
 draft: false
-sortIndex: 1
+chapter: 1.0
 ---
 
 # Docs Overview

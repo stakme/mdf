@@ -5,7 +5,7 @@ tags:
   - cli
   - reference
 draft: false
-sortIndex: 2
+chapter: 2.1
 ---
 
 # Filters and Virtual Paths

@@ -5,7 +5,7 @@ tags:
   - cli
   - reference
 draft: false
-sortIndex: 1
+chapter: 2.0
 ---
 
 # CLI Reference
