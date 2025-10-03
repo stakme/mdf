@@ -16,6 +16,39 @@ import {
 	useState,
 } from "react";
 
+// Prevent static hosts from serving cached JSON across consecutive exports
+const CACHE_BUSTER_PARAM = "__mdf_cache__";
+let cacheKey: string | null = null;
+
+function getCacheKey(): string {
+	if (cacheKey) {
+		return cacheKey;
+	}
+	const random = Math.random().toString(36).slice(2);
+	cacheKey = `${Date.now().toString(36)}${random}`;
+	return cacheKey;
+}
+
+function appendCacheBusterToString(url: string, key: string): string {
+	const separator = url.includes("?") ? "&" : "?";
+	return `${url}${separator}${CACHE_BUSTER_PARAM}=${encodeURIComponent(key)}`;
+}
+
+function withCacheBuster(
+	input: RequestInfo | URL,
+	key: string,
+): RequestInfo | URL {
+	if (typeof input === "string") {
+		return appendCacheBusterToString(input, key);
+	}
+	if (typeof URL !== "undefined" && input instanceof URL) {
+		const next = new URL(input.toString());
+		next.searchParams.set(CACHE_BUSTER_PARAM, key);
+		return next;
+	}
+	return input;
+}
+
 interface NavigationProps {
 	navigation: ViewerNavigationDirectory;
 	selectedId: string | null;
@@ -55,7 +88,12 @@ async function fetchJson<T>(
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<T> {
-	const response = await fetch(input, init);
+	const cacheKeyValue = getCacheKey();
+	const request = withCacheBuster(input, cacheKeyValue);
+	const response = await fetch(request, {
+		cache: "no-store",
+		...init,
+	});
 	if (!response.ok) {
 		let message = `${response.status} ${response.statusText}`;
 		try {
@@ -121,9 +159,13 @@ function NavigationNode({
 				>
 					<div className="w-full truncate font-medium">{node.name}</div>
 					{node.routePath && (
-						<div className={`w-full truncate text-xs ${
-							isActive ? "text-sky-100" : "text-slate-500 group-hover:text-slate-400"
-						}`}>
+						<div
+							className={`w-full truncate text-xs ${
+								isActive
+									? "text-sky-100"
+									: "text-slate-500 group-hover:text-slate-400"
+							}`}
+						>
 							{node.routePath}
 						</div>
 					)}
@@ -142,15 +184,28 @@ function NavigationNode({
 		<li>
 			<details className="group" open={containsSelected || depth === 0}>
 				<summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-slate-200">
-					<svg className="size-4 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+					<svg
+						className="size-4 shrink-0 transition-transform group-open:rotate-90"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M9 5l7 7-7 7"
+						/>
 					</svg>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="truncate font-semibold">
 							{node.name || (depth === 0 ? "Documents" : "(untitled)")}
 						</span>
 						{currentPath && (
-							<span className="truncate text-xs text-slate-600">{currentPath}</span>
+							<span className="truncate text-xs text-slate-600">
+								{currentPath}
+							</span>
 						)}
 					</div>
 				</summary>
@@ -253,9 +308,25 @@ function FrontMatterValueView({
 	if (loading) {
 		return (
 			<div className="flex items-center gap-2 text-sm text-slate-400">
-				<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-					<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-					<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+				<svg
+					className="size-4 animate-spin"
+					fill="none"
+					viewBox="0 0 24 24"
+					aria-hidden="true"
+				>
+					<circle
+						className="opacity-25"
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						strokeWidth="4"
+					/>
+					<path
+						className="opacity-75"
+						fill="currentColor"
+						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+					/>
 				</svg>
 				Loading...
 			</div>
@@ -295,7 +366,9 @@ function FrontMatterValueView({
 					{value}
 				</h1>
 				<p className="mt-2 text-sm text-slate-400">
-					{data.documentCount} {data.documentCount === 1 ? "document" : "documents"} with {field} = {value}
+					{data.documentCount}{" "}
+					{data.documentCount === 1 ? "document" : "documents"} with {field} ={" "}
+					{value}
 				</p>
 			</div>
 
@@ -310,15 +383,32 @@ function FrontMatterValueView({
 						}}
 						className="flex w-full items-start gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900/80"
 					>
-						<svg className="mt-1 size-5 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						<svg
+							className="mt-1 size-5 shrink-0 text-slate-600"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							aria-hidden="true"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
 						</svg>
 						<div className="flex-1 overflow-hidden">
-							<div className="font-semibold text-slate-100">{doc.meta.title || doc.displayPath}</div>
+							<div className="font-semibold text-slate-100">
+								{doc.meta.title || doc.displayPath}
+							</div>
 							{doc.meta.description && (
-								<p className="mt-1 text-sm text-slate-400">{doc.meta.description}</p>
+								<p className="mt-1 text-sm text-slate-400">
+									{doc.meta.description}
+								</p>
 							)}
-							<div className="mt-2 text-xs text-slate-600">{doc.displayPath}</div>
+							<div className="mt-2 text-xs text-slate-600">
+								{doc.displayPath}
+							</div>
 						</div>
 					</button>
 				))}
@@ -359,7 +449,8 @@ function FrontMatterFieldView({ field, fields }: FrontMatterFieldViewProps) {
 					{field}
 				</h1>
 				<p className="mt-2 text-sm text-slate-400">
-					{fieldData.values.length} {fieldData.values.length === 1 ? "value" : "values"}
+					{fieldData.values.length}{" "}
+					{fieldData.values.length === 1 ? "value" : "values"}
 				</p>
 			</div>
 
@@ -380,8 +471,19 @@ function FrontMatterFieldView({ field, fields }: FrontMatterFieldViewProps) {
 											href={`#/fm/${encodeURIComponent(field)}/${encodeURIComponent(value.value)}`}
 											className="flex items-center gap-2 text-slate-200 transition-colors hover:text-sky-400"
 										>
-											<svg className="size-3 shrink-0 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+											<svg
+												className="size-3 shrink-0 text-slate-600"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												aria-hidden="true"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M9 5l7 7-7 7"
+												/>
 											</svg>
 											<span className="font-medium">{value.value}</span>
 										</a>
@@ -434,23 +536,24 @@ function DocumentFrontMatter({
 					<dt className="border-b border-slate-800/50 bg-slate-900/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
 						{key}
 					</dt>
-					<dd className="px-4 py-3">
-						{renderFrontMatterValue(key, value)}
-					</dd>
+					<dd className="px-4 py-3">{renderFrontMatterValue(key, value)}</dd>
 				</div>
 			))}
 		</dl>
 	);
 }
 
-function renderFrontMatterValue(fieldName: string, value: unknown): JSX.Element {
+function renderFrontMatterValue(
+	fieldName: string,
+	value: unknown,
+): JSX.Element {
 	const renderSingleValue = (val: unknown): JSX.Element => {
 		if (val === null || val === undefined) {
 			return <span className="text-sm text-slate-500">—</span>;
 		}
 
 		const stringValue = val instanceof Date ? val.toISOString() : String(val);
-		
+
 		return (
 			<a
 				href={`#/fm/${encodeURIComponent(fieldName)}/${encodeURIComponent(stringValue)}`}
@@ -468,10 +571,9 @@ function renderFrontMatterValue(fieldName: string, value: unknown): JSX.Element 
 		return (
 			<div className="flex flex-wrap gap-2">
 				{value.map((item) => {
-					const stringValue = item instanceof Date ? item.toISOString() : String(item);
-					return (
-						<span key={stringValue}>{renderSingleValue(item)}</span>
-					);
+					const stringValue =
+						item instanceof Date ? item.toISOString() : String(item);
+					return <span key={stringValue}>{renderSingleValue(item)}</span>;
 				})}
 			</div>
 		);
@@ -479,7 +581,11 @@ function renderFrontMatterValue(fieldName: string, value: unknown): JSX.Element 
 
 	if (typeof value === "object" && value !== null) {
 		try {
-			return <code className="block overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-300">{JSON.stringify(value, null, 2)}</code>;
+			return (
+				<code className="block overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-300">
+					{JSON.stringify(value, null, 2)}
+				</code>
+			);
 		} catch {
 			return <span className="text-sm text-slate-300">{String(value)}</span>;
 		}
@@ -536,7 +642,9 @@ export default function App(): JSX.Element {
 			preserveSelection: boolean,
 		): Promise<ViewerContextPayload | null> => {
 			try {
-				const payload = await fetchJson<ViewerContextPayload>("/api/context/index.json");
+				const payload = await fetchJson<ViewerContextPayload>(
+					"/api/context/index.json",
+				);
 				setContext(payload);
 				setError(null);
 				setSelectedId((previous) => {
@@ -648,7 +756,9 @@ export default function App(): JSX.Element {
 					<div>
 						<h1 className="text-xl font-bold tracking-tight">mdf viewer</h1>
 						{context?.directoryLabel ? (
-							<p className="mt-0.5 text-sm text-slate-400">{context.directoryLabel}</p>
+							<p className="mt-0.5 text-sm text-slate-400">
+								{context.directoryLabel}
+							</p>
 						) : null}
 					</div>
 					{headerOptions.length > 0 && (
@@ -661,7 +771,9 @@ export default function App(): JSX.Element {
 									<span className="font-semibold uppercase tracking-wider text-slate-500">
 										{option.label}
 									</span>
-									<span className="font-mono text-slate-300">{option.value}</span>
+									<span className="font-mono text-slate-300">
+										{option.value}
+									</span>
 								</span>
 							))}
 						</div>
@@ -695,9 +807,25 @@ export default function App(): JSX.Element {
 						</>
 					) : (
 						<div className="flex items-center gap-2 text-sm text-slate-400">
-							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							<svg
+								className="size-4 animate-spin"
+								fill="none"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="4"
+								/>
+								<path
+									className="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								/>
 							</svg>
 							Loading documents…
 						</div>
@@ -708,8 +836,19 @@ export default function App(): JSX.Element {
 						<div className="mb-8 overflow-hidden rounded-lg border border-yellow-700/50 bg-yellow-500/10">
 							<div className="border-b border-yellow-700/30 bg-yellow-600/20 px-4 py-3">
 								<div className="flex items-center gap-2">
-									<svg className="size-5 shrink-0 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+									<svg
+										className="size-5 shrink-0 text-yellow-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										aria-hidden="true"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+										/>
 									</svg>
 									<p className="font-bold text-yellow-100">
 										{warnings.length === 1
@@ -720,13 +859,19 @@ export default function App(): JSX.Element {
 							</div>
 							<div className="space-y-3 p-4">
 								{warnings.map((warning) => (
-									<div key={warning.filePath} className="rounded-md bg-yellow-500/5 p-3">
+									<div
+										key={warning.filePath}
+										className="rounded-md bg-yellow-500/5 p-3"
+									>
 										<p className="mb-2 font-mono text-sm font-semibold text-yellow-100">
 											{warning.filePath}
 										</p>
 										<ul className="space-y-1 pl-4">
 											{warning.messages.map((message, index) => (
-												<li key={`${warning.filePath}-${index}`} className="text-sm text-yellow-200/90">
+												<li
+													key={`${warning.filePath}-${index}`}
+													className="text-sm text-yellow-200/90"
+												>
 													• {message}
 												</li>
 											))}
@@ -739,8 +884,19 @@ export default function App(): JSX.Element {
 					{error && (
 						<div className="mb-8 overflow-hidden rounded-lg border border-red-700/50 bg-red-500/10">
 							<div className="flex items-center gap-2 border-b border-red-700/30 bg-red-600/20 px-4 py-3">
-								<svg className="size-5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								<svg
+									className="size-5 shrink-0 text-red-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									aria-hidden="true"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+									/>
 								</svg>
 								<p className="font-bold text-red-100">Error</p>
 							</div>
@@ -749,9 +905,25 @@ export default function App(): JSX.Element {
 					)}
 					{!context && (
 						<div className="flex items-center gap-2 text-sm text-slate-400">
-							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							<svg
+								className="size-4 animate-spin"
+								fill="none"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="4"
+								/>
+								<path
+									className="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								/>
 							</svg>
 							Preparing viewer context…
 						</div>
@@ -771,8 +943,19 @@ export default function App(): JSX.Element {
 					)}
 					{route.type === "document" && context && !selectedId && (
 						<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center">
-							<svg className="mx-auto size-12 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							<svg
+								className="mx-auto size-12 text-slate-700"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={1.5}
+									d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+								/>
 							</svg>
 							<p className="mt-4 text-sm text-slate-400">
 								No document selected. Choose one from the navigation.
@@ -781,9 +964,25 @@ export default function App(): JSX.Element {
 					)}
 					{route.type === "document" && loadingDocument && (
 						<div className="flex items-center gap-2 text-sm text-slate-400">
-							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+							<svg
+								className="size-4 animate-spin"
+								fill="none"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="4"
+								/>
+								<path
+									className="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								/>
 							</svg>
 							Loading document…
 						</div>
@@ -801,16 +1000,38 @@ export default function App(): JSX.Element {
 								)}
 								<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
 									<span className="flex items-center gap-1">
-										<svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+										<svg
+											className="size-3"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											aria-hidden="true"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+											/>
 										</svg>
 										{activeDocument.displayPath}
 									</span>
 									{activeDocument.meta.routePath && (
 										<>
 											<span className="flex items-center gap-1">
-												<svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+												<svg
+													className="size-3"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+													aria-hidden="true"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+													/>
 												</svg>
 												{activeDocument.meta.routePath}
 											</span>

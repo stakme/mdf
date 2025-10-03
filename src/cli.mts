@@ -2,8 +2,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
-import { runInitCommand } from "./commands/init.mts";
 import { runExportCommand } from "./commands/export.mts";
+import { runInitCommand } from "./commands/init.mts";
 import { runListCommand } from "./commands/list.mts";
 import { runNewCommand } from "./commands/new.mts";
 import { prepareRunCommand } from "./commands/run.mts";
