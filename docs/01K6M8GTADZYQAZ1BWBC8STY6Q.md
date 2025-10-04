@@ -1,6 +1,6 @@
 ---
 title: Filters and Virtual Paths
-vpath: cli/reference
+vpath: cli
 tags:
   - cli
   - reference

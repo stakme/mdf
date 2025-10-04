@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-vpath: cli/reference
+vpath: cli
 tags:
   - cli
   - reference
