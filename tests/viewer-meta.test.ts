@@ -76,6 +76,21 @@ describe("buildViewerEntry", () => {
 		expect(meta.draft).toBe(true);
 	});
 
+	it("preserves explicit root virtual paths", async () => {
+		const { buildViewerEntry } = await loadModule();
+		const entry = {
+			slug: "docs/overview",
+			data: {
+				title: "Docs Overview",
+				vpath: "/",
+			},
+		} as unknown as import("astro:content").CollectionEntry<"pages">;
+
+		const meta = buildViewerEntry(entry);
+		expect(meta.virtualPath).toBe("/");
+		expect(meta.routePath).toBe("/");
+	});
+
 	it("respects environment overrides for field candidates", async () => {
 		process.env.MDF_VIEWER_FIELD_TITLE = "heading";
 		process.env.MDF_VIEWER_FIELD_TAGS = "labels topics";

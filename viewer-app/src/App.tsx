@@ -158,17 +158,6 @@ function NavigationNode({
 					}`}
 				>
 					<div className="w-full truncate font-medium">{node.name}</div>
-					{node.routePath && (
-						<div
-							className={`w-full truncate text-xs ${
-								isActive
-									? "text-sky-100"
-									: "text-slate-500 group-hover:text-slate-400"
-							}`}
-						>
-							{node.routePath}
-						</div>
-					)}
 				</button>
 			</li>
 		);
@@ -202,11 +191,6 @@ function NavigationNode({
 						<span className="truncate font-semibold">
 							{node.name || (depth === 0 ? "Documents" : "(untitled)")}
 						</span>
-						{currentPath && (
-							<span className="truncate text-xs text-slate-600">
-								{currentPath}
-							</span>
-						)}
 					</div>
 				</summary>
 				<div className="mt-1 border-l-2 border-slate-800/50 pl-4">
@@ -794,9 +778,6 @@ export default function App(): JSX.Element {
 									<h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
 										Documents
 									</h2>
-									<span className="text-xs text-slate-600">
-										{context.documents.length}
-									</span>
 								</div>
 								<NavigationTree
 									navigation={context.navigation}

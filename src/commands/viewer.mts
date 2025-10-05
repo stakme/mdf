@@ -28,6 +28,7 @@ import {
 	formatRelativePath,
 } from "../utils/path-format.mts";
 import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
+import { buildNavigationTree } from "../viewer/navigation.mts";
 import type {
 	ViewerCommandOptions,
 	ViewerContext,
@@ -69,13 +70,6 @@ interface ViewerDocumentEntry {
 }
 
 interface PrepareViewerContextOptions extends ViewerCommandOptions {}
-
-interface MutableDirectoryNode {
-	type: "dir";
-	name: string;
-	children: (MutableDirectoryNode | ViewerNavigationFile)[];
-	directories: Map<string, MutableDirectoryNode>;
-}
 
 export async function runViewerCommand(
 	options: ViewerCommandOptions,
@@ -241,9 +235,13 @@ export async function prepareViewerContext(
 		const html = renderDocumentMarkdown(document.body, meta.title, {
 			assetBaseUrl: buildDocumentAssetBaseUrl(id),
 		});
-		const navigationSegments = segments.length
-			? [...segments]
-			: slugSegments(meta.routePath);
+		const navigationSegments = buildNavigationSegments({
+			virtualSegments: segments,
+			rawVirtualPath,
+			slug,
+			filePath,
+			rootDirectory: resolvedDirectory,
+		});
 
 		const schemaEntry = config.getSchemaForRelativePath(
 			path.relative(options.cwd, filePath),
@@ -279,8 +277,14 @@ export async function prepareViewerContext(
 		compareViewerDocuments(a.document, b.document),
 	);
 	const documents = sortedEntries.map((entry) => entry.document);
-
-	const navigation = buildNavigation(documents);
+	const documentOrder = new Map(
+		documents.map((doc, index) => [doc.id, index] as const),
+	);
+	const navigation = buildNavigationTree(documents, (left, right) => {
+		const leftOrder = documentOrder.get(left.id) ?? 0;
+		const rightOrder = documentOrder.get(right.id) ?? 0;
+		return leftOrder - rightOrder;
+	});
 	const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
 	const defaultDocument = documents[0] ?? null;
 	const frontMatterIndex = buildFrontMatterIndex(documents);
@@ -962,6 +966,65 @@ function splitVirtualPathInput(value: string, separator: string): string[] {
 		.filter((segment) => segment.length > 0);
 }
 
+interface BuildNavigationSegmentsOptions {
+	virtualSegments: string[];
+	rawVirtualPath: string | null;
+	slug: string;
+	filePath: string;
+	rootDirectory: string;
+}
+
+function buildNavigationSegments(options: BuildNavigationSegmentsOptions): string[] {
+	const { virtualSegments, rawVirtualPath, slug } = options;
+	if (virtualSegments.length > 0) {
+		const segments = [...virtualSegments];
+		const leaf = deriveSlugLeaf(slug);
+		const last = segments.at(-1);
+		if (leaf.length > 0 && !stringsEqualIgnoreCase(last, leaf)) {
+			segments.push(leaf);
+		}
+		return segments;
+	}
+
+	if (rawVirtualPath !== null) {
+		return [];
+	}
+
+	return buildDefaultNavigationSegments(options.filePath, options.rootDirectory);
+}
+
+function buildDefaultNavigationSegments(
+	filePath: string,
+	rootDirectory: string,
+): string[] {
+	const relativeToRoot = path.relative(rootDirectory, filePath);
+	const normalized = relativeToRoot.replaceAll("\\", "/");
+	const withoutExtension = normalized.replace(/\.[^.]+$/u, "");
+	return withoutExtension
+		.split("/")
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length > 0);
+}
+
+function deriveSlugLeaf(slug: string): string {
+	const segments = slugSegments(slug);
+	return segments.at(-1) ?? slug;
+}
+
+function slugSegments(slug: string): string[] {
+	return slug
+		.split("/")
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length > 0);
+}
+
+function stringsEqualIgnoreCase(a: string | undefined, b: string): boolean {
+	if (a === undefined) {
+		return false;
+	}
+	return a.localeCompare(b, undefined, { sensitivity: "accent" }) === 0;
+}
+
 function segmentsStartsWith(
 	segments: readonly string[],
 	prefix: readonly string[],
@@ -980,13 +1043,6 @@ function segmentsStartsWith(
 function createSlug(relativePath: string): string {
 	const normalized = relativePath.replaceAll("\\", "/");
 	return normalized.replace(/\.[^.]+$/u, "");
-}
-
-function slugSegments(slug: string): string[] {
-	return slug
-		.split("/")
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
 }
 
 function encodeDocumentId(relativePath: string): string {
@@ -1171,80 +1227,6 @@ function coerceLinkableFrontMatterValue(value: unknown): string | null {
 	}
 
 	return String(value);
-}
-
-function buildNavigation(
-	documents: readonly ViewerDocument[],
-): ViewerNavigationDirectory {
-	const root: MutableDirectoryNode = {
-		type: "dir",
-		name: "",
-		children: [],
-		directories: new Map(),
-	};
-
-	for (const doc of documents) {
-		let current = root;
-		const directories = doc.navigationSegments.slice(0, -1);
-		for (const segment of directories) {
-			let next = current.directories.get(segment);
-			if (!next) {
-				next = {
-					type: "dir",
-					name: segment,
-					children: [],
-					directories: new Map(),
-				};
-				current.directories.set(segment, next);
-				current.children.push(next);
-			}
-			current = next;
-		}
-
-		const labelFallback = doc.navigationSegments.at(-1) ?? doc.meta.title;
-		const fileNode: ViewerNavigationFile = {
-			type: "file",
-			name: doc.meta.title || labelFallback,
-			documentId: doc.id,
-			routePath: doc.meta.routePath,
-		};
-		current.children.push(fileNode);
-	}
-
-	sortDirectory(root);
-	return freezeDirectory(root);
-}
-
-function sortDirectory(directory: MutableDirectoryNode): void {
-	const directories: MutableDirectoryNode[] = [];
-	const files: ViewerNavigationFile[] = [];
-
-	for (const child of directory.children) {
-		if (child.type === "dir") {
-			sortDirectory(child);
-			directories.push(child);
-		} else {
-			files.push(child);
-		}
-	}
-
-	directories.sort((a, b) =>
-		a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-	);
-
-	directory.children = [...directories, ...files];
-}
-
-function freezeDirectory(
-	node: MutableDirectoryNode,
-): ViewerNavigationDirectory {
-	return {
-		type: "dir",
-		name: node.name,
-		children: node.children.map((child) =>
-			child.type === "dir" ? freezeDirectory(child) : child,
-		),
-	};
 }
 
 function formatAddress(info: AddressInfo): string {

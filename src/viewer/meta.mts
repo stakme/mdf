@@ -73,12 +73,20 @@ export function buildViewerEntryFromRecord(
 	);
 
 	const rawVirtualPath = resolveByCandidates(data, [fieldParam]);
-	const virtualPath = coerceString(rawVirtualPath) ?? slug;
+	const coercedVirtualPath = coerceString(rawVirtualPath);
+	const virtualPath = coercedVirtualPath ?? slug;
 	const virtualSegments = splitVirtualPath(virtualPath, separator);
-	const routePath =
-		virtualSegments.length > 0
-			? virtualSegments.join("/")
-			: slugSegments(slug).join("/");
+	let routePath: string;
+	if (virtualSegments.length > 0) {
+		routePath = virtualSegments.join("/");
+	} else {
+		const normalized = coercedVirtualPath?.trim();
+		if (normalized && normalized.length > 0) {
+			routePath = normalized;
+		} else {
+			routePath = slugSegments(slug).join("/");
+		}
+	}
 
 	const draftValue = resolveByCandidates(data, ["draft"]);
 	const draft = coerceBoolean(draftValue);

@@ -1,10 +1,10 @@
 ---
 title: "sort sidebar"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-03T05:41:19.162Z
-updated_at: 2025-10-03T05:41:19.163Z
+updated_at: 2025-10-05T15:05:00.000Z
 ---
 
 # sort sidebar

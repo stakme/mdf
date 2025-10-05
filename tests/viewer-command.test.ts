@@ -134,6 +134,196 @@ export default defineConfig({
 		}
 	});
 
+	it("places documents without virtual path in viewer root", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(path.join(notesDir, "cli"), { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "overview.md"),
+			`---\ntitle: Overview\n---\n# Overview`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "cli", "reference.md"),
+			`---\ntitle: CLI Reference\nvpath: cli/reference\n---\n# Reference`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const overviewDoc = context.documents.find(
+				(doc) => doc.meta.title === "Overview",
+			);
+			expect(overviewDoc).toBeDefined();
+
+			const overviewEntry = context.navigation.children.find(
+				(child) =>
+					child.type === "file" && child.documentId === overviewDoc?.id,
+			);
+			expect(overviewEntry).toBeDefined();
+
+			const extraneousDir = context.navigation.children.find(
+				(child) => child.type === "dir" && child.name === "notes",
+			);
+			expect(extraneousDir).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("respects explicit root virtual path when building navigation", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        sort: (a, b) => a.chapter - b.chapter,
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "docs");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "overview.md"),
+			`---\ntitle: Docs Overview\nchapter: 1\nvpath: /\n---\n# Docs Overview`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "reference.md"),
+			`---\ntitle: CLI Reference\nchapter: 2\nvpath: cli/reference\n---\n# CLI Reference`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "docs",
+			});
+
+			const overviewDoc = context.documents.find(
+				(doc) => doc.meta.title === "Docs Overview",
+			);
+			expect(overviewDoc?.meta.virtualPath).toBe("/");
+			expect(overviewDoc?.meta.routePath).toBe("/");
+
+			const referenceDoc = context.documents.find(
+				(doc) => doc.meta.title === "CLI Reference",
+			);
+
+			const rootEntries = context.navigation.children.filter(
+				(child): child is ViewerNavigationFile => child.type === "file",
+			);
+			expect(rootEntries.map((entry) => entry.documentId)).toContain(
+				overviewDoc?.id,
+			);
+
+			const cliDirectory = context.navigation.children.find(
+				(child): child is ViewerNavigationDirectory =>
+					child.type === "dir" && child.name === "cli",
+			);
+			expect(cliDirectory).toBeDefined();
+			expect(
+				cliDirectory?.children.map((child) =>
+					child.type === "file" ? child.documentId : child.name,
+				),
+			).toContain(referenceDoc?.id);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("nests documents sharing virtual path segments", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                chapter: z.number(),
+                vpath: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        sort: (a, b) => a.chapter - b.chapter,
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(docsDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(docsDir, "overview.md"),
+			`---\ntitle: Docs Overview\nchapter: 1\nvpath: /\n---\n# Docs Overview`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(docsDir, "cli-reference.md"),
+			`---\ntitle: CLI Reference\nchapter: 2\nvpath: cli\n---\n# CLI Reference`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(docsDir, "cli-filters.md"),
+			`---\ntitle: Filters and Virtual Paths\nchapter: 3\nvpath: cli\n---\n# Filters`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "docs",
+			});
+
+			const cliDirectory = context.navigation.children.find(
+				(child): child is ViewerNavigationDirectory =>
+					child.type === "dir" && child.name === "cli",
+			);
+			expect(cliDirectory).toBeDefined();
+			expect(cliDirectory?.children).toHaveLength(2);
+			expect(
+				cliDirectory?.children.map((child) =>
+					child.type === "file" ? child.name : child.name,
+				),
+			).toEqual([
+				"CLI Reference",
+				"Filters and Virtual Paths",
+			]);
+
+			const rootFiles = context.navigation.children.filter(
+				(child): child is ViewerNavigationFile => child.type === "file",
+			);
+			expect(rootFiles.map((entry) => entry.name)).toContain("Docs Overview");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps leading heading when it does not match the front matter title", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 
