@@ -247,6 +247,11 @@ export async function prepareViewerContext(
 			path.relative(options.cwd, filePath),
 		);
 
+		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
+			frontMatter,
+			virtualPathConfig.param,
+		);
+
 		const viewerDocument: ViewerDocument = {
 			id,
 			filePath,
@@ -257,7 +262,7 @@ export async function prepareViewerContext(
 				...meta,
 				virtualPath: rawVirtualPath ?? meta.virtualPath,
 			},
-			frontMatter,
+			frontMatter: sanitizedFrontMatter,
 			html,
 			markdown: document.body,
 			virtualPathSegments: segments,
@@ -974,7 +979,9 @@ interface BuildNavigationSegmentsOptions {
 	rootDirectory: string;
 }
 
-function buildNavigationSegments(options: BuildNavigationSegmentsOptions): string[] {
+function buildNavigationSegments(
+	options: BuildNavigationSegmentsOptions,
+): string[] {
 	const { virtualSegments, rawVirtualPath, slug } = options;
 	if (virtualSegments.length > 0) {
 		const segments = [...virtualSegments];
@@ -990,7 +997,10 @@ function buildNavigationSegments(options: BuildNavigationSegmentsOptions): strin
 		return [];
 	}
 
-	return buildDefaultNavigationSegments(options.filePath, options.rootDirectory);
+	return buildDefaultNavigationSegments(
+		options.filePath,
+		options.rootDirectory,
+	);
 }
 
 function buildDefaultNavigationSegments(
@@ -1115,6 +1125,20 @@ function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
 	return a.meta.routePath.localeCompare(b.meta.routePath, undefined, {
 		sensitivity: "base",
 	});
+}
+
+function sanitizeViewerFrontMatter(
+	frontMatter: Record<string, unknown>,
+	virtualPathField: string,
+): Record<string, unknown> {
+	const sanitized: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(frontMatter)) {
+		if (key === virtualPathField) {
+			continue;
+		}
+		sanitized[key] = value;
+	}
+	return sanitized;
 }
 
 function buildFrontMatterIndex(

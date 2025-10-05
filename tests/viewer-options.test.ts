@@ -103,4 +103,51 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("omits the virtual path field from viewer front matter", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+  schema: z.object({
+    title: z.string(),
+    status: z.string().optional(),
+    vpath: z.string().optional(),
+  }),
+  virtualPath: {
+    param: "vpath",
+    separator: "/",
+  },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+		await fs.writeFile(
+			path.join(notesDir, "note.md"),
+			`---\ntitle: Note\nstatus: draft\nvpath: docs/note\n---\n# Note`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const document = context.documents[0];
+			expect(document?.frontMatter).toMatchObject({
+				title: "Note",
+				status: "draft",
+			});
+			expect(document?.frontMatter).not.toHaveProperty("vpath");
+
+			const fieldNames = context.frontMatterIndex.fields.map(
+				(field) => field.name,
+			);
+			expect(fieldNames).not.toContain("vpath");
+			expect(fieldNames).toContain("status");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });
