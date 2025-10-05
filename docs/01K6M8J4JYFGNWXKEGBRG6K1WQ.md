@@ -55,7 +55,15 @@ templates: {
 },
 ```
 
-Set `defaultTemplate` when you want `mdf new` to pick a template automatically.
+Set `defaultTemplate` to map schema names to the template they should use when
+`mdf new` runs without `--template`.
+
+```ts
+defaultTemplate: {
+  default: "default",
+  docs: "doc_page",
+},
+```
 
 ## Virtual paths
 

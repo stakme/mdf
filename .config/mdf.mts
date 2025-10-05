@@ -11,13 +11,13 @@ export default defineConfig({
 		docs: defineSchema({
 			glob: "docs/**",
 			schema: z.object({
-				title: z.string().min(1),
+				title: z.string().min(1).default("title"),
 				description: z.string().optional(),
-				vpath: z.string().min(1),
+				vpath: z.string().min(1).default("/"),
 				date: z.iso.date().optional(),
 				tags: z.array(z.string()).default(() => []),
 				draft: z.boolean().default(false),
-				chapter: z.number(),
+				chapter: z.number().default(0),
 			}),
 			sort: (a, b) => a.chapter - b.chapter,
 		}),
@@ -35,10 +35,10 @@ export default defineConfig({
 			sort: (a, b) => a.created_at.localeCompare(b.created_at),
 		}),
 	},
-	defaultSchema: "default",
+	defaultSchema: ["docs", "default"],
 
 	templates: {
-		default: {
+		backlog: {
 			schema: "default",
 			frontmatter: {
 				title: "",
@@ -85,7 +85,9 @@ Logs, screenshots, or notes.
 `,
 		},
 	},
-	defaultTemplate: "default",
+	defaultTemplate: {
+		default: "backlog",
+	},
 	virtualPath: {
 		param: "vpath",
 		separator: "/",

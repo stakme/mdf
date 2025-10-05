@@ -74,8 +74,6 @@ Logs, screenshots, or notes.
 \`,
 		},
 	},
-	defaultTemplate: undefined,
-
 	virtualPath: {
 		param: "vpath",
 		separator: "/",

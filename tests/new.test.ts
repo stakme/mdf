@@ -432,6 +432,151 @@ export default defineConfig({
 		}
 	});
 
+	it("prefers prioritized schemas when creating files in matching directories", async () => {
+		const tempDir = await setupWorkspace({
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+const defaultSchema = z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+});
+
+const docsSchema = z.object({
+        title: z.string(),
+        chapter: z.number(),
+});
+
+export default defineConfig({
+        schema: {
+                docs: defineSchema({
+                        glob: "docs/**",
+                        schema: docsSchema,
+                }),
+                default: defineSchema({
+                        glob: "**",
+                        schema: defaultSchema,
+                }),
+        },
+        defaultSchema: ["docs", "default"],
+});`,
+		});
+
+		try {
+			await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"new",
+					"docs",
+					"--fm",
+					"title=New Chapter",
+					"--fm",
+					"chapter=1",
+				],
+				{ cwd: tempDir },
+			);
+
+			const docsDir = path.join(tempDir, "docs");
+			const entries = await fs.readdir(docsDir);
+			const fileName = entries[0];
+			if (!fileName) {
+				throw new Error("Expected docs schema to create a file");
+			}
+
+			const createdFile = path.join(docsDir, fileName);
+			const { frontMatter } = parseFrontMatter<{
+				title: string;
+				chapter: number;
+				status?: string;
+			}>(await fs.readFile(createdFile, "utf8"));
+
+			expect(frontMatter).toEqual({
+				title: "New Chapter",
+				chapter: 1,
+			});
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("ignores default template schema when a directory-specific schema matches", async () => {
+		const tempDir = await setupWorkspace({
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+const defaultSchema = z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+});
+
+const docsSchema = z.object({
+        title: z.string(),
+        chapter: z.number(),
+});
+
+export default defineConfig({
+        schema: {
+                docs: defineSchema({
+                        glob: "docs/**",
+                        schema: docsSchema,
+                }),
+                default: defineSchema({
+                        glob: "**",
+                        schema: defaultSchema,
+                }),
+        },
+        defaultSchema: ["docs", "default"],
+        templates: {
+                default: {
+                        schema: "default",
+                        frontmatter: {
+                                title: "[New Note] Title goes here",
+                                status: "todo",
+                        },
+                },
+        },
+        defaultTemplate: {
+                docs: "default",
+        },
+});`,
+		});
+
+		try {
+			await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"new",
+					"docs",
+					"--fm",
+					"title=Chapter Overview",
+					"--fm",
+					"chapter=2",
+				],
+				{ cwd: tempDir },
+			);
+
+			const docsDir = path.join(tempDir, "docs");
+			const entries = await fs.readdir(docsDir);
+			const fileName = entries[0];
+			if (!fileName) {
+				throw new Error("Expected docs schema to create a file");
+			}
+			const filePath = path.join(docsDir, fileName);
+			const content = await fs.readFile(filePath, "utf8");
+			const frontMatter = parseFrontMatter<{
+				title: string;
+				chapter: number;
+				status?: string;
+			}>(content).frontMatter;
+
+			expect(frontMatter.title).toBe("Chapter Overview");
+			expect(frontMatter.chapter).toBe(2);
+			expect(frontMatter.status).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("applies template defaults and body when requested", async () => {
 		const tempDir = await setupWorkspace();
 		try {
@@ -495,7 +640,9 @@ export default defineConfig({
                                 "\\n\\n## What I need\\n\\n## So I will create...",
                 },
         },
-        defaultTemplate: "default",
+        defaultTemplate: {
+                default: "default",
+        },
 });`,
 		});
 		try {

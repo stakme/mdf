@@ -41,6 +41,7 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./TODO",
 				"└── backlog",
 				"    └── feature",
 				"        └── Feature (./TODO/feature.md)",

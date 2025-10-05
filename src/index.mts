@@ -9,6 +9,8 @@ import type {
 export { z };
 export type {
 	AnySchemaDefinition,
+	DefaultSchemaConfig,
+	DefaultTemplateConfig,
 	DocumentSort,
 	LoadedVirtualPathConfig,
 	MdfConfig,

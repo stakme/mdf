@@ -51,13 +51,19 @@ export async function runNewCommand(
 	const relativeDirectory = path.relative(options.cwd, resolvedDirectory);
 	const placeholderFile = path.join(relativeDirectory, `__mdf__${extension}`);
 
-	const resolvedTemplate = await resolveTemplate(config, options.template);
+	const directorySchema = config.getSchemaForRelativePath(placeholderFile);
+	const resolvedTemplate = await resolveTemplate(
+		config,
+		options.template,
+		directorySchema.name,
+	);
 	const template = resolvedTemplate?.template;
 	const schemaEntry = determineSchemaEntry(
 		config,
-		placeholderFile,
+		directorySchema,
 		template,
 		resolvedTemplate?.name,
+		options.template,
 	);
 	const baseData = await buildInitialFrontMatter(
 		config,
@@ -207,29 +213,36 @@ async function resolveContent(
 
 function determineSchemaEntry(
 	config: LoadedConfig,
-	placeholderFile: string,
+	directorySchema: LoadedSchema,
 	template: TemplateDefinition<Record<string, unknown>> | undefined,
 	templateName?: string,
+	requestedTemplateName?: string,
 ): LoadedSchema {
-	if (template?.schema) {
-		const schemaEntry = config.getSchemaByName(template.schema);
-		if (!schemaEntry) {
-			throw new MdfError(
-				"INVALID_CONTENT",
-				`Template "${templateName ?? template.schema}" references unknown schema "${template.schema}" in ${config.path}`,
-			);
-		}
-		return schemaEntry;
+	if (!template?.schema) {
+		return directorySchema;
 	}
 
-	return config.getSchemaForRelativePath(placeholderFile);
+	const schemaEntry = config.getSchemaByName(template.schema);
+	if (!schemaEntry) {
+		throw new MdfError(
+			"INVALID_CONTENT",
+			`Template "${templateName ?? template.schema}" references unknown schema "${template.schema}" in ${config.path}`,
+		);
+	}
+
+	if (!requestedTemplateName && schemaEntry.name !== directorySchema.name) {
+		return directorySchema;
+	}
+
+	return schemaEntry;
 }
 
 async function resolveTemplate(
 	config: LoadedConfig,
-	templateName?: string,
+	templateName: string | undefined,
+	schemaName: string,
 ): Promise<ResolvedTemplate | undefined> {
-	const resolvedName = templateName ?? config.defaultTemplate;
+	const resolvedName = templateName ?? config.defaultTemplate?.[schemaName];
 
 	if (!resolvedName) {
 		return undefined;

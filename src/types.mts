@@ -80,6 +80,17 @@ type InferSchemaData<TEntry> = z.infer<ExtractSchemaFromEntry<TEntry>>;
 
 type SchemaNames<TSchemaRecord> = keyof TSchemaRecord & string;
 
+type DefaultSchemaNameList<TSchemaRecord extends SchemaRecordInput> =
+	readonly SchemaNames<TSchemaRecord>[];
+
+export type DefaultSchemaConfig<
+	TSchemaRecord extends SchemaRecordInput = SchemaRecordInput,
+> = SchemaNames<TSchemaRecord> | DefaultSchemaNameList<TSchemaRecord>;
+
+export type DefaultTemplateConfig<
+	TSchemaRecord extends SchemaRecordInput = SchemaRecordInput,
+> = Partial<Record<SchemaNames<TSchemaRecord>, string>>;
+
 type SchemaDataUnion<TSchemaRecord> = SchemaNames<TSchemaRecord> extends never
 	? Record<string, unknown>
 	: {
@@ -134,7 +145,7 @@ export interface MdfConfig<
 	TSchemaRecord extends SchemaRecordInput = SchemaRecordInput,
 > {
 	schema: SchemaConfig<TSchemaRecord>;
-	defaultSchema?: SchemaNames<TSchemaRecord>;
+	defaultSchema?: DefaultSchemaConfig<TSchemaRecord>;
 	defaults?: DefaultsValue<SchemaDataUnion<TSchemaRecord>>;
 	content?:
 		| string
@@ -146,7 +157,7 @@ export interface MdfConfig<
 	) => string | Promise<string>;
 	extension?: string;
 	templates?: TemplatesConfig<TSchemaRecord>;
-	defaultTemplate?: string;
+	defaultTemplate?: DefaultTemplateConfig<TSchemaRecord>;
 	virtualPath?: VirtualPathConfig;
 	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
@@ -165,6 +176,7 @@ export interface LoadedConfig<
 	schema: z.ZodTypeAny;
 	schemas: readonly LoadedSchema[];
 	defaultSchema: string;
+	schemaPriority?: readonly string[];
 	getSchemaForRelativePath(relativePath: string): LoadedSchema;
 	getSchemaByName(name: string): LoadedSchema | undefined;
 	path: string;
