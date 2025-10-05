@@ -240,7 +240,7 @@ async function exportDocumentAssets(
 			continue;
 		}
 
-		let stats;
+		let stats: Awaited<ReturnType<typeof fs.stat>>;
 		try {
 			stats = await fs.stat(resolvedSource);
 		} catch (error) {

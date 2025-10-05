@@ -54,7 +54,7 @@ export default defineConfig({
 			expect(result.warnings).toHaveLength(0);
 			expect(result.exported).toHaveLength(1);
 
-			const exportedDocument = result.exported[0]!;
+			const exportedDocument = result.exported[0];
 			const documentId = exportedDocument.id;
 
 			const contextPath = path.join(outputDir, "api", "context", "index.json");

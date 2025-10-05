@@ -42,8 +42,6 @@ import type {
 	ViewerFrontMatterValue,
 	ViewerFrontMatterValuePayload,
 	ViewerHeaderOption,
-	ViewerNavigationDirectory,
-	ViewerNavigationFile,
 } from "../viewer/types.mts";
 
 export type {

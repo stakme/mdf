@@ -32,7 +32,7 @@
 			"src/**",
 			"tests/**",
 			"TODO/**",
-			"viewer-app/**",
+			"viewer-app/**/*.{ts,tsx}",
 			"README.md",
 			"CHANGELOG.md"
 		]
