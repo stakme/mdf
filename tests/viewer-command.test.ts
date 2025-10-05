@@ -310,10 +310,7 @@ export default defineConfig({
 				cliDirectory?.children.map((child) =>
 					child.type === "file" ? child.name : child.name,
 				),
-			).toEqual([
-				"CLI Reference",
-				"Filters and Virtual Paths",
-			]);
+			).toEqual(["CLI Reference", "Filters and Virtual Paths"]);
 
 			const rootFiles = context.navigation.children.filter(
 				(child): child is ViewerNavigationFile => child.type === "file",
