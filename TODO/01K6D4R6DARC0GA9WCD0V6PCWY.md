@@ -11,11 +11,14 @@ updated_at: 2025-09-30T11:05:02.664Z
 
 ## What I need
 
-- I want AI developers to manage some files for release.
-- `CHANGELOG.md` should be updated with the changes since the last release.
-- AI developers should decide on versioning: major, minor, or patch.
+- Living CHANGELOG.md
+- Attractive and engaging docs for GitHub Pages
 
 ## So I will create...
+
+### CHANGELOG.md
+
+- Update for v1.0.0 release.
 
 ### AGENTS.md
 
