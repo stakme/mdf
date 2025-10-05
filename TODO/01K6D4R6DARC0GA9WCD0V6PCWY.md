@@ -22,5 +22,10 @@ updated_at: 2025-09-30T11:05:02.664Z
 
 ### AGENTS.md
 
-- Add definitions of files to be managed by AI developers.
 - Rules for versioning should be defined.
+- survey this project completely and observe what we are doing here with markdfm
+  CLI.
+
+### docs/
+
+- Attractive and engaging docs for GitHub Pages
