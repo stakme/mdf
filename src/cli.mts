@@ -87,7 +87,7 @@ function createProgram(version: string): Command {
 					const relative =
 						path.relative(process.cwd(), result.filePath) ||
 						path.basename(result.filePath);
-					console.log(`Created ${relative}`);
+					console.log(relative);
 				} catch (error) {
 					handleError(error);
 				}
