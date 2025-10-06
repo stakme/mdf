@@ -141,10 +141,14 @@ export default defineConfig({
 			});
 			expect(document?.frontMatter).not.toHaveProperty("vpath");
 
+			const vpathField = context.frontMatterIndex.fieldMap.get("vpath");
+			expect(vpathField?.values.map((entry) => entry.value)).toContain(
+				"docs/note",
+			);
 			const fieldNames = context.frontMatterIndex.fields.map(
 				(field) => field.name,
 			);
-			expect(fieldNames).not.toContain("vpath");
+			expect(fieldNames).toContain("vpath");
 			expect(fieldNames).toContain("status");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });

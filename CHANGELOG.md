@@ -8,8 +8,6 @@ Keep a Changelog style so entries are grouped by category.
 ## [Unreleased]
 
 ### Added
-- Release management guidance in `AGENTS.md` (SemVer rules, managed files,
-  checklist) to prepare for the v1.0.0 release.
 
 ### Changed
 
@@ -20,4 +18,14 @@ Keep a Changelog style so entries are grouped by category.
 ### Fixed
 
 ### Security
+
+## [1.0.0] - 2025-09-30
+
+### Added
+- Stable `mdf` CLI covering initialization, scaffolding, validation, updates,
+  and automation for Markdown collections.
+- Interactive viewer, static export pipeline, and GitHub Pages docs workflow
+  for sharing curated note sets.
+- Maintainer guidance for versioning, quality gates, and release preparation in
+  `AGENTS.md`.
 

@@ -1,6 +1,6 @@
 ---
 title: Prepare for v1.0.0 release
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-30T11:05:02.664Z

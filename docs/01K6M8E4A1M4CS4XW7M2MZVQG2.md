@@ -9,9 +9,23 @@ chapter: 1.0
 
 # Docs Overview
 
+> 🎉 **mdf 1.0** is here! The CLI, viewer, and docs toolchain are now polished
+> for everyday teams who need predictable Markdown collections and a slick
+> sharing experience.
+
 `mdf` helps teams keep Markdown knowledge bases consistent, validated, and easy
-to publish. These docs explain how to set up a workspace, manage notes, and
-automate publishing to GitHub Pages using the built-in `docs` command.
+to publish. These docs explain how to stand up a workspace, coach contributors,
+and ship a GitHub Pages site without leaving the terminal.
+
+## What's new in 1.0.0
+
+- **Unified quality gates.** Every command—from `init` and `new` to `validate`,
+  `fix`, and `update`—works together to enforce your schema and keep notes
+  trustworthy.
+- **Built-in sharing.** Launch the interactive viewer locally or export it as a
+  static site tailored to your filters with `mdf export` and `mdf docs`.
+- **Release-ready guidance.** Maintainers get SemVer rules, checklists, and
+  quality bars in `AGENTS.md` so future releases stay predictable.
 
 ## How the documentation is organized
 
@@ -28,16 +42,9 @@ Each page lives in the `/TODO` directory with `status=done` and a `vpath`
 beginning with `docs/`. Running `mdf docs` exports just those completed entries
 to the `/docs` folder for GitHub Pages.
 
-## Key capabilities to know about
+## Choose your next step
 
-- **Schema-driven authoring:** every note is validated against
-  `.config/mdf.mts`, so front matter stays predictable.
-- **Virtual paths:** the `vpath` field builds the navigation tree you see in the
-  viewer and the exported site.
-- **Asset friendly:** embed screenshots and diagrams with relative paths; the
-  exporter rehosts them per document.
-- **Filters and automation:** combine `--filter` and `--vpath` to target subsets
-  of notes for listing, validation, or export.
-
-Use this overview as the jumping-off point—move to Getting Started next if you
-are brand-new, or straight to CLI Reference when you just need command syntax.
+- New to `mdf`? Start with **Getting Started** to set up your first workspace.
+- Need syntax fast? Jump into the **CLI Reference**.
+- Planning a release? Review the refreshed **Change logs** page for templates
+  and storytelling tips.

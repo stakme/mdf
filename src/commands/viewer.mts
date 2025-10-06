@@ -290,7 +290,10 @@ export async function prepareViewerContext(
 	});
 	const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
 	const defaultDocument = documents[0] ?? null;
-	const frontMatterIndex = buildFrontMatterIndex(documents);
+	const frontMatterIndex = buildFrontMatterIndex(
+		documents,
+		virtualPathConfig.param,
+	);
 
 	return {
 		cwd: options.cwd,
@@ -1134,40 +1137,29 @@ function sanitizeViewerFrontMatter(
 		if (key === virtualPathField) {
 			continue;
 		}
-		sanitized[key] = value;
+		sanitized[key] = typeof value === "string" ? value.trim() : value;
 	}
 	return sanitized;
 }
 
 function buildFrontMatterIndex(
 	documents: readonly ViewerDocument[],
+	virtualPathField: string,
 ): ViewerFrontMatterIndex {
 	const fieldBuckets = new Map<string, Map<string, ViewerDocument[]>>();
 
 	for (const document of documents) {
+		if (virtualPathField.length > 0) {
+			addFrontMatterValue(
+				fieldBuckets,
+				virtualPathField,
+				document.meta.virtualPath,
+				document,
+			);
+		}
+
 		for (const [field, rawValue] of Object.entries(document.frontMatter)) {
-			const values = extractLinkableFrontMatterValues(rawValue);
-			if (!values.length) {
-				continue;
-			}
-
-			let valueBucket = fieldBuckets.get(field);
-			if (!valueBucket) {
-				valueBucket = new Map();
-				fieldBuckets.set(field, valueBucket);
-			}
-
-			for (const value of values) {
-				let documentsForValue = valueBucket.get(value);
-				if (!documentsForValue) {
-					documentsForValue = [];
-					valueBucket.set(value, documentsForValue);
-				}
-
-				if (!documentsForValue.includes(document)) {
-					documentsForValue.push(document);
-				}
-			}
+			addFrontMatterValue(fieldBuckets, field, rawValue, document);
 		}
 	}
 
@@ -1194,6 +1186,40 @@ function buildFrontMatterIndex(
 		});
 
 	return { fields, fieldMap };
+}
+
+function addFrontMatterValue(
+	buckets: Map<string, Map<string, ViewerDocument[]>>,
+	field: string,
+	rawValue: unknown,
+	document: ViewerDocument,
+): void {
+	if (!field || field.trim().length === 0) {
+		return;
+	}
+
+	const values = extractLinkableFrontMatterValues(rawValue);
+	if (!values.length) {
+		return;
+	}
+
+	let valueBucket = buckets.get(field);
+	if (!valueBucket) {
+		valueBucket = new Map();
+		buckets.set(field, valueBucket);
+	}
+
+	for (const value of values) {
+		let documentsForValue = valueBucket.get(value);
+		if (!documentsForValue) {
+			documentsForValue = [];
+			valueBucket.set(value, documentsForValue);
+		}
+
+		if (!documentsForValue.includes(document)) {
+			documentsForValue.push(document);
+		}
+	}
 }
 
 function extractLinkableFrontMatterValues(value: unknown): string[] {

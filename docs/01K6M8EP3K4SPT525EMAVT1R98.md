@@ -10,8 +10,12 @@ chapter: 1.1
 
 # Getting Started
 
-Follow these steps to stand up a new workspace and begin authoring notes with
-`mdf`.
+`mdf 1.0` is designed to get a Markdown knowledge base production-ready in a
+single afternoon. Follow this guide the first time you install the CLI, then
+lean on the recipes and reference docs for day-to-day work.
+
+> 💡 Tip: Keep the [Docs Overview](./01K6M8E4A1M4CS4XW7M2MZVQG2.md) open in another
+> tab so you can hop between guides as you explore.
 
 ## Prerequisites
 
@@ -101,6 +105,25 @@ npm run docs:generate
 The docs export copies the viewer assets into `/docs`, serializes metadata for
 every `status=done` entry, and rehosts linked assets so the static site works
 without a server.
+
+## Preview in the viewer
+
+Before sharing the static site, open the interactive viewer to sanity-check
+navigation, filters, and document rendering:
+
+```bash
+npx @stakme/mdf viewer TODO --vpath docs --port 4173
+```
+
+The viewer mirrors the exported experience, so anything that looks right here
+will look right in production.
+
+## Launch checklist
+
+- [ ] Install dependencies and initialize `.config/mdf.mts`.
+- [ ] Scaffold at least one note with `mdf new`.
+- [ ] Validate and fix drift before exporting.
+- [ ] Preview in the viewer, then run `mdf docs` to produce the site.
 
 ## What to read next
 
