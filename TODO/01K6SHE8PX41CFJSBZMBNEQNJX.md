@@ -21,4 +21,7 @@ updated_at: 2025-10-05T06:37:42.014Z
 
 ## Outcome
 
-- Viewer front matter no longer shows `vpath`, keeping navigation-only metadata out of document footers.
+- Viewer front matter no longer shows `vpath`, keeping navigation-only metadata
+  out of document footers.
+
+  ![alt text](./01K6SHE8PX41CFJSBZMBNEQNJX/image.png)
