@@ -154,4 +154,58 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("strips nested virtual path fields from viewer front matter", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+  schema: z.object({
+    title: z.string(),
+    status: z.string().optional(),
+    meta: z.object({
+      vpath: z.string().optional(),
+      owner: z.string().optional(),
+    }).optional(),
+  }),
+  virtualPath: {
+    param: "meta.vpath",
+    separator: "/",
+  },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+		await fs.writeFile(
+			path.join(notesDir, "note.md"),
+			`---\ntitle: Note\nstatus: draft\nmeta:\n  vpath: docs/note\n  owner: QA\n---\n# Note`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			const document = context.documents[0];
+			expect(document?.frontMatter).toMatchObject({
+				title: "Note",
+				status: "draft",
+				meta: {
+					owner: "QA",
+				},
+			});
+			const meta = document?.frontMatter?.meta as
+				| Record<string, unknown>
+				| undefined;
+			expect(meta).not.toHaveProperty("vpath");
+
+			const vpathField = context.frontMatterIndex.fieldMap.get("meta.vpath");
+			const values = vpathField?.values.map((entry) => entry.value) ?? [];
+			expect(values).toContain("docs/note");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });

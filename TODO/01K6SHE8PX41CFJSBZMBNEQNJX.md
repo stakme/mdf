@@ -1,6 +1,6 @@
 ---
 title: "update footers and remove `vpath` parameter from viewer"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-05T06:37:42.013Z

@@ -1132,14 +1132,88 @@ function sanitizeViewerFrontMatter(
 	frontMatter: Record<string, unknown>,
 	virtualPathField: string,
 ): Record<string, unknown> {
+	const pathSegments = virtualPathField
+		.split(".")
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length > 0);
+
 	const sanitized: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(frontMatter)) {
-		if (key === virtualPathField) {
+		if (pathSegments.length === 1 && key === pathSegments[0]) {
 			continue;
 		}
-		sanitized[key] = typeof value === "string" ? value.trim() : value;
+		sanitized[key] = cloneFrontMatterValue(value);
 	}
+
+	if (pathSegments.length > 1) {
+		removeNestedPath(sanitized, pathSegments);
+	}
+
 	return sanitized;
+}
+
+function cloneFrontMatterValue(value: unknown): unknown {
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed;
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => cloneFrontMatterValue(entry));
+	}
+
+	if (isPlainRecord(value)) {
+		const result: Record<string, unknown> = {};
+		for (const [key, nested] of Object.entries(value)) {
+			result[key] = cloneFrontMatterValue(nested);
+		}
+		return result;
+	}
+
+	return value;
+}
+
+function removeNestedPath(
+	target: Record<string, unknown>,
+	segments: readonly string[],
+): void {
+	if (segments.length === 0) {
+		return;
+	}
+
+	const [head, ...rest] = segments;
+	if (head === undefined) {
+		return;
+	}
+
+	const current = target[head];
+	if (current === undefined) {
+		return;
+	}
+
+	if (rest.length === 0) {
+		delete target[head];
+		return;
+	}
+
+	if (!isPlainRecord(current)) {
+		return;
+	}
+
+	removeNestedPath(current, rest);
+
+	if (Object.keys(current).length === 0) {
+		delete target[head];
+	}
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		!(value instanceof Date)
+	);
 }
 
 function buildFrontMatterIndex(
