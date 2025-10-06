@@ -1,5 +1,5 @@
 ---
-title: Docs Overview
+title: Overview
 vpath: /
 tags:
   - docs
