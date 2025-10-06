@@ -15,5 +15,5 @@ updated_at: 2025-10-06T03:42:27.523Z
 
 ## So I will create...
 
-- Introduce `uri` parameter to `list`, `viewer` and `export` commands.
-- Add a button to copy URI to clipboard in viewer.
+- Assign dedicated URI to pages like `/#/docs/alpha`.
+- Add a button to copy `location.href` to clipboard in viewer.
