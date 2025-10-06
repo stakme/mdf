@@ -248,7 +248,11 @@ export async function prepareViewerContext(
 		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
 			frontMatter,
 			virtualPathConfig.param,
+			schemaEntry.visibleFields,
 		);
+		const visibleFields = schemaEntry.visibleFields
+			? [...schemaEntry.visibleFields]
+			: null;
 
 		const viewerDocument: ViewerDocument = {
 			id,
@@ -261,6 +265,7 @@ export async function prepareViewerContext(
 				virtualPath: rawVirtualPath ?? meta.virtualPath,
 			},
 			frontMatter: sanitizedFrontMatter,
+			visibleFields,
 			html,
 			markdown: document.body,
 			virtualPathSegments: segments,
@@ -590,6 +595,7 @@ export function buildViewerDocumentPayload(
 	return {
 		...buildViewerDocumentSummary(document),
 		frontMatter: document.frontMatter,
+		visibleFields: document.visibleFields ? [...document.visibleFields] : null,
 		html: document.html,
 		markdown: document.markdown,
 	};
@@ -1131,22 +1137,48 @@ function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
 function sanitizeViewerFrontMatter(
 	frontMatter: Record<string, unknown>,
 	virtualPathField: string,
+	visibleFields?: readonly string[],
 ): Record<string, unknown> {
 	const pathSegments = virtualPathField
 		.split(".")
 		.map((segment) => segment.trim())
 		.filter((segment) => segment.length > 0);
 
+	const enforceVisibility = visibleFields !== undefined;
+	const visibleSet = new Set(
+		(visibleFields ?? [])
+			.map((field) => field.trim())
+			.filter((field) => field.length > 0),
+	);
+
 	const sanitized: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(frontMatter)) {
+		if (enforceVisibility && !visibleSet.has(key)) {
+			continue;
+		}
 		if (pathSegments.length === 1 && key === pathSegments[0]) {
 			continue;
 		}
-		sanitized[key] = cloneFrontMatterValue(value);
+
+		const cloned = cloneFrontMatterValue(value);
+		if (!isVisibleFrontMatterValue(cloned)) {
+			continue;
+		}
+
+		sanitized[key] = cloned;
 	}
 
-	if (pathSegments.length > 1) {
+	if (pathSegments.length === 1) {
+		sanitized[pathSegments[0]] = undefined;
+		delete sanitized[pathSegments[0]];
+	} else if (pathSegments.length > 1) {
 		removeNestedPath(sanitized, pathSegments);
+	}
+
+	for (const key of Object.keys(sanitized)) {
+		if (!isVisibleFrontMatterValue(sanitized[key])) {
+			delete sanitized[key];
+		}
 	}
 
 	return sanitized;
@@ -1159,18 +1191,50 @@ function cloneFrontMatterValue(value: unknown): unknown {
 	}
 
 	if (Array.isArray(value)) {
-		return value.map((entry) => cloneFrontMatterValue(entry));
+		return value
+			.map((entry) => cloneFrontMatterValue(entry))
+			.filter((entry) => isVisibleFrontMatterValue(entry));
 	}
 
 	if (isPlainRecord(value)) {
 		const result: Record<string, unknown> = {};
 		for (const [key, nested] of Object.entries(value)) {
-			result[key] = cloneFrontMatterValue(nested);
+			const cloned = cloneFrontMatterValue(nested);
+			if (!isVisibleFrontMatterValue(cloned)) {
+				continue;
+			}
+			result[key] = cloned;
 		}
 		return result;
 	}
 
 	return value;
+}
+
+function isVisibleFrontMatterValue(value: unknown): boolean {
+	if (value === undefined || value === null) {
+		return false;
+	}
+
+	if (typeof value === "boolean") {
+		return value === true;
+	}
+
+	if (typeof value === "string") {
+		return value.trim().length > 0;
+	}
+
+	if (Array.isArray(value)) {
+		return value.some((entry) => isVisibleFrontMatterValue(entry));
+	}
+
+	if (isPlainRecord(value)) {
+		return Object.values(value).some((entry) =>
+			isVisibleFrontMatterValue(entry),
+		);
+	}
+
+	return true;
 }
 
 function removeNestedPath(

@@ -22,6 +22,7 @@ export interface ViewerDocument {
 	slug: string;
 	meta: ViewerMeta;
 	frontMatter: Record<string, unknown>;
+	visibleFields: readonly string[] | null;
 	html: string;
 	markdown: string;
 	virtualPathSegments: string[];
@@ -91,6 +92,7 @@ export interface ViewerDocumentSummary {
 
 export interface ViewerDocumentPayload extends ViewerDocumentSummary {
 	frontMatter: Record<string, unknown>;
+	visibleFields: readonly string[] | null;
 	html: string;
 	markdown: string;
 }

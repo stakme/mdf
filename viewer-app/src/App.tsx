@@ -492,21 +492,41 @@ function DocumentFrontMatter({
 	document: ViewerDocumentPayload;
 }) {
 	const entries = useMemo(() => {
-		return Object.entries(document.frontMatter ?? {})
-			.filter(([key]) => key !== "title")
-			.sort((a, b) =>
+		const allEntries = Object.entries(document.frontMatter ?? {});
+		if (allEntries.length === 0) {
+			return [] as [string, unknown][];
+		}
+
+		if (document.visibleFields === null) {
+			return [...allEntries].sort((a, b) =>
 				a[0].localeCompare(b[0], undefined, { sensitivity: "base" }),
 			);
-	}, [document.frontMatter]);
+		}
+
+		const order = new Map(
+			document.visibleFields.map((field, index) => [field, index] as const),
+		);
+
+		return allEntries
+			.filter(([key]) => order.has(key))
+			.sort((a, b) => {
+				const left = order.get(a[0]);
+				const right = order.get(b[0]);
+				if (left === undefined && right === undefined) {
+					return a[0].localeCompare(b[0], undefined, { sensitivity: "base" });
+				}
+				if (left === undefined) {
+					return 1;
+				}
+				if (right === undefined) {
+					return -1;
+				}
+				return left - right;
+			});
+	}, [document.frontMatter, document.visibleFields]);
 
 	if (!entries.length) {
-		return (
-			<div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 text-center">
-				<p className="text-sm text-slate-400">
-					This document has no additional front matter.
-				</p>
-			</div>
-		);
+		return null;
 	}
 
 	return (
@@ -731,6 +751,20 @@ export default function App(): JSX.Element {
 	const activeDocument = document;
 	const headerOptions = context?.headerOptions ?? [];
 	const warnings = context?.warnings ?? [];
+	const shouldShowDocumentFields = useMemo(() => {
+		if (!activeDocument) {
+			return false;
+		}
+
+		if (
+			activeDocument.visibleFields !== null &&
+			activeDocument.visibleFields.length === 0
+		) {
+			return false;
+		}
+
+		return Object.keys(activeDocument.frontMatter ?? {}).length > 0;
+	}, [activeDocument]);
 
 	return (
 		<div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
@@ -1022,12 +1056,14 @@ export default function App(): JSX.Element {
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
 								dangerouslySetInnerHTML={{ __html: activeDocument.html }}
 							/>
-							<section className="space-y-4 border-t border-slate-800 pt-8">
-								<h3 className="text-xl font-bold tracking-tight text-slate-200">
-									Front matter
-								</h3>
-								<DocumentFrontMatter document={activeDocument} />
-							</section>
+							{shouldShowDocumentFields ? (
+								<section className="space-y-4 border-t border-slate-800 pt-8">
+									<h3 className="text-xl font-bold tracking-tight text-slate-200">
+										List of fields
+									</h3>
+									<DocumentFrontMatter document={activeDocument} />
+								</section>
+							) : null}
 						</article>
 					)}
 				</main>

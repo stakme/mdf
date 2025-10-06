@@ -723,6 +723,11 @@ function normalizeSchemaEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, name, configPath),
+		visibleFields: normalizeVisibleFields(
+			record.visibleFields,
+			name,
+			configPath,
+		),
 	};
 }
 
@@ -787,6 +792,11 @@ function normalizeSchemaRecordEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, trimmedName, configPath),
+		visibleFields: normalizeVisibleFields(
+			record.visibleFields,
+			trimmedName,
+			configPath,
+		),
 	};
 }
 
@@ -806,6 +816,47 @@ function normalizeSortFunction(
 	}
 
 	return value as DocumentSort<unknown>;
+}
+
+function normalizeVisibleFields(
+	value: unknown,
+	schemaName: string,
+	configPath: string,
+): readonly string[] | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (!Array.isArray(value)) {
+		throw new Error(
+			`Schema entry "${schemaName}" in ${configPath} must define "visibleFields" as an array of strings when provided`,
+		);
+	}
+
+	const seen = new Set<string>();
+	const normalized: string[] = [];
+	value.forEach((entry, index) => {
+		if (typeof entry !== "string") {
+			throw new Error(
+				`Schema entry "${schemaName}" in ${configPath} visibleFields entry ${formatSchemaIndex(index)} must be a string`,
+			);
+		}
+
+		const trimmed = entry.trim();
+		if (!trimmed) {
+			throw new Error(
+				`Schema entry "${schemaName}" in ${configPath} visibleFields entry ${formatSchemaIndex(index)} must be a non-empty string`,
+			);
+		}
+
+		if (seen.has(trimmed)) {
+			return;
+		}
+		seen.add(trimmed);
+		normalized.push(trimmed);
+	});
+
+	return normalized;
 }
 
 function finalizeSchemaEntries(

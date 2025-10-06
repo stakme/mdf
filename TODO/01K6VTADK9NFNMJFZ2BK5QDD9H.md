@@ -1,10 +1,10 @@
 ---
 title: Customizing footer in viewer/export
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T03:51:21.994Z
-updated_at: 2025-10-06T03:51:21.995Z
+updated_at: 2025-10-06T11:02:19.657Z
 ---
 
 # Customizing footer in viewer/export

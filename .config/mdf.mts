@@ -8,19 +8,20 @@ export default defineConfig({
 	},
 
 	schema: {
-		docs: defineSchema({
-			glob: "docs/**",
-			schema: z.object({
-				title: z.string().min(1).default("title"),
-				description: z.string().optional(),
-				vpath: z.string().min(1).default("/"),
-				date: z.iso.date().optional(),
-				tags: z.array(z.string()).default(() => []),
-				draft: z.boolean().default(false),
-				chapter: z.number().default(0),
-			}),
-			sort: (a, b) => a.chapter - b.chapter,
-		}),
+                docs: defineSchema({
+                        glob: "docs/**",
+                        schema: z.object({
+                                title: z.string().min(1).default("title"),
+                                description: z.string().optional(),
+                                vpath: z.string().min(1).default("/"),
+                                date: z.iso.date().optional(),
+                                tags: z.array(z.string()).default(() => []),
+                                draft: z.boolean().default(false),
+                                chapter: z.number().default(0),
+                        }),
+                        sort: (a, b) => a.chapter - b.chapter,
+                        visibleFields: ["tags"],
+                }),
 		default: defineSchema({
 			glob: "**",
 			schema: z.object({

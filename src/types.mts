@@ -55,6 +55,7 @@ export interface SchemaDefinitionInput<
 	glob?: string;
 	schema: TSchema;
 	sort?: DocumentSort<z.infer<TSchema>>;
+	visibleFields?: readonly string[];
 }
 
 export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny>

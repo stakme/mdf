@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	buildViewerContextPayload,
+	buildViewerDocumentPayload,
 	createViewerApp,
 	prepareViewerContext,
 	type ViewerNavigationDirectory,
@@ -184,6 +185,56 @@ export default defineConfig({
 				(child) => child.type === "dir" && child.name === "notes",
 			);
 			expect(extraneousDir).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("filters document front matter using visibleFields", async () => {
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: {
+                docs: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                draft: z.boolean().default(false),
+                                extra: z.string().optional(),
+                                vpath: z.string().optional(),
+                        }),
+                        visibleFields: ["title", "draft"],
+                }),
+        },
+        defaultSchema: "docs",
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "doc.md"),
+			`---\ntitle: Visible\ndraft: false\nextra: keep me out\n---\n# Visible`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "notes",
+			});
+
+			expect(context.documents).toHaveLength(1);
+			const doc = context.documents[0];
+			expect(doc.visibleFields).toEqual(["title", "draft"]);
+			expect(doc.frontMatter).toEqual({ title: "Visible" });
+
+			const payload = buildViewerDocumentPayload(doc);
+			expect(payload.visibleFields).toEqual(["title", "draft"]);
+			expect(payload.frontMatter).toEqual({ title: "Visible" });
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
