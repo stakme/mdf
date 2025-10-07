@@ -228,6 +228,7 @@ export async function prepareViewerContext(
 			virtualPathField: virtualPathConfig.param,
 			virtualPathSeparator: separator,
 		});
+		const routePath = buildDocumentRoutePath(filePath, resolvedDirectory);
 
 		const id = encodeDocumentId(relativePath);
 		const html = renderDocumentMarkdown(document.body, meta.title, {
@@ -263,6 +264,7 @@ export async function prepareViewerContext(
 			meta: {
 				...meta,
 				virtualPath: rawVirtualPath ?? meta.virtualPath,
+				routePath,
 			},
 			frontMatter: sanitizedFrontMatter,
 			visibleFields,
@@ -1060,6 +1062,21 @@ function segmentsStartsWith(
 function createSlug(relativePath: string): string {
 	const normalized = relativePath.replaceAll("\\", "/");
 	return normalized.replace(/\.[^.]+$/u, "");
+}
+
+function buildDocumentRoutePath(
+	filePath: string,
+	rootDirectory: string,
+): string {
+	const relativeToRoot = path.relative(rootDirectory, filePath);
+	const normalized = relativeToRoot.replaceAll("\\", "/");
+	const withoutExtension = normalized.replace(/\.[^.]+$/u, "");
+	const trimmed = withoutExtension.trim();
+	if (!trimmed) {
+		const fallback = path.basename(filePath, path.extname(filePath));
+		return fallback.trim() || "/";
+	}
+	return trimmed;
 }
 
 function encodeDocumentId(relativePath: string): string {

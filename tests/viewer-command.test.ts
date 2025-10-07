@@ -54,7 +54,7 @@ export default defineConfig({
 			expect(context.documents).toHaveLength(1);
 			const doc = context.documents[0];
 			expect(doc.meta.title).toBe("Alpha");
-			expect(doc.meta.routePath).toBe("docs/alpha");
+			expect(doc.meta.routePath).toBe("alpha");
 			expect(doc.html).toMatch(/<p>Content<\/p>/);
 
 			const payload = buildViewerContextPayload(context);
@@ -63,7 +63,7 @@ export default defineConfig({
 				{ label: "Virtual Path", value: "docs" },
 			]);
 			expect(payload.defaultDocumentId).toBe(doc.id);
-			expect(payload.documents[0]?.meta.routePath).toBe("docs/alpha");
+			expect(payload.documents[0]?.meta.routePath).toBe("alpha");
 
 			const { app } = await createViewerApp(() => context);
 
@@ -280,7 +280,7 @@ export default defineConfig({
 				(doc) => doc.meta.title === "Docs Overview",
 			);
 			expect(overviewDoc?.meta.virtualPath).toBe("/");
-			expect(overviewDoc?.meta.routePath).toBe("/");
+			expect(overviewDoc?.meta.routePath).toBe("overview");
 
 			const referenceDoc = context.documents.find(
 				(doc) => doc.meta.title === "CLI Reference",

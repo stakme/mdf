@@ -612,23 +612,8 @@ function parseRoute(): Route {
 	}
 
 	const parts = hash.split("/").filter(Boolean);
-	if (parts[0] === "docs") {
-		const decodedSegments = parts.slice(1).map((segment) => {
-			try {
-				return decodeURIComponent(segment);
-			} catch {
-				return segment;
-			}
-		});
-
-		if (decodedSegments.length === 0) {
-			return { type: "document", routePath: "/" };
-		}
-
-		return {
-			type: "document",
-			routePath: decodedSegments.join("/"),
-		};
+	if (parts.length === 0) {
+		return { type: "document", routePath: null };
 	}
 
 	if (parts[0] === "fm") {
@@ -647,13 +632,24 @@ function parseRoute(): Route {
 		}
 	}
 
-	return { type: "document", routePath: null };
+	const decodedSegments = parts.map((segment) => {
+		try {
+			return decodeURIComponent(segment);
+		} catch {
+			return segment;
+		}
+	});
+
+	return {
+		type: "document",
+		routePath: decodedSegments.join("/"),
+	};
 }
 
 function buildDocumentHash(routePath: string): string {
 	const trimmed = routePath.trim();
 	if (!trimmed || trimmed === "/") {
-		return "#/docs";
+		return "#/";
 	}
 
 	const encoded = trimmed
@@ -661,7 +657,7 @@ function buildDocumentHash(routePath: string): string {
 		.map((segment) => encodeURIComponent(segment))
 		.join("/");
 
-	return `#/docs/${encoded}`;
+	return `#/${encoded}`;
 }
 
 export default function App(): JSX.Element {
