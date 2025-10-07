@@ -5,7 +5,7 @@ tags:
   - onboarding
   - docs
 draft: false
-chapter: 1.1
+chapter: 101
 ---
 
 # Getting Started
@@ -14,8 +14,8 @@ chapter: 1.1
 single afternoon. Follow this guide the first time you install the CLI, then
 lean on the recipes and reference docs for day-to-day work.
 
-> 💡 Tip: Keep the [Docs Overview](./01K6M8E4A1M4CS4XW7M2MZVQG2.md) open in another
-> tab so you can hop between guides as you explore.
+> 💡 Tip: Keep the [Docs Overview](./01K6M8E4A1M4CS4XW7M2MZVQG2.md) open in
+> another tab so you can hop between guides as you explore.
 
 ## Prerequisites
 
@@ -127,5 +127,5 @@ will look right in production.
 
 ## What to read next
 
-Head to the CLI Reference for command details or open the GitHub Pages
+Head to the Commands section for command details or open the GitHub Pages
 Automation guide to understand the deployment workflow.

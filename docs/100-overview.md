@@ -4,7 +4,7 @@ vpath: /
 tags:
   - docs
 draft: false
-chapter: 1.0
+chapter: 100
 ---
 
 # Docs Overview
@@ -31,8 +31,8 @@ and ship a GitHub Pages site without leaving the terminal.
 
 - **Getting Started** covers installation, configuration, and the core authoring
   workflow.
-- **CLI Reference** explains each command, recommended flags, and how commands
-  work together.
+- **Commands** documents each CLI command with focused pages under `commands/`,
+  including examples and recommended flags.
 - **Automation Guides** show how to export a docs site and wire it into CI,
   including the GitHub Pages workflow shipped in this repo.
 - **Recipes** gather common day-to-day tasks like grooming TODO queues or
@@ -45,6 +45,13 @@ to the `/docs` folder for GitHub Pages.
 ## Choose your next step
 
 - New to `mdf`? Start with **Getting Started** to set up your first workspace.
-- Need syntax fast? Jump into the **CLI Reference**.
+- Need syntax fast? Jump into **Commands**.
 - Planning a release? Review the refreshed **Change logs** page for templates
   and storytelling tips.
+
+## Aliases at a glance
+
+Use `aliases` in `.config/mdf.mts` to shorten frequently used commands and keep
+local scripts aligned with CI. Define them in the config, then run with
+`mdf run <alias>`. See the Configuration Guide’s Aliases section for examples
+and cycle detection behavior.

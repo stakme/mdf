@@ -1,11 +1,11 @@
 ---
 title: Filters and Virtual Paths
-vpath: cli
+vpath: commands
 tags:
   - cli
   - reference
 draft: false
-chapter: 2.1
+chapter: 250
 ---
 
 # Filters and Virtual Paths

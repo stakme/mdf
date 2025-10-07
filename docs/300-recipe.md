@@ -5,7 +5,7 @@ tags:
   - recipes
   - workflows
 draft: false
-chapter: 3
+chapter: 300
 ---
 
 # Everyday Recipes
@@ -27,7 +27,7 @@ Regenerate the site with `npm run docs:generate`.
 ## Reorganize navigation
 
 ```bash
-npx @stakme/mdf update ./TODO/<file>.md --fm vpath=docs/cli/advanced
+npx @stakme/mdf update ./TODO/<file>.md --fm vpath=docs/commands/advanced
 ```
 
 Run `mdf list --vpath docs` to confirm the tree looks right before exporting.
