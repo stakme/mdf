@@ -117,7 +117,7 @@ export default defineConfig({
 				},
 			);
 
-			expect(stdout.trim()).toMatch(/Created\snotes\//);
+			expect(stdout.trim()).toMatch(/notes\/.*.md/);
 
 			const notesDir = path.join(tempDir, "notes");
 			const entries = await fs.readdir(notesDir);
