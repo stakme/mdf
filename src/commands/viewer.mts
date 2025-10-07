@@ -20,6 +20,7 @@ import {
 	matchesParsedFilter,
 	type ParsedFilter,
 	parseFilterExpression,
+	resolveFilterPath,
 } from "../utils/filters.mts";
 import { logInvalidFileWarnings } from "../utils/invalid-file-warning.mts";
 import { renderDocumentMarkdown } from "../utils/markdown-renderer.mts";
@@ -223,12 +224,20 @@ export async function prepareViewerContext(
 		}
 
 		const relativePath = formatRelativePath(filePath, options.cwd);
-		const slug = createSlug(relativePath);
+		const slug = resolveDocumentSlug({
+			frontMatter,
+			relativePath,
+			filePath,
+			cwd: options.cwd,
+			slugField: config.virtualSlug?.param,
+		});
 		const meta = buildViewerEntryFromRecord(slug, frontMatter, {
 			virtualPathField: virtualPathConfig.param,
 			virtualPathSeparator: separator,
 		});
-		const routePath = buildDocumentRoutePath(filePath, resolvedDirectory);
+		const routePath = config.virtualSlug
+			? slug
+			: buildDocumentRoutePath(filePath, resolvedDirectory);
 
 		const id = encodeDocumentId(relativePath);
 		const html = renderDocumentMarkdown(document.body, meta.title, {
@@ -249,6 +258,7 @@ export async function prepareViewerContext(
 		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
 			frontMatter,
 			virtualPathConfig.param,
+			config.virtualSlug?.param,
 			schemaEntry.visibleFields,
 		);
 		const visibleFields = schemaEntry.visibleFields
@@ -1064,6 +1074,87 @@ function createSlug(relativePath: string): string {
 	return normalized.replace(/\.[^.]+$/u, "");
 }
 
+interface ResolveDocumentSlugOptions {
+	frontMatter: Record<string, unknown>;
+	relativePath: string;
+	filePath: string;
+	cwd: string;
+	slugField?: string;
+}
+
+function resolveDocumentSlug(options: ResolveDocumentSlugOptions): string {
+	const fallback = createSlug(options.relativePath);
+	const slugField = options.slugField?.trim();
+	if (!slugField) {
+		return fallback;
+	}
+
+	const slugSegments = slugField
+		.split(".")
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length > 0);
+
+	if (slugSegments.length === 0) {
+		return fallback;
+	}
+
+	const raw = resolveFilterPath(options.frontMatter, slugSegments);
+	if (raw === undefined || raw === null) {
+		return fallback;
+	}
+
+	if (typeof raw !== "string") {
+		throw new MdfError(
+			"INVALID_VIRTUAL_SLUG_VALUE",
+			`Front matter field "${slugField}" must be a string in ${formatDisplayPath(options.filePath, options.cwd)}`,
+		);
+	}
+
+	return normalizeSlugFieldValue(raw, slugField, options.filePath, options.cwd);
+}
+
+function normalizeSlugFieldValue(
+	raw: string,
+	fieldName: string,
+	filePath: string,
+	cwd: string,
+): string {
+	const normalized = raw.replace(/\\/gu, "/").trim();
+	if (!normalized) {
+		throw new MdfError(
+			"INVALID_VIRTUAL_SLUG_VALUE",
+			`Front matter field "${fieldName}" must be a non-empty string in ${formatDisplayPath(filePath, cwd)}`,
+		);
+	}
+
+	const segments = normalized
+		.split("/")
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length > 0);
+
+	if (segments.length === 0) {
+		if (normalized === "/") {
+			return "/";
+		}
+
+		throw new MdfError(
+			"INVALID_VIRTUAL_SLUG_VALUE",
+			`Front matter field "${fieldName}" must be a non-empty string in ${formatDisplayPath(filePath, cwd)}`,
+		);
+	}
+
+	for (const segment of segments) {
+		if (segment === "." || segment === "..") {
+			throw new MdfError(
+				"INVALID_VIRTUAL_SLUG_VALUE",
+				`Front matter field "${fieldName}" cannot contain "." or ".." segments in ${formatDisplayPath(filePath, cwd)}`,
+			);
+		}
+	}
+
+	return segments.join("/");
+}
+
 function buildDocumentRoutePath(
 	filePath: string,
 	rootDirectory: string,
@@ -1154,12 +1245,20 @@ function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
 function sanitizeViewerFrontMatter(
 	frontMatter: Record<string, unknown>,
 	virtualPathField: string,
+	slugField: string | undefined,
 	visibleFields?: readonly string[],
 ): Record<string, unknown> {
 	const pathSegments = virtualPathField
 		.split(".")
 		.map((segment) => segment.trim())
 		.filter((segment) => segment.length > 0);
+
+	const slugSegments = slugField
+		? slugField
+				.split(".")
+				.map((segment) => segment.trim())
+				.filter((segment) => segment.length > 0)
+		: [];
 
 	const enforceVisibility = visibleFields !== undefined;
 	const visibleSet = new Set(
@@ -1174,6 +1273,9 @@ function sanitizeViewerFrontMatter(
 			continue;
 		}
 		if (pathSegments.length === 1 && key === pathSegments[0]) {
+			continue;
+		}
+		if (slugSegments.length === 1 && key === slugSegments[0]) {
 			continue;
 		}
 

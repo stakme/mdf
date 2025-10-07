@@ -36,6 +36,8 @@ export default defineConfig({
 			sort: (a, b) => a.created_at.localeCompare(b.created_at),
 		}),
 	},
+	virtualPath:{param:"vpath",separator:"/"},
+	virtualSlug:{param:"vslug"},
 	defaultSchema: ["docs", "default"],
 
 	templates: {
@@ -88,9 +90,5 @@ Logs, screenshots, or notes.
 	},
 	defaultTemplate: {
 		default: "backlog",
-	},
-	virtualPath: {
-		param: "vpath",
-		separator: "/",
 	},
 });

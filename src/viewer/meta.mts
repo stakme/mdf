@@ -32,8 +32,6 @@ const DEFAULT_FIELD_CANDIDATES: Record<string, readonly string[]> = {
 };
 
 const DEFAULT_VIRTUAL_PATH_FIELD = "vpath";
-const DEFAULT_VIRTUAL_PATH_SEPARATOR = "/";
-
 export function buildViewerEntry(entry: EntryLike): ViewerMeta {
 	return buildViewerEntryFromRecord(entry.slug, entry.data ?? {}, {});
 }
@@ -44,7 +42,6 @@ export function buildViewerEntryFromRecord(
 	opts: BuildViewerEntryOptions,
 ): ViewerMeta {
 	const fieldParam = resolveVirtualPathField(opts.virtualPathField);
-	const separator = resolveVirtualPathSeparator(opts.virtualPathSeparator);
 
 	const title =
 		coerceString(
@@ -191,18 +188,6 @@ function coerceBoolean(value: unknown): boolean {
 	return Boolean(value);
 }
 
-function splitVirtualPath(value: string, separator: string): string[] {
-	const normalized = value.trim();
-	if (!normalized) {
-		return [];
-	}
-
-	return normalized
-		.split(separator)
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
-}
-
 function slugSegments(slug: string): string[] {
 	return slug
 		.split("/")
@@ -227,15 +212,4 @@ function resolveVirtualPathField(option?: string): string {
 		return envOverride;
 	}
 	return DEFAULT_VIRTUAL_PATH_FIELD;
-}
-
-function resolveVirtualPathSeparator(option?: string): string {
-	if (option && option.trim().length > 0) {
-		return option.trim();
-	}
-	const envOverride = process.env.MDF_VIRTUAL_PATH_SEPARATOR?.trim();
-	if (envOverride) {
-		return envOverride;
-	}
-	return DEFAULT_VIRTUAL_PATH_SEPARATOR;
 }

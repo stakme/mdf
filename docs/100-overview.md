@@ -1,6 +1,7 @@
 ---
 title: Overview
 vpath: /
+vslug: overview
 tags:
   - docs
 draft: false

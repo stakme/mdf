@@ -49,6 +49,10 @@ export interface LoadedVirtualPathConfig extends VirtualPathConfig {
 	separator: string;
 }
 
+export interface VirtualSlugConfig {
+	param: string;
+}
+
 export interface SchemaDefinitionInput<
 	TSchema extends z.ZodTypeAny = z.ZodTypeAny,
 > {
@@ -160,6 +164,7 @@ export interface MdfConfig<
 	templates?: TemplatesConfig<TSchemaRecord>;
 	defaultTemplate?: DefaultTemplateConfig<TSchemaRecord>;
 	virtualPath?: VirtualPathConfig;
+	virtualSlug?: VirtualSlugConfig;
 	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
 }
@@ -182,5 +187,6 @@ export interface LoadedConfig<
 	getSchemaByName(name: string): LoadedSchema | undefined;
 	path: string;
 	virtualPath?: LoadedVirtualPathConfig;
+	virtualSlug?: VirtualSlugConfig;
 	idGenerator: IdGeneratorName;
 }

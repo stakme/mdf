@@ -1,10 +1,10 @@
 ---
 title: "Introduce `slug` parameter"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T10:53:02.223Z
-updated_at: 2025-10-06T10:53:02.224Z
+updated_at: 2025-10-07T14:12:14.620Z
 ---
 
 # Introduce `slug` parameter

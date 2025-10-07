@@ -135,6 +135,50 @@ export default defineConfig({
 		}
 	});
 
+	it("uses configured virtual slugs for routes and sanitizes front matter", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+                slug: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+        virtualSlug: {
+                param: "slug",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(docsDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(docsDir, "guide.md"),
+			`---\ntitle: Guide\nslug: evergreen/guide\n---\n# Guide`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "docs",
+			});
+
+			expect(context.documents).toHaveLength(1);
+			const [document] = context.documents;
+			expect(document.slug).toBe("evergreen/guide");
+			expect(document.meta.routePath).toBe("evergreen/guide");
+			expect(document.frontMatter.slug).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("places documents without virtual path in viewer root", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 

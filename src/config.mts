@@ -12,6 +12,7 @@ import type {
 	LoadedSchema,
 	LoadedVirtualPathConfig,
 	MdfConfig,
+	VirtualSlugConfig,
 } from "./types.mts";
 
 const packageRequire = Module.createRequire(
@@ -161,13 +162,14 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 interface NormalizedConfig
 	extends Omit<
 		MdfConfig,
-		"schema" | "defaultSchema" | "virtualPath" | "aliases"
+		"schema" | "defaultSchema" | "virtualPath" | "virtualSlug" | "aliases"
 	> {
 	schemas: readonly LoadedSchema[];
 	defaultSchema: string;
 	schemaPriority?: readonly string[];
 	defaultTemplate?: Record<string, string>;
 	virtualPath?: LoadedVirtualPathConfig;
+	virtualSlug?: VirtualSlugConfig;
 	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
 }
@@ -194,6 +196,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	);
 
 	const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
+	const virtualSlug = normalizeVirtualSlug(record.virtualSlug, configPath);
 	const idGenerator = normalizeIdGenerator(record.idGenerator, configPath);
 	const aliases = normalizeAliases(record.aliases, configPath);
 	const defaultTemplate = normalizeDefaultTemplates(
@@ -205,6 +208,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	delete clone.schema;
 	delete clone.defaultSchema;
 	delete clone.virtualPath;
+	delete clone.virtualSlug;
 	delete clone.idGenerator;
 	delete clone.aliases;
 	delete clone.defaultTemplate;
@@ -219,6 +223,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 		schemaPriority: priority,
 		defaultTemplate,
 		virtualPath,
+		virtualSlug,
 		idGenerator,
 		aliases,
 	};
@@ -361,6 +366,38 @@ function normalizeVirtualPath(
 	};
 }
 
+function normalizeVirtualSlug(
+	input: unknown,
+	configPath: string,
+): VirtualSlugConfig | undefined {
+	if (input === undefined) {
+		return undefined;
+	}
+
+	if (!input || typeof input !== "object") {
+		throw new Error(
+			`mdf config at ${configPath} must define "virtualSlug" as an object when provided`,
+		);
+	}
+
+	const record = input as Record<string, unknown>;
+	const param = record.param;
+	if (typeof param !== "string") {
+		throw new Error(
+			`mdf config at ${configPath} must define virtualSlug.param as a string when provided`,
+		);
+	}
+
+	const trimmed = param.trim();
+	if (!trimmed) {
+		throw new Error(
+			`mdf config at ${configPath} must define virtualSlug.param as a non-empty string`,
+		);
+	}
+
+	return { param: trimmed };
+}
+
 function normalizeIdGenerator(
 	input: unknown,
 	configPath: string,
@@ -409,6 +446,7 @@ function mergeConfigs(
 			override.defaultTemplate,
 		),
 		virtualPath: override.virtualPath ?? base.virtualPath,
+		virtualSlug: override.virtualSlug ?? base.virtualSlug,
 		idGenerator: override.idGenerator ?? base.idGenerator,
 		aliases: mergeAliases(base.aliases, override.aliases),
 	};

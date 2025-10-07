@@ -171,4 +171,83 @@ export default defineConfig({
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
 	});
+
+	it("uses configured virtual slugs for document routes", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+                slug: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        virtualSlug: {
+                param: "slug",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "first.md"),
+			`---\ntitle: First\nvpath: backlog/first\nslug: evergreen/reference\n---\n# First`,
+			"utf8",
+		);
+
+		const outputDir = path.join(tempDir, "public");
+
+		try {
+			const result = await runExportCommand({
+				cwd: tempDir,
+				directory: "notes",
+				outputDirectory: "public",
+			});
+
+			expect(result.warnings).toEqual([]);
+			expect(result.exported).toHaveLength(1);
+
+			const contextPayload = JSON.parse(
+				await fs.readFile(
+					path.join(outputDir, "api", "context", "index.json"),
+					"utf8",
+				),
+			) as {
+				documents: Array<{
+					id: string;
+					slug: string;
+					meta: { routePath: string };
+				}>;
+			};
+
+			const [documentSummary] = contextPayload.documents;
+			expect(documentSummary).toBeDefined();
+			if (!documentSummary) {
+				return;
+			}
+
+			expect(documentSummary.slug).toBe("evergreen/reference");
+			expect(documentSummary.meta.routePath).toBe("evergreen/reference");
+
+			const documentData = JSON.parse(
+				await fs.readFile(
+					path.join(
+						outputDir,
+						"api",
+						"documents",
+						documentSummary.id,
+						"index.json",
+					),
+					"utf8",
+				),
+			) as { frontMatter: Record<string, unknown> };
+			expect(documentData.frontMatter.slug).toBeUndefined();
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
 });
