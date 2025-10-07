@@ -16,4 +16,4 @@ updated_at: 2025-10-06T03:42:27.523Z
 ## So I will create...
 
 - Assign dedicated URI to pages like `/#/docs/alpha`.
-- Add a button to copy `location.href` to clipboard in viewer.
+- Add a button per pages to copy `location.href` to clipboard.
