@@ -26,7 +26,7 @@ some cases, I want to define and keep immutable values to specify same contents.
 
 ### viewer/export command
 
-- Use `slug` to assign unique paths for pages when `virtualPath` is defined in
+- Use `slug` to assign unique paths for pages when `virtualSlug` is defined in
   config file.
 - If not, keep current logic to assign unique paths for pages: use relative
   paths from a root directory as unique IDs for a specific file.
