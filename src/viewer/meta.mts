@@ -76,16 +76,22 @@ export function buildViewerEntryFromRecord(
 	const coercedVirtualPath = coerceString(rawVirtualPath);
 	const virtualPath = coercedVirtualPath ?? slug;
 	const virtualSegments = splitVirtualPath(virtualPath, separator);
+	const slugParts = slugSegments(slug);
+	const slugLeaf = slugParts.at(-1) ?? null;
+	const normalizedVirtualPath = coercedVirtualPath?.trim() ?? null;
 	let routePath: string;
-	if (virtualSegments.length > 0) {
-		routePath = virtualSegments.join("/");
-	} else {
-		const normalized = coercedVirtualPath?.trim();
-		if (normalized && normalized.length > 0) {
-			routePath = normalized;
-		} else {
-			routePath = slugSegments(slug).join("/");
+	if (normalizedVirtualPath === "/") {
+		routePath = buildRootRoutePath(slugParts);
+	} else if (virtualSegments.length > 0) {
+		const segments = [...virtualSegments];
+		if (slugLeaf && !stringsEqualIgnoreCase(segments.at(-1), slugLeaf)) {
+			segments.push(slugLeaf);
 		}
+		routePath = segments.join("/");
+	} else if (normalizedVirtualPath && normalizedVirtualPath.length > 0) {
+		routePath = normalizedVirtualPath;
+	} else {
+		routePath = slugParts.join("/");
 	}
 
 	const draftValue = resolveByCandidates(data, ["draft"]);
@@ -226,6 +232,26 @@ function relativeSlugLabel(slug: string): string {
 		return slug || "Document";
 	}
 	return segments[segments.length - 1] ?? slug;
+}
+
+function buildRootRoutePath(slugParts: string[]): string {
+	if (slugParts.length === 0) {
+		return "/";
+	}
+	const [, ...rest] = slugParts;
+	const candidate = rest.length > 0 ? rest.join("/") : slugParts[slugParts.length - 1];
+	const trimmed = candidate?.trim();
+	if (!trimmed) {
+		return slugParts[slugParts.length - 1] ?? "/";
+	}
+	return trimmed;
+}
+
+function stringsEqualIgnoreCase(a: string | undefined, b: string): boolean {
+	if (a === undefined) {
+		return false;
+	}
+	return a.localeCompare(b, undefined, { sensitivity: "accent" }) === 0;
 }
 
 function resolveVirtualPathField(option?: string): string {

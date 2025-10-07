@@ -1,10 +1,10 @@
 ---
 title: URI for pages in viewer/export
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T03:42:27.523Z
-updated_at: 2025-10-06T03:42:27.523Z
+updated_at: 2025-10-07T08:02:06.769Z
 ---
 
 # URI for pages in viewer/export

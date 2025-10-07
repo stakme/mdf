@@ -52,7 +52,7 @@ describe("buildViewerEntry", () => {
 		expect(meta.createdAt).toBe("2024-01-01T00:00:00.000Z");
 		expect(meta.updatedAt).toBe("2024-02-01T00:00:00.000Z");
 		expect(meta.virtualPath).toBe("notes/planning");
-		expect(meta.routePath).toBe("notes/planning");
+		expect(meta.routePath).toBe("notes/planning/example-note");
 		expect(meta.draft).toBe(false);
 	});
 
@@ -72,8 +72,22 @@ describe("buildViewerEntry", () => {
 		const meta = buildViewerEntry(entry);
 		expect(meta.title).toBe("No Title");
 		expect(meta.virtualPath).toBe("alpha::beta");
-		expect(meta.routePath).toBe("alpha/beta");
+		expect(meta.routePath).toBe("alpha/beta/task");
 		expect(meta.draft).toBe(true);
+	});
+
+	it("appends the file slug to ensure unique route paths", async () => {
+		const { buildViewerEntry } = await loadModule();
+		const entry = {
+			slug: "docs/commands-validate",
+			data: {
+				title: "validate",
+				vpath: "commands",
+			},
+		} as unknown as import("astro:content").CollectionEntry<"pages">;
+
+		const meta = buildViewerEntry(entry);
+		expect(meta.routePath).toBe("commands/commands-validate");
 	});
 
 	it("preserves explicit root virtual paths", async () => {
@@ -88,7 +102,21 @@ describe("buildViewerEntry", () => {
 
 		const meta = buildViewerEntry(entry);
 		expect(meta.virtualPath).toBe("/");
-		expect(meta.routePath).toBe("/");
+		expect(meta.routePath).toBe("overview");
+	});
+
+	it("derives nested root routes from slug", async () => {
+		const { buildViewerEntry } = await loadModule();
+		const entry = {
+			slug: "guides/install",
+			data: {
+				title: "Install",
+				vpath: "/",
+			},
+		} as unknown as import("astro:content").CollectionEntry<"pages">;
+
+		const meta = buildViewerEntry(entry);
+		expect(meta.routePath).toBe("install");
 	});
 
 	it("respects environment overrides for field candidates", async () => {

@@ -51,13 +51,13 @@ function withCacheBuster(
 interface NavigationProps {
 	navigation: ViewerNavigationDirectory;
 	selectedId: string | null;
-	onSelect(id: string): void;
+	onSelect(id: string, routePath: string): void;
 }
 
 interface NavigationNodeProps {
 	node: ViewerNavigationNode;
 	selectedId: string | null;
-	onSelect(id: string): void;
+	onSelect(id: string, routePath: string): void;
 	depth: number;
 	path: string;
 }
@@ -65,7 +65,7 @@ interface NavigationNodeProps {
 interface FrontMatterValueViewProps {
 	field: string;
 	value: string;
-	onSelectDocument(id: string): void;
+	onSelectDocument(id: string, routePath: string): void;
 }
 
 function isDirectoryContainsId(
@@ -149,7 +149,7 @@ function NavigationNode({
 			<li>
 				<button
 					type="button"
-					onClick={() => onSelect(node.documentId)}
+					onClick={() => onSelect(node.documentId, node.routePath)}
 					className={`group flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2.5 text-left text-sm transition-all ${
 						isActive
 							? "bg-sky-600 text-white shadow-lg shadow-sky-500/20"
@@ -226,7 +226,7 @@ function NavigationSelect({
 }: {
 	context: ViewerContextPayload;
 	selectedId: string | null;
-	onSelect(id: string): void;
+	onSelect(id: string, routePath: string): void;
 }) {
 	const selectId = useId();
 
@@ -246,7 +246,10 @@ function NavigationSelect({
 				onChange={(event) => {
 					const value = event.target.value;
 					if (value) {
-						onSelect(value);
+						const doc = context.documents.find((entry) => entry.id === value);
+						if (doc) {
+							onSelect(doc.id, doc.meta.routePath);
+						}
 					}
 				}}
 			>
@@ -361,8 +364,7 @@ function FrontMatterValueView({
 						key={doc.id}
 						type="button"
 						onClick={() => {
-							window.location.hash = "/";
-							onSelectDocument(doc.id);
+							onSelectDocument(doc.id, doc.meta.routePath);
 						}}
 						className="flex w-full items-start gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900/80"
 					>
@@ -598,7 +600,7 @@ function renderFrontMatterValue(
 }
 
 type Route =
-	| { type: "document"; documentId: string | null }
+	| { type: "document"; routePath: string | null }
 	| { type: "fm-index" }
 	| { type: "fm-field"; field: string }
 	| { type: "fm-value"; field: string; value: string };
@@ -606,10 +608,29 @@ type Route =
 function parseRoute(): Route {
 	const hash = window.location.hash.slice(1); // Remove #
 	if (!hash || hash === "/") {
-		return { type: "document", documentId: null };
+		return { type: "document", routePath: null };
 	}
 
 	const parts = hash.split("/").filter(Boolean);
+	if (parts[0] === "docs") {
+		const decodedSegments = parts.slice(1).map((segment) => {
+			try {
+				return decodeURIComponent(segment);
+			} catch {
+				return segment;
+			}
+		});
+
+		if (decodedSegments.length === 0) {
+			return { type: "document", routePath: "/" };
+		}
+
+		return {
+			type: "document",
+			routePath: decodedSegments.join("/"),
+		};
+	}
+
 	if (parts[0] === "fm") {
 		if (parts.length === 1) {
 			return { type: "fm-index" };
@@ -626,7 +647,21 @@ function parseRoute(): Route {
 		}
 	}
 
-	return { type: "document", documentId: null };
+	return { type: "document", routePath: null };
+}
+
+function buildDocumentHash(routePath: string): string {
+	const trimmed = routePath.trim();
+	if (!trimmed || trimmed === "/") {
+		return "#/docs";
+	}
+
+	const encoded = trimmed
+		.split("/")
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
+
+	return `#/docs/${encoded}`;
 }
 
 export default function App(): JSX.Element {
@@ -636,9 +671,34 @@ export default function App(): JSX.Element {
 	const [document, setDocument] = useState<ViewerDocumentPayload | null>(null);
 	const [loadingDocument, setLoadingDocument] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">(
+		"idle",
+	);
 
 	const selectedIdRef = useRef<string | null>(null);
 	const fetchDocumentRequestId = useRef(0);
+	const copyTimeoutRef = useRef<number | null>(null);
+
+	const { documentIdToRoutePath, routePathToDocumentId } = useMemo(() => {
+		if (!context) {
+			return {
+				documentIdToRoutePath: new Map<string, string>(),
+				routePathToDocumentId: new Map<string, string>(),
+			};
+		}
+
+		const idToRoute = new Map<string, string>();
+		const routeToId = new Map<string, string>();
+		for (const doc of context.documents) {
+			idToRoute.set(doc.id, doc.meta.routePath);
+			routeToId.set(doc.meta.routePath, doc.id);
+		}
+
+		return {
+			documentIdToRoutePath: idToRoute,
+			routePathToDocumentId: routeToId,
+		};
+	}, [context]);
 
 	const fetchContext = useCallback(
 		async (
@@ -650,17 +710,13 @@ export default function App(): JSX.Element {
 				);
 				setContext(payload);
 				setError(null);
-				setSelectedId((previous) => {
-					if (preserveSelection && previous) {
-						const exists = payload.documents.some(
-							(entry) => entry.id === previous,
-						);
-						if (exists) {
-							return previous;
-						}
-					}
-					return payload.defaultDocumentId;
-				});
+				if (
+					preserveSelection &&
+					selectedIdRef.current &&
+					!payload.documents.some((entry) => entry.id === selectedIdRef.current)
+				) {
+					setSelectedId(null);
+				}
 				return payload;
 			} catch (fetchError) {
 				setError(
@@ -688,6 +744,49 @@ export default function App(): JSX.Element {
 		selectedIdRef.current = selectedId;
 	}, [selectedId]);
 
+	useEffect(() => {
+		if (!context) {
+			return;
+		}
+
+		if (route.type !== "document") {
+			setSelectedId((previous) => (previous === null ? previous : null));
+			return;
+		}
+
+		if (route.routePath === null) {
+			const defaultId =
+				context.defaultDocumentId ?? context.documents[0]?.id ?? null;
+			if (!defaultId) {
+				setSelectedId((previous) => (previous === null ? previous : null));
+				return;
+			}
+
+			setSelectedId((previous) =>
+				previous === defaultId ? previous : defaultId,
+			);
+
+			const defaultRoutePath = documentIdToRoutePath.get(defaultId);
+			if (defaultRoutePath) {
+				const desiredHash = buildDocumentHash(defaultRoutePath);
+				if (window.location.hash !== desiredHash) {
+					window.location.hash = desiredHash;
+				}
+			}
+			return;
+		}
+
+		const targetId = routePathToDocumentId.get(route.routePath);
+		if (targetId) {
+			setSelectedId((previous) =>
+				previous === targetId ? previous : targetId,
+			);
+			return;
+		}
+
+		setSelectedId((previous) => (previous === null ? previous : null));
+	}, [context, route, documentIdToRoutePath, routePathToDocumentId]);
+
 	const fetchDocument = useCallback(async (id: string) => {
 		const requestId = ++fetchDocumentRequestId.current;
 		setLoadingDocument(true);
@@ -713,6 +812,53 @@ export default function App(): JSX.Element {
 			}
 		}
 	}, []);
+
+	const handleSelectDocument = useCallback((id: string, routePath: string) => {
+		const normalizedRoute = routePath?.trim().length ? routePath : id;
+		const nextHash = buildDocumentHash(normalizedRoute);
+
+		if (window.location.hash !== nextHash) {
+			window.location.hash = nextHash;
+		} else {
+			setSelectedId((previous) => (previous === id ? previous : id));
+		}
+	}, []);
+
+	const handleCopyLink = async (): Promise<void> => {
+		if (copyTimeoutRef.current !== null) {
+			window.clearTimeout(copyTimeoutRef.current);
+			copyTimeoutRef.current = null;
+		}
+
+		const url = window.location.href;
+
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(url);
+			} else {
+				const textarea = document.createElement("textarea");
+				textarea.value = url;
+				textarea.setAttribute("readonly", "");
+				textarea.style.position = "fixed";
+				textarea.style.left = "-9999px";
+				document.body.appendChild(textarea);
+				textarea.select();
+				const succeeded = document.execCommand("copy");
+				document.body.removeChild(textarea);
+				if (!succeeded) {
+					throw new Error("Copy command unavailable");
+				}
+			}
+			setCopyStatus("copied");
+		} catch {
+			setCopyStatus("error");
+		}
+
+		copyTimeoutRef.current = window.setTimeout(() => {
+			setCopyStatus("idle");
+			copyTimeoutRef.current = null;
+		}, 2000);
+	};
 
 	useEffect(() => {
 		if (!selectedId) {
@@ -748,6 +894,14 @@ export default function App(): JSX.Element {
 		};
 	}, [fetchContext, fetchDocument]);
 
+	useEffect(() => {
+		return () => {
+			if (copyTimeoutRef.current !== null) {
+				window.clearTimeout(copyTimeoutRef.current);
+			}
+		};
+	}, []);
+
 	const activeDocument = document;
 	const headerOptions = context?.headerOptions ?? [];
 	const warnings = context?.warnings ?? [];
@@ -765,6 +919,27 @@ export default function App(): JSX.Element {
 
 		return Object.keys(activeDocument.frontMatter ?? {}).length > 0;
 	}, [activeDocument]);
+
+	const copyButtonLabel =
+		copyStatus === "copied"
+			? "Copied!"
+			: copyStatus === "error"
+				? "Copy failed"
+				: "Copy link";
+	const copyButtonClassName = [
+		"inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+		copyStatus === "copied"
+			? "border border-emerald-700/60 bg-emerald-600/10 text-emerald-200 hover:border-emerald-600"
+			: copyStatus === "error"
+				? "border border-red-700/60 bg-red-600/10 text-red-200 hover:border-red-600"
+				: "border border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:text-white",
+	].join(" ");
+	const copyStatusMessage =
+		copyStatus === "copied"
+			? "Link copied to clipboard"
+			: copyStatus === "error"
+				? "Unable to copy link"
+				: "";
 
 	return (
 		<div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
@@ -804,7 +979,7 @@ export default function App(): JSX.Element {
 							<NavigationSelect
 								context={context}
 								selectedId={selectedId}
-								onSelect={setSelectedId}
+								onSelect={handleSelectDocument}
 							/>
 							<div className="hidden md:block">
 								<div className="mb-3 flex items-center justify-between">
@@ -815,7 +990,7 @@ export default function App(): JSX.Element {
 								<NavigationTree
 									navigation={context.navigation}
 									selectedId={selectedId}
-									onSelect={setSelectedId}
+									onSelect={handleSelectDocument}
 								/>
 							</div>
 						</>
@@ -946,7 +1121,7 @@ export default function App(): JSX.Element {
 						<FrontMatterValueView
 							field={route.field}
 							value={route.value}
-							onSelectDocument={setSelectedId}
+							onSelectDocument={handleSelectDocument}
 						/>
 					)}
 					{route.type === "fm-field" && context && (
@@ -1049,6 +1224,33 @@ export default function App(): JSX.Element {
 											{activeDocument.meta.routePath}
 										</span>
 									)}
+									<button
+										type="button"
+										onClick={handleCopyLink}
+										className={copyButtonClassName}
+										aria-label="Copy page link"
+									>
+										<svg
+											className="size-3.5"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											aria-hidden="true"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={1.5}
+												d="M8 7V5a2 2 0 012-2h7a2 2 0 012 2v11a2 2 0 01-2 2h-2M6 7h7a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z"
+											/>
+										</svg>
+										<span>{copyButtonLabel}</span>
+									</button>
+									{copyStatus !== "idle" ? (
+										<span aria-live="polite" className="sr-only">
+											{copyStatusMessage}
+										</span>
+									) : null}
 								</div>
 							</header>
 							<section
