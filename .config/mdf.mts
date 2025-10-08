@@ -5,6 +5,7 @@ export default defineConfig({
 		todo: `list --filter "status=todo" ./TODO`,
 		new_bug: `new ./TODO --template bug_report`,
 		close: `update --fm "status=done" --fm updated_at`,
+		build_docs:`export --filter "draft=false" ./docs`,
 	},
 
 	schema: {

@@ -22,10 +22,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - run: npm ci
       - run: npm run build
-      - run: npm run docs:generate
+      - run: node dist/cli.mjs run build_docs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
