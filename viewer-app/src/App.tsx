@@ -670,7 +670,6 @@ export default function App(): JSX.Element {
 	const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">(
 		"idle",
 	);
-
 	const selectedIdRef = useRef<string | null>(null);
 	const fetchDocumentRequestId = useRef(0);
 	const copyTimeoutRef = useRef<number | null>(null);
@@ -916,6 +915,14 @@ export default function App(): JSX.Element {
 		return Object.keys(activeDocument.frontMatter ?? {}).length > 0;
 	}, [activeDocument]);
 
+	const toolbarButtonBase =
+		"inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-800 disabled:hover:text-slate-300";
+	const toolbarButtonDefaultState =
+		"border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:text-white";
+	const rawDocumentHref = activeDocument
+		? `/documents/${encodeURIComponent(activeDocument.id)}/index.md`
+		: null;
+
 	const copyButtonLabel =
 		copyStatus === "copied"
 			? "Copied!"
@@ -923,12 +930,16 @@ export default function App(): JSX.Element {
 				? "Copy failed"
 				: "Copy link";
 	const copyButtonClassName = [
-		"inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+		toolbarButtonBase,
 		copyStatus === "copied"
-			? "border border-emerald-700/60 bg-emerald-600/10 text-emerald-200 hover:border-emerald-600"
+			? "border-emerald-700/60 bg-emerald-600/10 text-emerald-200 hover:border-emerald-600"
 			: copyStatus === "error"
-				? "border border-red-700/60 bg-red-600/10 text-red-200 hover:border-red-600"
-				: "border border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:text-white",
+				? "border-red-700/60 bg-red-600/10 text-red-200 hover:border-red-600"
+				: toolbarButtonDefaultState,
+	].join(" ");
+	const markdownButtonClassName = [
+		toolbarButtonBase,
+		toolbarButtonDefaultState,
 	].join(" ");
 	const copyStatusMessage =
 		copyStatus === "copied"
@@ -943,11 +954,6 @@ export default function App(): JSX.Element {
 				<div className="mx-auto flex w-full flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
 					<div>
 						<h1 className="text-xl font-bold tracking-tight">mdf viewer</h1>
-						{context?.directoryLabel ? (
-							<p className="mt-0.5 text-sm text-slate-400">
-								{context.directoryLabel}
-							</p>
-						) : null}
 					</div>
 					{headerOptions.length > 0 && (
 						<div className="flex flex-wrap gap-2 text-xs">
@@ -1242,6 +1248,31 @@ export default function App(): JSX.Element {
 										</svg>
 										<span>{copyButtonLabel}</span>
 									</button>
+									{rawDocumentHref ? (
+										<a
+											href={rawDocumentHref}
+											target="_blank"
+											rel="noreferrer"
+											className={markdownButtonClassName}
+											aria-label="Open raw markdown source in a new tab"
+										>
+											<svg
+												className="size-3.5"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												aria-hidden="true"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={1.5}
+													d="M8.25 9.75L5 12l3.25 2.25m7.5-4.5L18 12l-2.25 2.25M13.5 6l-3 12"
+												/>
+											</svg>
+											<span>Show markdown</span>
+										</a>
+									) : null}
 									{copyStatus !== "idle" ? (
 										<span aria-live="polite" className="sr-only">
 											{copyStatusMessage}
@@ -1250,7 +1281,7 @@ export default function App(): JSX.Element {
 								</div>
 							</header>
 							<section
-								className="article-body prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline prose-code:text-slate-200 prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800"
+								className="article-body prose prose-invert prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline"
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side via trusted markdown parser
 								dangerouslySetInnerHTML={{ __html: activeDocument.html }}
 							/>

@@ -28,17 +28,11 @@ export default defineConfig({
 		const assetContent = Buffer.from([0, 1, 2, 3, 4, 5]);
 		await fs.writeFile(assetPath, assetContent);
 
-		await fs.writeFile(
-			path.join(notesDir, "first.md"),
-			`---\ntitle: First\nstatus: draft\nvpath: backlog/first\n---\n# First\n\n![Cover](./shared.png)\n\nDraft content.`,
-			"utf8",
-		);
+		const firstSource = `---\ntitle: First\nstatus: draft\nvpath: backlog/first\n---\n# First\n\n![Cover](./shared.png)\n\nDraft content.`;
+		await fs.writeFile(path.join(notesDir, "first.md"), firstSource, "utf8");
 
-		await fs.writeFile(
-			path.join(notesDir, "second.md"),
-			`---\ntitle: Second\nstatus: published\nvpath: published/second\n---\n# Second\n\n![Cover](./shared.png)\n\nLive content.`,
-			"utf8",
-		);
+		const secondSource = `---\ntitle: Second\nstatus: published\nvpath: published/second\n---\n# Second\n\n![Cover](./shared.png)\n\nLive content.`;
+		await fs.writeFile(path.join(notesDir, "second.md"), secondSource, "utf8");
 
 		const outputDir = path.join(tempDir, "public");
 
@@ -100,6 +94,28 @@ export default defineConfig({
 			expect(exportedDocument.assetPaths).toEqual([expectedAssetPath]);
 			const exportedAsset = await fs.readFile(expectedAssetPath);
 			expect(exportedAsset.equals(assetContent)).toBe(true);
+			const expectedRawIndexPath = path.join(
+				outputDir,
+				"documents",
+				documentId,
+				"index.md",
+			);
+			const expectedRawFilePath = path.join(
+				outputDir,
+				"documents",
+				documentId,
+				"raw.md",
+			);
+			expect(exportedDocument.rawPaths).toEqual([
+				expectedRawIndexPath,
+				expectedRawFilePath,
+			]);
+			await expect(fs.readFile(expectedRawIndexPath, "utf8")).resolves.toBe(
+				secondSource,
+			);
+			await expect(fs.readFile(expectedRawFilePath, "utf8")).resolves.toBe(
+				secondSource,
+			);
 			await expect(
 				fs.stat(path.join(outputDir, "index.html")),
 			).resolves.toBeDefined();

@@ -1,10 +1,10 @@
 ---
 title: Update viewer UI
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T10:53:45.671Z
-updated_at: 2025-10-06T10:53:45.672Z
+updated_at: 2025-10-08T05:05:57Z
 ---
 
 # Update viewer UI

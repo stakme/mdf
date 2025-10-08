@@ -25,6 +25,7 @@ export interface ViewerDocument {
 	visibleFields: readonly string[] | null;
 	html: string;
 	markdown: string;
+	raw: string;
 	virtualPathSegments: string[];
 	navigationSegments: string[];
 }
@@ -95,6 +96,7 @@ export interface ViewerDocumentPayload extends ViewerDocumentSummary {
 	visibleFields: readonly string[] | null;
 	html: string;
 	markdown: string;
+	raw: string;
 }
 
 export interface ViewerFrontMatterValuePayload {

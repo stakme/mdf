@@ -31,11 +31,8 @@ export default defineConfig({
 		const notesDir = path.join(tempDir, "notes");
 		await fs.mkdir(notesDir, { recursive: true });
 
-		await fs.writeFile(
-			path.join(notesDir, "alpha.md"),
-			`---\ntitle: Alpha\nstatus: todo\nvpath: docs/alpha\n---\n# Alpha\n\nContent`,
-			"utf8",
-		);
+		const alphaSource = `---\ntitle: Alpha\nstatus: todo\nvpath: docs/alpha\n---\n# Alpha\n\nContent`;
+		await fs.writeFile(path.join(notesDir, "alpha.md"), alphaSource, "utf8");
 
 		await fs.writeFile(
 			path.join(notesDir, "beta.md"),
@@ -92,6 +89,7 @@ export default defineConfig({
 			const docJson = await docResponse.json();
 			expect(docJson.html).toContain("Content");
 			expect(docJson.frontMatter.status).toBe("todo");
+			expect(docJson.raw).toBe(alphaSource);
 
 			const docIndexResponse = await app.request(
 				`http://localhost/api/documents/${encodeURIComponent(doc.id)}/index.json`,
@@ -99,6 +97,7 @@ export default defineConfig({
 			expect(docIndexResponse.status).toBe(200);
 			const docIndexJson = await docIndexResponse.json();
 			expect(docIndexJson.frontMatter.status).toBe("todo");
+			expect(docIndexJson.raw).toBe(alphaSource);
 
 			const frontMatterIndexResponse = await app.request(
 				"http://localhost/api/front-matter/index.json",
@@ -130,6 +129,16 @@ export default defineConfig({
 			const rootHtml = await rootResponse.text();
 			expect(rootHtml).toContain('<div id="root"></div>');
 			expect(rootHtml).not.toContain("cdn.tailwindcss.com");
+
+			const rawResponse = await app.request(
+				`http://localhost/documents/${encodeURIComponent(doc.id)}/index.md`,
+			);
+			expect(rawResponse.status).toBe(200);
+			expect(rawResponse.headers.get("content-type")).toContain(
+				"text/markdown",
+			);
+			const rawMarkdown = await rawResponse.text();
+			expect(rawMarkdown).toBe(alphaSource);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

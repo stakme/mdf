@@ -28,6 +28,7 @@ export interface ExportedDocument {
 	id: string;
 	sourcePath: string;
 	dataPath: string;
+	rawPaths: string[];
 	assetPaths: string[];
 }
 
@@ -134,10 +135,22 @@ export async function runExportCommand(
 			warnings,
 		);
 
+		const rawDirectory = path.join(
+			resolvedOutputDirectory,
+			"documents",
+			document.id,
+		);
+		await fs.mkdir(rawDirectory, { recursive: true });
+		const rawIndexPath = path.join(rawDirectory, "index.md");
+		const rawFilePath = path.join(rawDirectory, "raw.md");
+		await fs.writeFile(rawIndexPath, document.raw, "utf8");
+		await fs.writeFile(rawFilePath, document.raw, "utf8");
+
 		exportedDocuments.push({
 			id: document.id,
 			sourcePath: document.filePath,
 			dataPath: documentDataPath,
+			rawPaths: [rawIndexPath, rawFilePath],
 			assetPaths: copiedAssets,
 		});
 	}

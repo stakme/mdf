@@ -282,6 +282,7 @@ export async function prepareViewerContext(
 			visibleFields,
 			html,
 			markdown: document.body,
+			raw: document.raw,
 			virtualPathSegments: segments,
 			navigationSegments,
 		};
@@ -428,6 +429,22 @@ export async function createViewerApp(
 
 	app.get("/api/documents/:id", handleDocumentRequest);
 	app.get("/api/documents/:id/index.json", handleDocumentRequest);
+
+	const handleRawDocumentRequest = (c: Context) => {
+		const context = getContext();
+		const document = context.documentMap.get(c.req.param("id"));
+		if (!document) {
+			return c.json({ error: "Not Found" }, 404);
+		}
+
+		return c.newResponse(document.raw, 200, {
+			"Content-Type": "text/markdown; charset=utf-8",
+		});
+	};
+
+	app.get("/documents/:id/index.md", handleRawDocumentRequest);
+	app.get("/documents/:id/raw", handleRawDocumentRequest);
+	app.get("/documents/:id/raw.md", handleRawDocumentRequest);
 
 	const handleFrontMatterIndexRequest = (c: Context) => {
 		const context = getContext();
@@ -612,6 +629,7 @@ export function buildViewerDocumentPayload(
 		visibleFields: document.visibleFields ? [...document.visibleFields] : null,
 		html: document.html,
 		markdown: document.markdown,
+		raw: document.raw,
 	};
 }
 
