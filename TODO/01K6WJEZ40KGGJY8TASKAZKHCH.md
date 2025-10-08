@@ -1,10 +1,10 @@
 ---
 title: "Fix path resolution in viewer/export"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T10:53:16.834Z
-updated_at: 2025-10-06T10:53:16.835Z
+updated_at: 2025-10-07T22:31:03.899Z
 ---
 
 # Fix path resolution in viewer/export

@@ -179,6 +179,49 @@ export default defineConfig({
 		}
 	});
 
+	it("falls back to directory-relative slugs when virtual slug field is absent", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+                slug: z.string().optional(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        virtualSlug: {
+                param: "slug",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(path.join(docsDir, "manual"), { recursive: true });
+
+		await fs.writeFile(
+			path.join(docsDir, "manual", "intro.md"),
+			`---\ntitle: Intro\n---\n# Intro`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "docs",
+			});
+
+			expect(context.documents).toHaveLength(1);
+			const [document] = context.documents;
+			expect(document.slug).toBe("manual/intro");
+			expect(document.meta.routePath).toBe("manual/intro");
+			expect(document.relativePath).toBe("manual/intro.md");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("places documents without virtual path in viewer root", async () => {
 		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
 

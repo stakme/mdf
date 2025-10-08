@@ -223,10 +223,14 @@ export async function prepareViewerContext(
 			continue;
 		}
 
-		const relativePath = formatRelativePath(filePath, options.cwd);
+		const workspaceRelativePath = formatRelativePath(filePath, options.cwd);
+		const directoryRelativePath = computeDirectoryRelativePath(
+			filePath,
+			resolvedDirectory,
+		);
 		const slug = resolveDocumentSlug({
 			frontMatter,
-			relativePath,
+			relativePath: directoryRelativePath,
 			filePath,
 			cwd: options.cwd,
 			slugField: config.virtualSlug?.param,
@@ -239,7 +243,7 @@ export async function prepareViewerContext(
 			? slug
 			: buildDocumentRoutePath(filePath, resolvedDirectory);
 
-		const id = encodeDocumentId(relativePath);
+		const id = encodeDocumentId(directoryRelativePath);
 		const html = renderDocumentMarkdown(document.body, meta.title, {
 			assetBaseUrl: buildDocumentAssetBaseUrl(id),
 		});
@@ -251,9 +255,7 @@ export async function prepareViewerContext(
 			rootDirectory: resolvedDirectory,
 		});
 
-		const schemaEntry = config.getSchemaForRelativePath(
-			path.relative(options.cwd, filePath),
-		);
+		const schemaEntry = config.getSchemaForRelativePath(workspaceRelativePath);
 
 		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
 			frontMatter,
@@ -269,7 +271,7 @@ export async function prepareViewerContext(
 			id,
 			filePath,
 			displayPath: formatDisplayPath(filePath, options.cwd),
-			relativePath,
+			relativePath: directoryRelativePath,
 			slug,
 			meta: {
 				...meta,
@@ -1153,6 +1155,19 @@ function normalizeSlugFieldValue(
 	}
 
 	return segments.join("/");
+}
+
+function computeDirectoryRelativePath(
+	filePath: string,
+	rootDirectory: string,
+): string {
+	const relative =
+		path.relative(rootDirectory, filePath) || path.basename(filePath);
+	let normalized = relative.replaceAll("\\", "/");
+	while (normalized.startsWith("./")) {
+		normalized = normalized.slice(2);
+	}
+	return normalized;
 }
 
 function buildDocumentRoutePath(
