@@ -1,10 +1,10 @@
 ---
 title: Cancel version 1.0 and continue with version 0.x
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-06T10:55:15.670Z
-updated_at: 2025-10-06T10:55:15.671Z
+updated_at: 2025-10-08T13:12:19.440Z
 ---
 
 # Cancel version 1.0 and continue with version 0.x

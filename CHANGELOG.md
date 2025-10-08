@@ -11,6 +11,9 @@ Keep a Changelog style so entries are grouped by category.
 
 ### Changed
 
+- Canceled the 1.0.0 milestone and resumed the `0.x` release line while we
+  gather more feedback.
+
 ### Deprecated
 
 ### Removed
@@ -19,7 +22,7 @@ Keep a Changelog style so entries are grouped by category.
 
 ### Security
 
-## [1.0.0] - 2025-09-30
+## [0.10.0] - 2025-09-30
 
 ### Added
 - Stable `mdf` CLI covering initialization, scaffolding, validation, updates,

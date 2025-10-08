@@ -10,7 +10,7 @@ chapter: 400
 
 An intentional changelog is the heartbeat of every release. Use it to explain
 _why_ a version matters, not just _what_ files changed. The `CHANGELOG.md`
-shipped with `mdf 1.0` follows the
+shipped with the `mdf 0.x` releases follows the
 [Keep a Changelog](https://keepachangelog.com) format so readers can scan for
 features, fixes, and breaking changes in seconds.
 
@@ -59,7 +59,7 @@ features, fixes, and breaking changes in seconds.
 Keep an `[Unreleased]` section at the top so you can jot notes throughout the
 sprint, then move entries under the version header when you cut a release.
 
-## 1.0.0 spotlight
+## 0.10.0 spotlight
 
 - **Stable CLI toolkit.** Initialization, scaffolding, validation, updating, and
   automation flow together for production knowledge bases.

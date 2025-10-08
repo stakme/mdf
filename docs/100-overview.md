@@ -10,15 +10,15 @@ chapter: 100
 
 # Docs Overview
 
-> 🎉 **mdf 1.0** is here! The CLI, viewer, and docs toolchain are now polished
-> for everyday teams who need predictable Markdown collections and a slick
-> sharing experience.
+> 🚧 **mdf 0.x** continues to evolve while we polish the path to 1.0. Expect
+> iterative releases as we incorporate feedback and tighten the experience for
+> everyday teams.
 
 `mdf` helps teams keep Markdown knowledge bases consistent, validated, and easy
 to publish. These docs explain how to stand up a workspace, coach contributors,
 and ship a GitHub Pages site without leaving the terminal.
 
-## What's new in 1.0.0
+## What's new in 0.10.0
 
 - **Unified quality gates.** Every command—from `init` and `new` to `validate`,
   `fix`, and `update`—works together to enforce your schema and keep notes

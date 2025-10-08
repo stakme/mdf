@@ -7,6 +7,8 @@ Define the front matter schema you expect, scaffold new notes from templates,
 audit and repair existing files, and even browse them with an interactive viewer
 — all from one CLI.
 
+> **Version status:** We're continuing in the `0.x` series (latest: `0.10.0`) while we collect more feedback before committing to a 1.0 release.
+
 This tool does not enforce any rules on the content of your Markdown files. You
 can define any schema, organize your files in any way, and use any template to
 scaffold new files. Although this tool assumes that users will store their

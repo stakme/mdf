@@ -10,7 +10,7 @@ chapter: 101
 
 # Getting Started
 
-`mdf 1.0` is designed to get a Markdown knowledge base production-ready in a
+`mdf 0.x` is designed to get a Markdown knowledge base production-ready in a
 single afternoon. Follow this guide the first time you install the CLI, then
 lean on the recipes and reference docs for day-to-day work.
 
