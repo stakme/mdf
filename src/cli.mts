@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
+import { runAppendCommand } from "./commands/append.mts";
 import { runExportCommand } from "./commands/export.mts";
 import { runInitCommand } from "./commands/init.mts";
 import { runListCommand } from "./commands/list.mts";
@@ -93,6 +94,30 @@ function createProgram(version: string): Command {
 				}
 			},
 		);
+
+	program
+		.command("append")
+		.description("Move files into a note directory and append image tags")
+		.argument("<note>", "Markdown file to update")
+		.argument("<files...>", "Files to append to the note")
+		.action(async (note: string, files: string[]) => {
+			try {
+				const fileList = Array.isArray(files) ? files : [];
+				const result = await runAppendCommand({
+					cwd: process.cwd(),
+					note,
+					files: fileList,
+				});
+
+				for (const entry of result.appended) {
+					console.log(
+						`Appended ${formatDisplayPath(entry.destinationPath)} to ${formatDisplayPath(result.notePath)}`,
+					);
+				}
+			} catch (error) {
+				handleError(error);
+			}
+		});
 
 	program
 		.command("validate")
