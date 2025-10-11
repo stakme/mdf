@@ -1,6 +1,6 @@
 ---
 title: Refactor App.tsx for the viewer
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-08T14:17:43.209Z
