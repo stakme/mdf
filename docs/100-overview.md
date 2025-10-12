@@ -10,13 +10,58 @@ chapter: 100
 
 # Docs Overview
 
-> 🚧 mdf 0.x is experimental and may change, or even be discontinued, over time.
-
 `mdf` is a small, general‑purpose CLI for developers who keep knowledge in
-Markdown. It treats front matter as first‑class data so you can organize,
-filter, validate, and publish notes without standing up servers or bespoke
-backends. Coding agents (like Codex) can query your workspace directly from the
+Markdown files stored in git.
+
+**🚧 mdf 0.x is experimental and may change, or even be discontinued, over
+time.**
+
+## What it does
+
+It treats front matter as first‑class data so you can organize, filter,
+validate, and publish notes without standing up servers or bespoke backends.
+Coding agents (like Codex) can query your workspace directly from the
 filesystem: no MCP bridge or API endpoints required.
+
+Plus, it offers some basic tools to organize your notes without directory
+structure. Its `new` command creates files with a unique ID in specified
+locations.
+
+Assuming you define schema for a `docs` directory in the config file:
+
+```ts
+docs: defineSchema({
+  glob: "docs/**",
+  schema: z.object({
+    title: z.string().min(1).default("title"),
+    description: z.string().optional(),
+    tags: z.array(z.string()).default(() => []),
+    draft: z.boolean().default(true),
+    chapter: z.number().default(0),
+    updated_at: z.date().default(() => new Date()),
+  }),
+  sort: (a, b) => a.chapter - b.chapter,
+  visibleFields: ["tags"],
+}),
+```
+
+You can create a new file, list it, and update it:
+
+```sh
+# Create a new file with front matter.
+# You also can use template to fill the body.
+$ npx @stakme/mdf new --fm 'title=something new' ./docs
+docs/01K7AW2SKXMNENW0CQ6BR4XG5B.md
+
+# List files with specified front matter.
+$ npx @stakme/mdf list --filter "draft=true" ./docs    
+./docs
+└── something new (./docs/01K7AW2SKXMNENW0CQ6BR4XG5B.md)
+
+# Update existing file with front matter.
+$ npx @stakme/mdf update --fm draft=false --fm updated_at docs/01K7AW2SKXMNENW0CQ6BR4XG5B.md
+Updated ./docs/01K7AW2SKXMNENW0CQ6BR4XG5B.md
+```
 
 ## Why Markdown + front matter
 
