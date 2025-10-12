@@ -85,7 +85,7 @@ button {
 
 	/* Blockquotes */
 	& blockquote {
-		@apply border-l-4 border-slate-700 bg-slate-900/50 py-2 px-4 italic text-slate-400;
+		@apply border-l-4 border-slate-700 bg-slate-900/50 my-4 py-2 px-4 italic text-slate-400;
 	}
 
 	/* Horizontal rules */
