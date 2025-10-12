@@ -25,17 +25,23 @@ button {
 }
 
 .article-body {
-	/* Code blocks and inline code */
+	/* Code blocks */
 	& pre {
-		@apply relative overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/80 my-4 px-5 py-4 text-sm leading-relaxed text-slate-100 shadow-xl shadow-slate-950/40;
-	}
-
-	& code {
-		@apply rounded bg-slate-800/60 px-1.5 py-0.5 text-sm font-mono text-sky-200;
+		@apply relative my-4 overflow-x-auto rounded-xl border border-slate-800/80 bg-transparent shadow-xl shadow-slate-950/40;
 	}
 
 	& pre code {
-		@apply block min-w-full bg-transparent p-0 font-mono text-left text-sm text-slate-100;
+		@apply block min-w-full whitespace-pre px-5 py-4 text-left text-sm font-mono leading-relaxed;
+		color: inherit;
+	}
+
+	& pre code.hljs {
+		@apply px-5 py-4;
+	}
+
+	/* Inline code */
+	& :not(pre) > code {
+		@apply rounded bg-slate-800/60 px-1.5 py-0.5 text-sm font-mono text-sky-200;
 	}
 
 	/* Headings */

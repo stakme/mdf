@@ -1,5 +1,97 @@
+import hljs from "highlight.js/lib/common";
 import type { TokensList } from "marked";
 import { marked } from "marked";
+
+const HIGHLIGHT_LANGUAGE_ALIASES: Record<string, string> = {
+	js: "javascript",
+	jsx: "javascript",
+	ts: "typescript",
+	tsx: "typescript",
+	sh: "shell",
+	bash: "shell",
+	zsh: "shell",
+	ps1: "powershell",
+	ps: "powershell",
+	yml: "yaml",
+};
+
+function resolveHighlightLanguage(
+	language: string | undefined,
+): string | undefined {
+	if (!language) {
+		return undefined;
+	}
+
+	const normalized = language.trim().toLowerCase();
+	if (!normalized) {
+		return undefined;
+	}
+
+	return HIGHLIGHT_LANGUAGE_ALIASES[normalized] ?? normalized;
+}
+
+const renderer = new marked.Renderer();
+
+renderer.code = ({
+	text,
+	lang,
+}: {
+	text: string;
+	lang?: string | null;
+}): string => {
+	const resolved = resolveHighlightLanguage(lang ?? undefined);
+	const highlightLanguage =
+		resolved && hljs.getLanguage(resolved) ? resolved : undefined;
+	const highlighted = highlightLanguage
+		? hljs.highlight(text, { language: highlightLanguage }).value
+		: hljs.highlightAuto(text).value;
+	const languageClass = buildLanguageClass(lang, highlightLanguage);
+	return `<pre><code class="hljs${languageClass}">${highlighted}</code></pre>\n`;
+};
+
+marked.use({ renderer });
+
+function buildLanguageClass(
+	original: string | null | undefined,
+	canonical: string | undefined,
+): string {
+	const classes: string[] = [];
+	const push = (value: string | null | undefined) => {
+		const sanitized = sanitizeLanguageValue(value);
+		if (sanitized && !classes.includes(sanitized)) {
+			classes.push(sanitized);
+		}
+	};
+
+	push(original);
+	push(canonical);
+
+	if (classes.length === 0) {
+		return "";
+	}
+
+	return classes.map((entry) => ` language-${entry}`).join("");
+}
+
+function sanitizeLanguageValue(
+	value: string | null | undefined,
+): string | null {
+	if (!value) {
+		return null;
+	}
+
+	const normalized = value.trim().toLowerCase();
+	if (!normalized) {
+		return null;
+	}
+
+	const sanitized = normalized.replace(/[^\da-z+\-#]+/gu, "");
+	if (!sanitized) {
+		return null;
+	}
+
+	return sanitized;
+}
 
 export interface RenderDocumentMarkdownOptions {
 	assetBaseUrl?: string;

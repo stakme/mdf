@@ -1,10 +1,10 @@
 ---
 title: Introduce code highlighting like GitHub
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-12T00:09:21.406Z
-updated_at: 2025-10-12T00:09:21.406Z
+updated_at: 2025-10-12T14:28:30.000Z
 ---
 
 # Introduce code highlighting like GitHub
@@ -20,4 +20,4 @@ code if it is highlighted like GitHub.
 
 ### viewer-app
 
-- [ ] Introduce code highlighting like GitHub
+- [x] Introduce code highlighting like GitHub
