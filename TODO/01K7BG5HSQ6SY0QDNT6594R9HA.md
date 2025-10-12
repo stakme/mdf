@@ -2,7 +2,7 @@
 title: "Enhance `list` command"
 status: todo
 author: "@stakme"
-tags: []
+tags: [a,b,c]
 created_at: 2025-10-12T06:01:47.605Z
 updated_at: 2025-10-12T06:01:47.606Z
 ---
@@ -24,7 +24,7 @@ updated_at: 2025-10-12T06:01:47.606Z
   placeholders.
 
 ```bash
-$ npx @stakme/mdf list --format "[{{f.title}}] {{relpath}}\n{{h3}}" ./TODO
+$ npx @stakme/mdf list --format "[{{f.title}}] {{relpath}}\n{{h3:\n}}" ./TODO
 
 [Enhance `list` command] ./TODO/01K7BG5HSQ6SY0QDNT6594R9HA.md
 # Enhance `list` command (L:10)
