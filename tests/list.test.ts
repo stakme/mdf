@@ -188,10 +188,10 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
-				"bug.md",
-				"nested/note.md",
-				"todo-a.md",
-				"todo-b.md",
+				"./TODO/bug.md",
+				"./TODO/nested/note.md",
+				"./TODO/todo-a.md",
+				"./TODO/todo-b.md",
 			]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });

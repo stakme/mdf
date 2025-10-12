@@ -1,6 +1,6 @@
 ---
 title: List output should be accessible paths if `--quiet` is passed
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-12T00:17:03.241Z
