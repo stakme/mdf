@@ -1,10 +1,10 @@
 ---
 title: "Add docs for `append` command"
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-08T04:58:32.597Z
-updated_at: 2025-10-08T04:58:32.598Z
+updated_at: 2025-10-08T05:30:00.000Z
 ---
 
 # Add docs for `append` command

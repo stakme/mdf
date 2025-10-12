@@ -45,7 +45,7 @@ matter.
 ```
 $ npx @stakme/mdf list --format "[{{status}}] {{title}}" ./TODO | head -n5
 
-[todo] Add docs for `append` command
+[done] Add docs for `append` command
 [done] Refactor App.tsx for the viewer
 [done] Introduce code highlighting like GitHub
 [done] List output should be accessible paths if `--quiet` is passed

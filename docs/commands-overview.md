@@ -18,6 +18,7 @@ publish Markdown notes. Each command now has its own focused page under
 
 - `init` — Scaffold a starter `.config/mdf.mts`.
 - `new <directory>` — Create a file from templates and schema defaults.
+- `append <note> <files...>` — Move assets into a note and append image tags.
 - `list <directory>` — Filter and format collections.
 - `validate <directory>` — Verify front matter against your schema.
 - `fix <directory>` — Apply defaults and CLI overrides safely.
