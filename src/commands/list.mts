@@ -310,8 +310,20 @@ function buildTree(entries: VirtualPathEntry[]): string[] {
 
 function formatTree(root: DirectoryNode): string[] {
 	const lines: string[] = [];
-	root.children.forEach((child, index) => {
-		appendNode(child, "", index === root.children.length - 1, lines);
+	// At the root, also list directories before files while preserving
+	// insertion order within each group for stable, intuitive output.
+	const dirs: TreeNode[] = [];
+	const files: TreeNode[] = [];
+	for (const child of root.children) {
+		if (child.type === "dir") {
+			dirs.push(child);
+		} else {
+			files.push(child);
+		}
+	}
+	const ordered = dirs.concat(files);
+	ordered.forEach((child, index) => {
+		appendNode(child, "", index === ordered.length - 1, lines);
 	});
 	return lines;
 }
@@ -327,8 +339,20 @@ function appendNode(
 
 	if (node.type === "dir") {
 		const nextPrefix = prefix + (isLast ? "    " : "│   ");
-		node.children.forEach((child, index) => {
-			appendNode(child, nextPrefix, index === node.children.length - 1, lines);
+		// Ensure directories are listed before files at each level while
+		// preserving the original insertion order within each group.
+		const dirs: TreeNode[] = [];
+		const files: TreeNode[] = [];
+		for (const child of node.children) {
+			if (child.type === "dir") {
+				dirs.push(child);
+			} else {
+				files.push(child);
+			}
+		}
+		const ordered = dirs.concat(files);
+		ordered.forEach((child, index) => {
+			appendNode(child, nextPrefix, index === ordered.length - 1, lines);
 		});
 	}
 }
