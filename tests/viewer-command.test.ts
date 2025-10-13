@@ -6,6 +6,7 @@ import {
 	buildViewerDocumentPayload,
 	createViewerApp,
 	prepareViewerContext,
+	type ViewerContext,
 	type ViewerNavigationDirectory,
 	type ViewerNavigationFile,
 } from "../src/commands/viewer.mts";
@@ -171,6 +172,34 @@ export default defineConfig({
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
+	});
+
+	it("omits header options when includeHeaderOptions is false", () => {
+		const context: ViewerContext = {
+			cwd: "/tmp",
+			directory: "/tmp/docs",
+			directoryLabel: "docs",
+			headerOptions: [{ label: "Filter", value: "status=todo" }],
+			documents: [],
+			documentMap: new Map<string, never>(),
+			routePathMap: new Map<string, never>(),
+			navigation: { type: "dir", name: "", children: [] },
+			defaultDocument: null,
+			frontMatterIndex: {
+				fields: [],
+				fieldMap: new Map<string, never>(),
+			},
+			virtualPathParam: "vpath",
+			virtualPathSeparator: "/",
+			warnings: [],
+			repo: null,
+		};
+
+		const payload = buildViewerContextPayload(context, {
+			includeHeaderOptions: false,
+		});
+
+		expect(payload.headerOptions).toEqual([]);
 	});
 
 	it("includes repository metadata when configured", async () => {

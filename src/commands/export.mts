@@ -77,7 +77,7 @@ export async function runExportCommand(
 
 	await writeJson(
 		path.join(apiRoot, "context", "index.json"),
-		buildViewerContextPayload(context),
+		buildViewerContextPayload(context, { includeHeaderOptions: false }),
 	);
 
 	const frontMatterFields = context.frontMatterIndex.fields.map((field) =>

@@ -704,10 +704,15 @@ export async function createViewerApp(
 
 export function buildViewerContextPayload(
 	context: ViewerContext,
+	options?: { includeHeaderOptions?: boolean },
 ): ViewerContextPayload {
+	const includeHeaderOptions = options?.includeHeaderOptions !== false;
+
 	return {
 		directoryLabel: context.directoryLabel,
-		headerOptions: context.headerOptions.map((option) => ({ ...option })),
+		headerOptions: includeHeaderOptions
+			? context.headerOptions.map((option) => ({ ...option }))
+			: [],
 		navigation: context.navigation,
 		documents: context.documents.map((doc) => buildViewerDocumentSummary(doc)),
 		defaultDocumentId: context.defaultDocument?.id ?? null,

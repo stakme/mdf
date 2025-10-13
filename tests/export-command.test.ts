@@ -55,6 +55,7 @@ export default defineConfig({
 			const contextPayload = JSON.parse(
 				await fs.readFile(contextPath, "utf8"),
 			) as {
+				headerOptions: Array<{ label: string; value: string }>;
 				documents: Array<{
 					id: string;
 					meta: { title?: string; routePath?: string };
@@ -70,6 +71,7 @@ export default defineConfig({
 			if (!routePath) {
 				throw new Error("Expected exported document to include a route path");
 			}
+			expect(contextPayload.headerOptions).toEqual([]);
 			expect(contextPayload.defaultDocumentId).toBe(documentId);
 
 			const documentPayload = JSON.parse(
