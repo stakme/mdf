@@ -40,6 +40,6 @@ button {
 
 	/* Inline code */
 	& :not(pre) > code {
-		@apply rounded bg-slate-800/60 px-1.5 py-0.5 text-sm font-mono text-sky-200;
+		@apply rounded bg-slate-800/60 px-0.5 py-0.5 text-sm font-mono text-sky-200;
 	}
 }
