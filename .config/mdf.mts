@@ -1,29 +1,29 @@
 import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        aliases: {
-                todo: `list --filter "status=todo" ./TODO`,
-                new_bug: `new ./TODO --template bug_report`,
-                close: `update --fm "status=done" --fm updated_at`,
-                build_docs:`export --filter "draft=false" --repo-url https://github.com/stakme/markdfm/blob/main --repo-icon github ./docs`,
+	aliases: {
+		todo: `list --filter "status=todo" ./TODO`,
+		new_bug: `new ./TODO --template bug_report`,
+		close: `update --fm "status=done" --fm updated_at`,
+		build_docs: `export --filter "draft=false" --repo-url https://github.com/stakme/markdfm/blob/main --repo-icon github ./docs`,
 	},
 
 	schema: {
-                docs: defineSchema({
-                        glob: "docs/**",
-                        schema: z.object({
-                                title: z.string().min(1),
-                                description: z.string().optional(),
-                                vpath: z.string().min(1).default("/"),
-                                date: z.iso.date().optional(),
-                                tags: z.array(z.string()).default(() => []),
-                                draft: z.boolean().default(false),
-                                chapter: z.number().default(0),
-                        }),
-                        sort: (a, b) => a.chapter - b.chapter,
-                        visibleFields: ["tags"],
-						filenameGenerator: (fm) => `${fm.title}.md`,
-                }),
+		docs: defineSchema({
+			glob: "docs/**",
+			schema: z.object({
+				title: z.string().min(1),
+				description: z.string().optional(),
+				vpath: z.string().min(1).default("/"),
+				date: z.iso.date().optional(),
+				tags: z.array(z.string()).default(() => []),
+				draft: z.boolean().default(false),
+				chapter: z.number().default(0),
+			}),
+			sort: (a, b) => a.chapter - b.chapter,
+			visibleFields: ["tags"],
+			filenameGenerator: (fm) => `${fm.title}.md`,
+		}),
 		default: defineSchema({
 			glob: "**",
 			schema: z.object({
@@ -39,8 +39,8 @@ export default defineConfig({
 			filenameGenerator: () => `${Date.now()}.md`,
 		}),
 	},
-	virtualPath:{param:"vpath",separator:"/"},
-	virtualSlug:{param:"vslug"},
+	virtualPath: { param: "vpath", separator: "/" },
+	virtualSlug: { param: "vslug" },
 	defaultSchema: ["docs", "default"],
 
 	templates: {
