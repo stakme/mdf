@@ -44,7 +44,7 @@ aliases: {
 },
 ```
 
-Now I can run `mdf todo` to list undone tickets. It behaves like the above
+Now I can run `mdf run todo` to list undone tickets. It behaves like the above
 command.
 
 ```bash
