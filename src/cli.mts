@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { runAppendCommand } from "./commands/append.mts";
 import { runExportCommand } from "./commands/export.mts";
 import { runInitCommand } from "./commands/init.mts";
@@ -172,6 +172,13 @@ function createProgram(version: string): Command {
 			"--output <directory>",
 			"Directory where generated HTML files will be written",
 		)
+		.option("--repo-url <url>", "Base repository URL used for generated links")
+		.addOption(
+			new Option(
+				"--repo-icon <icon>",
+				"Repository icon for generated links (github or gitlab)",
+			).choices(["github", "gitlab"]),
+		)
 		.option(
 			"-f, --filter <expression>",
 			"Filter expression supporting =, ~=, ^=, $= operators",
@@ -191,11 +198,27 @@ function createProgram(version: string): Command {
 					vpath?: string;
 					strict?: boolean;
 					ignoreInvalid?: boolean;
+					repoUrl?: string;
+					repoIcon?: "github" | "gitlab";
 				},
 			) => {
 				try {
 					const filters = command.filter ?? [];
 					const outputDirectory = command.output ?? "mdf-export";
+					const repoUrlInput = command.repoUrl?.trim();
+					const repoUrl =
+						repoUrlInput && repoUrlInput.length > 0 ? repoUrlInput : undefined;
+					if (!repoUrl && command.repoIcon) {
+						throw new MdfError(
+							"INVALID_EXPORT_OPTIONS",
+							"--repo-icon requires --repo-url to be set",
+						);
+					}
+
+					const repoIcon =
+						repoUrl === undefined
+							? undefined
+							: (command.repoIcon ?? inferRepoIconFromUrl(repoUrl));
 					const result = await runExportCommand({
 						cwd: process.cwd(),
 						directory,
@@ -204,6 +227,8 @@ function createProgram(version: string): Command {
 						virtualPathPrefix: command.vpath,
 						strict: command.strict === true,
 						ignoreInvalid: command.ignoreInvalid === true,
+						repoUrl,
+						repoIcon,
 					});
 
 					const outputLabel = formatDisplayPath(
@@ -474,6 +499,14 @@ function createProgram(version: string): Command {
 
 function collectFrontMatter(value: string, previous: string[]): string[] {
 	return [...previous, value];
+}
+
+function inferRepoIconFromUrl(url: string): "github" | "gitlab" {
+	const normalized = url.toLowerCase();
+	if (normalized.includes("gitlab")) {
+		return "gitlab";
+	}
+	return "github";
 }
 
 function collectFilters(value: string, previous: string[]): string[] {

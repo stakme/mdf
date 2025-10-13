@@ -12,6 +12,7 @@ import type {
 	LoadedSchema,
 	LoadedVirtualPathConfig,
 	MdfConfig,
+	RepoConfig,
 	SchemaFilenameGenerator,
 	VirtualSlugConfig,
 } from "./types.mts";
@@ -204,6 +205,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 		record.defaultTemplate,
 		configPath,
 	);
+	const repo = normalizeRepo(record.repo, configPath);
 
 	const clone = { ...record } as Record<string, unknown>;
 	delete clone.schema;
@@ -213,6 +215,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	delete clone.idGenerator;
 	delete clone.aliases;
 	delete clone.defaultTemplate;
+	delete clone.repo;
 
 	return {
 		...(clone as Omit<
@@ -227,6 +230,7 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 		virtualSlug,
 		idGenerator,
 		aliases,
+		repo,
 	};
 }
 
@@ -316,6 +320,55 @@ function normalizeDefaultTemplates(
 	}
 
 	return normalized;
+}
+
+function normalizeRepo(
+	input: unknown,
+	configPath: string,
+): RepoConfig | undefined {
+	if (input === undefined) {
+		return undefined;
+	}
+
+	if (!input || typeof input !== "object" || Array.isArray(input)) {
+		throw new Error(
+			`mdf config at ${configPath} must define "repo" as an object when provided`,
+		);
+	}
+
+	const record = input as Record<string, unknown>;
+	const rawIcon = record.icon;
+	if (typeof rawIcon !== "string") {
+		throw new Error(
+			`mdf config at ${configPath} must define repo.icon as either "github" or "gitlab"`,
+		);
+	}
+
+	const normalizedIcon = rawIcon.trim().toLowerCase();
+	if (normalizedIcon !== "github" && normalizedIcon !== "gitlab") {
+		throw new Error(
+			`mdf config at ${configPath} must define repo.icon as either "github" or "gitlab"`,
+		);
+	}
+
+	const rawUrl = record.url;
+	if (typeof rawUrl !== "string") {
+		throw new Error(
+			`mdf config at ${configPath} must define repo.url as a string`,
+		);
+	}
+
+	const trimmedUrl = rawUrl.trim();
+	if (!trimmedUrl) {
+		throw new Error(
+			`mdf config at ${configPath} must define repo.url as a non-empty string`,
+		);
+	}
+
+	return {
+		icon: normalizedIcon as RepoConfig["icon"],
+		url: trimmedUrl,
+	};
 }
 
 function normalizeVirtualPath(
@@ -450,6 +503,7 @@ function mergeConfigs(
 		virtualSlug: override.virtualSlug ?? base.virtualSlug,
 		idGenerator: override.idGenerator ?? base.idGenerator,
 		aliases: mergeAliases(base.aliases, override.aliases),
+		repo: override.repo ?? base.repo,
 	};
 }
 

@@ -314,6 +314,34 @@ export default function App(): JSX.Element {
 				activeDocument.id,
 			)
 		: null;
+	const repoDetails = context?.repo ?? null;
+	const repoButtonHref = useMemo(() => {
+		if (!repoDetails || !activeDocument) {
+			return null;
+		}
+
+		const rawPath =
+			activeDocument.workspaceRelativePath ?? activeDocument.relativePath;
+		const normalizedSegments = rawPath
+			.replace(/\\/gu, "/")
+			.split("/")
+			.map((segment) => segment.trim())
+			.filter((segment) => segment.length > 0);
+		const baseUrl = repoDetails.url.trim();
+		if (!baseUrl) {
+			return null;
+		}
+
+		if (normalizedSegments.length === 0) {
+			return baseUrl;
+		}
+
+		const encodedPath = normalizedSegments
+			.map((segment) => encodeURIComponent(segment))
+			.join("/");
+		const separator = baseUrl.endsWith("/") ? "" : "/";
+		return `${baseUrl}${separator}${encodedPath}`;
+	}, [repoDetails, activeDocument]);
 
 	const copyButtonLabel =
 		copyStatus === "copied"
@@ -333,6 +361,40 @@ export default function App(): JSX.Element {
 		toolbarButtonBase,
 		toolbarButtonDefaultState,
 	].join(" ");
+	const repoButtonClassName = [
+		toolbarButtonBase,
+		toolbarButtonDefaultState,
+	].join(" ");
+	const repoButtonLabel = repoDetails
+		? repoDetails.icon === "gitlab"
+			? "View on GitLab"
+			: "View on GitHub"
+		: null;
+	const repoButtonIcon = repoDetails ? (
+		repoDetails.icon === "gitlab" ? (
+			<svg
+				className="size-3.5"
+				viewBox="0 0 24 24"
+				fill="currentColor"
+				aria-hidden="true"
+			>
+				<path d="M21.922 13.207 20.1 7.611a.732.732 0 0 0-.693-.507.73.73 0 0 0-.693.507l-1.32 4.047H6.606L5.287 7.611a.73.73 0 0 0-.693-.507.73.73 0 0 0-.693.507L2.078 13.207a1.46 1.46 0 0 0 .535 1.62l9.387 6.613 9.387-6.613a1.46 1.46 0 0 0 .535-1.62Z" />
+			</svg>
+		) : (
+			<svg
+				className="size-3.5"
+				viewBox="0 0 24 24"
+				fill="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					fillRule="evenodd"
+					d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.167 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.004.07 1.532 1.032 1.532 1.032.892 1.528 2.341 1.087 2.91.832.091-.647.35-1.087.636-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.272.098-2.65 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.748-1.025 2.748-1.025.546 1.378.203 2.397.1 2.65.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.936.359.309.679.92.679 1.855 0 1.338-.012 2.419-.012 2.749 0 .268.18.58.688.481A10.004 10.004 0 0 0 22 12c0-5.523-4.477-10-10-10Z"
+					clipRule="evenodd"
+				/>
+			</svg>
+		)
+	) : null;
 	const copyStatusMessage =
 		copyStatus === "copied"
 			? "Link copied to clipboard"
@@ -581,43 +643,7 @@ export default function App(): JSX.Element {
 										{activeDocument.meta.description}
 									</p>
 								)}
-								<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-									<span className="flex items-center gap-1">
-										<svg
-											className="size-3"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											aria-hidden="true"
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-											/>
-										</svg>
-										{activeDocument.displayPath}
-									</span>
-									{activeDocument.meta.routePath && (
-										<span className="flex items-center gap-1">
-											<svg
-												className="size-3"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
-												aria-hidden="true"
-											>
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-												/>
-											</svg>
-											{activeDocument.meta.routePath}
-										</span>
-									)}
+								<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
 									<button
 										type="button"
 										onClick={handleCopyLink}
@@ -663,6 +689,18 @@ export default function App(): JSX.Element {
 												/>
 											</svg>
 											<span>Show markdown</span>
+										</a>
+									) : null}
+									{repoButtonHref && repoDetails ? (
+										<a
+											href={repoButtonHref}
+											target="_blank"
+											rel="noreferrer"
+											className={repoButtonClassName}
+											aria-label={repoButtonLabel ?? "Open repository"}
+										>
+											{repoButtonIcon}
+											<span>{repoButtonLabel}</span>
 										</a>
 									) : null}
 									{copyStatus !== "idle" ? (

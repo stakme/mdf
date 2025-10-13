@@ -27,7 +27,8 @@ export type MdfErrorCode =
 	| "APPEND_INVALID_INPUT"
 	| "APPEND_NOTE_NOT_FOUND"
 	| "APPEND_SOURCE_NOT_FOUND"
-	| "APPEND_FILE_CONFLICT";
+	| "APPEND_FILE_CONFLICT"
+	| "INVALID_EXPORT_OPTIONS";
 
 export class MdfError extends Error {
 	constructor(

@@ -44,6 +44,8 @@ import type {
 	ViewerFrontMatterValue,
 	ViewerFrontMatterValuePayload,
 	ViewerHeaderOption,
+	ViewerRepoIcon,
+	ViewerRepoLink,
 } from "../viewer/types.mts";
 
 export type {
@@ -61,6 +63,8 @@ export type {
 	ViewerHeaderOption,
 	ViewerNavigationDirectory,
 	ViewerNavigationFile,
+	ViewerRepoIcon,
+	ViewerRepoLink,
 } from "../viewer/types.mts";
 
 interface ViewerDocumentEntry {
@@ -229,6 +233,10 @@ export async function prepareViewerContext(
 			filePath,
 			resolvedDirectory,
 		);
+		const repoRelativePath = computeWorkspaceRelativePath(
+			filePath,
+			options.cwd,
+		);
 		const slug = resolveDocumentSlug({
 			frontMatter,
 			relativePath: directoryRelativePath,
@@ -273,6 +281,7 @@ export async function prepareViewerContext(
 			filePath,
 			displayPath: formatDisplayPath(filePath, options.cwd),
 			relativePath: directoryRelativePath,
+			workspaceRelativePath: repoRelativePath,
 			slug,
 			meta: {
 				...meta,
@@ -322,6 +331,11 @@ export async function prepareViewerContext(
 		documents,
 		virtualPathConfig.param,
 	);
+	const repoLink = resolveViewerRepoLink(
+		options.repoUrl,
+		options.repoIcon,
+		config.repo ?? null,
+	);
 
 	return {
 		cwd: options.cwd,
@@ -337,6 +351,7 @@ export async function prepareViewerContext(
 		virtualPathParam: virtualPathConfig.param,
 		virtualPathSeparator: separator,
 		warnings,
+		repo: repoLink,
 	};
 }
 
@@ -353,6 +368,34 @@ interface ViewerStaticAssets {
 interface StaticFileCacheEntry {
 	data: ArrayBuffer;
 	contentType: string;
+}
+
+function resolveViewerRepoLink(
+	explicitUrl: string | undefined,
+	explicitIcon: ViewerRepoIcon | undefined,
+	fallback: ViewerRepoLink | null,
+): ViewerRepoLink | null {
+	const cleanedExplicitUrl = explicitUrl?.trim();
+	const cleanedFallbackUrl = fallback?.url?.trim();
+	const url = cleanedExplicitUrl ?? cleanedFallbackUrl;
+	if (!url) {
+		return null;
+	}
+
+	const icon = explicitIcon ?? fallback?.icon ?? inferRepoIconFromUrl(url);
+
+	return {
+		icon,
+		url,
+	};
+}
+
+function inferRepoIconFromUrl(url: string): ViewerRepoIcon {
+	const normalized = url.toLowerCase();
+	if (normalized.includes("gitlab")) {
+		return "gitlab";
+	}
+	return "github";
 }
 
 function buildViewerHeaderOptions(
@@ -679,6 +722,7 @@ export function buildViewerContextPayload(
 			filePath: warning.filePath,
 			messages: [...warning.messages],
 		})),
+		repo: context.repo ? { ...context.repo } : null,
 	};
 }
 
@@ -703,6 +747,7 @@ function buildViewerDocumentSummary(
 		slug: document.slug,
 		displayPath: document.displayPath,
 		relativePath: document.relativePath,
+		workspaceRelativePath: document.workspaceRelativePath,
 		meta: document.meta,
 	};
 }
@@ -1248,6 +1293,32 @@ function computeDirectoryRelativePath(
 		normalized = normalized.slice(2);
 	}
 	return normalized;
+}
+
+function computeWorkspaceRelativePath(
+	filePath: string,
+	workspaceRoot: string,
+): string | null {
+	const relative = path.relative(workspaceRoot, filePath);
+	if (relative.startsWith("..") || path.isAbsolute(relative)) {
+		return null;
+	}
+
+	const relativeSegments = relative.split(path.sep);
+	if (relativeSegments.some((segment) => segment === "..")) {
+		return null;
+	}
+
+	let normalized = relative.replaceAll("\\", "/");
+	if (!normalized) {
+		normalized = path.basename(filePath);
+	}
+
+	while (normalized.startsWith("./")) {
+		normalized = normalized.slice(2);
+	}
+
+	return normalized || null;
 }
 
 function buildDocumentRoutePath(

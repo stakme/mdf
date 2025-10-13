@@ -53,6 +53,7 @@ export default defineConfig({
 			expect(doc.meta.title).toBe("Alpha");
 			expect(doc.meta.routePath).toBe("alpha");
 			expect(doc.html).toMatch(/<p>Content<\/p>/);
+			expect(doc.workspaceRelativePath).toBe("notes/alpha.md");
 
 			const payload = buildViewerContextPayload(context);
 			expect(payload.headerOptions).toEqual([
@@ -61,6 +62,10 @@ export default defineConfig({
 			]);
 			expect(payload.defaultDocumentId).toBe(doc.id);
 			expect(payload.documents[0]?.meta.routePath).toBe("alpha");
+			expect(payload.documents[0]?.workspaceRelativePath).toBe(
+				"notes/alpha.md",
+			);
+			expect(payload.repo).toBeNull();
 
 			const { app } = await createViewerApp(() => context);
 
@@ -69,9 +74,13 @@ export default defineConfig({
 			const contextJson = await contextResponse.json();
 			expect(contextJson.documents).toHaveLength(1);
 			expect(contextJson.documents[0]?.meta.title).toBe("Alpha");
+			expect(contextJson.documents[0]?.workspaceRelativePath).toBe(
+				"notes/alpha.md",
+			);
 			expect(
 				contextJson.frontMatter.map((field: { name: string }) => field.name),
 			).toEqual(["status", "title", "vpath"]);
+			expect(contextJson.repo).toBeNull();
 
 			const contextIndexResponse = await app.request(
 				"http://localhost/api/context/index.json",
@@ -81,6 +90,10 @@ export default defineConfig({
 			expect(contextIndexJson.documents[0]?.id).toBe(
 				contextJson.documents[0]?.id,
 			);
+			expect(contextIndexJson.documents[0]?.workspaceRelativePath).toBe(
+				"notes/alpha.md",
+			);
+			expect(contextIndexJson.repo).toBeNull();
 
 			const docResponse = await app.request(
 				`http://localhost/api/documents/${encodeURIComponent(doc.id)}`,
@@ -90,6 +103,7 @@ export default defineConfig({
 			expect(docJson.html).toContain("Content");
 			expect(docJson.frontMatter.status).toBe("todo");
 			expect(docJson.raw).toBe(alphaSource);
+			expect(docJson.workspaceRelativePath).toBe("notes/alpha.md");
 
 			const docIndexResponse = await app.request(
 				`http://localhost/api/documents/${encodeURIComponent(doc.id)}/index.json`,
@@ -98,6 +112,7 @@ export default defineConfig({
 			const docIndexJson = await docIndexResponse.json();
 			expect(docIndexJson.frontMatter.status).toBe("todo");
 			expect(docIndexJson.raw).toBe(alphaSource);
+			expect(docIndexJson.workspaceRelativePath).toBe("notes/alpha.md");
 
 			const frontMatterIndexResponse = await app.request(
 				"http://localhost/api/front-matter/index.json",
@@ -153,6 +168,63 @@ export default defineConfig({
 			);
 			const legacyMarkdown = await legacyResponse.text();
 			expect(legacyMarkdown).toBe(alphaSource);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("includes repository metadata when configured", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+        repo: {
+                icon: "gitlab",
+                url: "https://gitlab.com/acme/wiki/-/tree/main/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(docsDir, { recursive: true });
+		await fs.writeFile(
+			path.join(docsDir, "guide.md"),
+			`---\ntitle: Guide\n---\n# Guide`,
+			"utf8",
+		);
+
+		try {
+			const context = await prepareViewerContext({
+				cwd: tempDir,
+				directory: "docs",
+			});
+
+			expect(context.repo).toEqual({
+				icon: "gitlab",
+				url: "https://gitlab.com/acme/wiki/-/tree/main/",
+			});
+
+			const payload = buildViewerContextPayload(context);
+			expect(payload.repo).toEqual({
+				icon: "gitlab",
+				url: "https://gitlab.com/acme/wiki/-/tree/main/",
+			});
+
+			const { app } = await createViewerApp(() => context);
+			const response = await app.request(
+				"http://localhost/api/context/index.json",
+			);
+			expect(response.status).toBe(200);
+			const json = await response.json();
+			expect(json.repo).toEqual({
+				icon: "gitlab",
+				url: "https://gitlab.com/acme/wiki/-/tree/main/",
+			});
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

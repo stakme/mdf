@@ -58,6 +58,7 @@ export default defineConfig({
 				documents: Array<{
 					id: string;
 					meta: { title?: string; routePath?: string };
+					workspaceRelativePath?: string | null;
 				}>;
 				defaultDocumentId: string | null;
 			};
@@ -76,9 +77,17 @@ export default defineConfig({
 					path.join(outputDir, "api", "documents", documentId, "index.json"),
 					"utf8",
 				),
-			) as { frontMatter: Record<string, unknown>; html: string };
+			) as {
+				frontMatter: Record<string, unknown>;
+				html: string;
+				workspaceRelativePath?: string | null;
+			};
 			expect(documentPayload.frontMatter.status).toBe("published");
 			expect(documentPayload.html).toMatch(/Live content\./);
+			expect(contextPayload.documents[0]?.workspaceRelativePath).toBe(
+				"notes/second.md",
+			);
+			expect(documentPayload.workspaceRelativePath).toBe("notes/second.md");
 
 			const frontMatterValues = JSON.parse(
 				await fs.readFile(
@@ -212,6 +221,66 @@ export default defineConfig({
 			) as { documents: Array<{ meta: { title?: string } }> };
 			expect(contextPayload.documents).toHaveLength(1);
 			expect(contextPayload.documents[0]?.meta.title).toBe("Alpha");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("includes repository metadata when repo options are passed", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string(),
+        }),
+        virtualPath: {
+                param: "vpath",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(docsDir, { recursive: true });
+		await fs.writeFile(
+			path.join(docsDir, "guide.md"),
+			`---\ntitle: Guide\nvpath: docs/guide\n---\n# Guide`,
+			"utf8",
+		);
+
+		const repoUrl = "https://github.com/acme/project/blob/main";
+
+		try {
+			await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"export",
+					"docs",
+					"--output",
+					"public",
+					"--repo-url",
+					repoUrl,
+				],
+				{ cwd: tempDir },
+			);
+
+			const contextPayload = JSON.parse(
+				await fs.readFile(
+					path.join(tempDir, "public", "api", "context", "index.json"),
+					"utf8",
+				),
+			) as {
+				repo?: { icon?: string; url?: string };
+				documents: Array<{ workspaceRelativePath?: string | null }>;
+			};
+			expect(contextPayload.repo).toEqual({
+				icon: "github",
+				url: repoUrl,
+			});
+			expect(contextPayload.documents[0]?.workspaceRelativePath).toBe(
+				"docs/guide.md",
+			);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

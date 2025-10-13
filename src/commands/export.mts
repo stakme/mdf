@@ -6,6 +6,7 @@ import {
 	renderDocumentMarkdownWithAssets,
 } from "../utils/markdown-renderer.mts";
 import { normalizeViewerRoutePathKey } from "../viewer/route-path.mts";
+import type { ViewerRepoIcon } from "./viewer.mts";
 import {
 	buildViewerContextPayload,
 	buildViewerDocumentPayload,
@@ -23,6 +24,8 @@ export interface ExportCommandOptions {
 	virtualPathPrefix?: string;
 	strict?: boolean;
 	ignoreInvalid?: boolean;
+	repoUrl?: string;
+	repoIcon?: ViewerRepoIcon;
 }
 
 export interface ExportedDocument {
@@ -49,6 +52,8 @@ export async function runExportCommand(
 		virtualPathPrefix: options.virtualPathPrefix,
 		strict: options.strict === true,
 		ignoreInvalid: options.ignoreInvalid === true,
+		repoUrl: options.repoUrl,
+		repoIcon: options.repoIcon,
 	});
 
 	const staticAssets = await loadViewerStaticAssets();

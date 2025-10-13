@@ -143,6 +143,13 @@ export type TemplatesConfig<TSchemaRecord extends SchemaRecordInput> = Record<
 	TemplateConfigEntry<TSchemaRecord>
 >;
 
+export type RepoIcon = "github" | "gitlab";
+
+export interface RepoConfig {
+	icon: RepoIcon;
+	url: string;
+}
+
 export type SchemaConfig<
 	TSchemaRecord extends SchemaRecordInput = SchemaRecordInput,
 > =
@@ -172,6 +179,7 @@ export interface MdfConfig<
 	virtualSlug?: VirtualSlugConfig;
 	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
+	repo?: RepoConfig;
 }
 
 export type MdfConfigWithRecord<

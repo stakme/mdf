@@ -12,6 +12,15 @@ export interface ViewerCommandOptions {
 	ignoreInvalid?: boolean;
 	accessLog?: boolean;
 	reload?: boolean;
+	repoUrl?: string;
+	repoIcon?: ViewerRepoIcon;
+}
+
+export type ViewerRepoIcon = "github" | "gitlab";
+
+export interface ViewerRepoLink {
+	icon: ViewerRepoIcon;
+	url: string;
 }
 
 export interface ViewerDocument {
@@ -19,6 +28,7 @@ export interface ViewerDocument {
 	filePath: string;
 	displayPath: string;
 	relativePath: string;
+	workspaceRelativePath: string | null;
 	slug: string;
 	meta: ViewerMeta;
 	frontMatter: Record<string, unknown>;
@@ -82,6 +92,7 @@ export interface ViewerContext {
 	virtualPathParam: string;
 	virtualPathSeparator: string;
 	warnings: InvalidFileWarning[];
+	repo: ViewerRepoLink | null;
 }
 
 export interface ViewerDocumentSummary {
@@ -89,6 +100,7 @@ export interface ViewerDocumentSummary {
 	slug: string;
 	displayPath: string;
 	relativePath: string;
+	workspaceRelativePath: string | null;
 	meta: ViewerMeta;
 }
 
@@ -124,4 +136,5 @@ export interface ViewerContextPayload {
 		separator: string;
 	};
 	warnings: InvalidFileWarning[];
+	repo: ViewerRepoLink | null;
 }

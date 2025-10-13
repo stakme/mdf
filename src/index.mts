@@ -15,6 +15,8 @@ export type {
 	LoadedVirtualPathConfig,
 	MdfConfig,
 	MdfConfigWithRecord,
+	RepoConfig,
+	RepoIcon,
 	SchemaConfig,
 	SchemaDefinition,
 	SchemaDefinitionInput,
@@ -58,4 +60,6 @@ export type {
 	ViewerNavigationDirectory,
 	ViewerNavigationFile,
 	ViewerNavigationNode,
+	ViewerRepoIcon,
+	ViewerRepoLink,
 } from "./viewer/types.mts";
