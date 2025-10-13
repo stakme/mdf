@@ -50,6 +50,13 @@ interface ListDocument {
 	schema: LoadedSchema;
 	segments: string[];
 	label: string;
+	headings: DocumentHeading[];
+}
+
+interface DocumentHeading {
+	level: number;
+	text: string;
+	line: number;
 }
 
 interface DirectoryNode {
@@ -127,6 +134,7 @@ export async function runListCommand(
 			continue;
 		}
 		const frontMatter = document.frontMatter;
+		const headings = extractHeadings(document.raw);
 
 		if (
 			!parsedFilters.every((filter) => matchesParsedFilter(frontMatter, filter))
@@ -177,6 +185,7 @@ export async function runListCommand(
 			schema: schemaEntry,
 			segments,
 			label,
+			headings,
 		});
 	}
 
@@ -197,6 +206,7 @@ export async function runListCommand(
 		const lines = sortedDocuments.map((entry) =>
 			renderTemplate(template, {
 				frontMatter: entry.frontMatter,
+				headings: entry.headings,
 				paths: {
 					absolutePath: entry.filePath,
 					displayPath: entry.displayPath,
@@ -335,68 +345,113 @@ function segmentsStartsWith(
 	return prefix.every((segment, index) => segments[index] === segment);
 }
 
-function renderTemplate(
-	template: string,
-	context: {
-		frontMatter: Record<string, unknown>;
-		paths: {
-			absolutePath: string;
-			displayPath: string;
-			filename: string;
-			relativePath: string;
-		};
-	},
-): string {
-	return template.replace(
-		/\{\{\s*([^}]*)\}\}/gu,
-		(_, rawExpression: string) => {
-			const { path, separator } = parseTemplateExpression(rawExpression);
-			const reservedValue = resolveReservedPath(path, context.paths);
-			if (reservedValue !== null) {
-				return reservedValue;
-			}
-
-			const value = resolveTemplatePath(context.frontMatter, path);
-			if (value === undefined || value === null) {
-				return "";
-			}
-
-			if (Array.isArray(value)) {
-				const formatted = value
-					.map(formatValue)
-					.filter((entry) => entry !== "");
-				if (!formatted.length) {
-					return "";
-				}
-				return formatted.join(separator ?? ", ");
-			}
-
-			return formatValue(value);
-		},
-	);
-}
-
-function resolveReservedPath(
-	pathExpression: string,
+interface TemplateContext {
+	frontMatter: Record<string, unknown>;
+	headings: readonly DocumentHeading[];
 	paths: {
 		absolutePath: string;
 		displayPath: string;
 		filename: string;
 		relativePath: string;
-	},
-): string | null {
+	};
+}
+
+function renderTemplate(template: string, context: TemplateContext): string {
+	const pattern = /\{\{\s*([^}]*)\}\}/gu;
+	let result = "";
+	let cursor = 0;
+	let match: RegExpExecArray | null = pattern.exec(template);
+
+	while (match !== null) {
+		const matchIndex = match.index ?? 0;
+		if (cursor < matchIndex) {
+			const literalSegment = template.slice(cursor, matchIndex);
+			result += unescapeTemplateLiteral(literalSegment);
+		}
+
+		const rawExpression = match[1] ?? "";
+		result += renderTemplateExpression(rawExpression, context);
+		cursor = pattern.lastIndex ?? matchIndex;
+		match = pattern.exec(template);
+	}
+
+	if (cursor < template.length) {
+		result += unescapeTemplateLiteral(template.slice(cursor));
+	}
+
+	return result;
+}
+
+function renderTemplateExpression(
+	rawExpression: string,
+	context: TemplateContext,
+): string {
+	const { path, separator } = parseTemplateExpression(rawExpression);
+	const reservedValue = resolveReservedPath(path, context);
+	if (reservedValue !== null) {
+		return formatResolvedValue(
+			reservedValue.value,
+			separator,
+			reservedValue.defaultSeparator,
+		);
+	}
+
+	const value = resolveTemplatePath(context.frontMatter, path);
+	if (value === undefined || value === null) {
+		return "";
+	}
+
+	return formatResolvedValue(value, separator, undefined);
+}
+
+interface ReservedPathResolution {
+	value: string | string[];
+	defaultSeparator?: string;
+}
+
+function resolveReservedPath(
+	pathExpression: string,
+	context: TemplateContext,
+): ReservedPathResolution | null {
+	const { paths, headings } = context;
 	switch (pathExpression) {
 		case "file":
-			return paths.displayPath;
+			return { value: paths.displayPath };
 		case "relpath":
-			return paths.relativePath;
+			return { value: paths.relativePath };
 		case "abspath":
-			return paths.absolutePath;
+			return { value: paths.absolutePath };
 		case "filename":
-			return paths.filename;
+			return { value: paths.filename };
 		default:
+			if (/^h[1-6]$/u.test(pathExpression)) {
+				const level = Number.parseInt(pathExpression[1] ?? "", 10);
+				return {
+					value: selectHeadingsUpToLevel(headings, level),
+					defaultSeparator: "\n",
+				};
+			}
 			return null;
 	}
+}
+
+function formatResolvedValue(
+	value: unknown,
+	separator: string | null,
+	defaultSeparator: string | undefined,
+): string {
+	if (Array.isArray(value)) {
+		const formatted = value
+			.map((entry) => formatValue(entry))
+			.filter((entry) => entry !== "");
+		if (!formatted.length) {
+			return "";
+		}
+		const joiner = separator ?? defaultSeparator ?? ", ";
+		return formatted.join(joiner);
+	}
+
+	return formatValue(value);
 }
 
 function resolveTemplatePath(
@@ -420,8 +475,50 @@ function parseTemplateExpression(expression: string): {
 		return { path: trimmedStart.trimEnd(), separator: null };
 	}
 	const path = trimmedStart.slice(0, colonIndex).trimEnd();
-	const separator = trimmedStart.slice(colonIndex + 1);
+	const separator = unescapeTemplateLiteral(trimmedStart.slice(colonIndex + 1));
 	return { path, separator };
+}
+
+function unescapeTemplateLiteral(segment: string): string {
+	let result = "";
+	for (let index = 0; index < segment.length; index += 1) {
+		const char = segment[index] ?? "";
+		if (char !== "\\") {
+			result += char;
+			continue;
+		}
+
+		const next = segment[index + 1];
+		if (next === undefined) {
+			result += "\\";
+			continue;
+		}
+
+		switch (next) {
+			case "\\":
+				result += "\\";
+				index += 1;
+				break;
+			case "n":
+				result += "\n";
+				index += 1;
+				break;
+			case "r":
+				result += "\r";
+				index += 1;
+				break;
+			case "t":
+				result += "\t";
+				index += 1;
+				break;
+			default:
+				result += `\\${next}`;
+				index += 1;
+				break;
+		}
+	}
+
+	return result;
 }
 
 function formatValue(value: unknown): string {
@@ -448,4 +545,89 @@ function formatValue(value: unknown): string {
 		}
 	}
 	return String(value);
+}
+
+function extractHeadings(content: string): DocumentHeading[] {
+	const headings: DocumentHeading[] = [];
+	const lines = content.split(/\r?\n/u);
+	let inFrontMatter = false;
+	let frontMatterProcessed = false;
+	let fence: { marker: string; length: number } | null = null;
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index] ?? "";
+		const trimmed = line.trim();
+
+		if (!frontMatterProcessed && index === 0 && trimmed === "---") {
+			inFrontMatter = true;
+			continue;
+		}
+
+		if (inFrontMatter) {
+			if (trimmed === "---") {
+				inFrontMatter = false;
+				frontMatterProcessed = true;
+			}
+			continue;
+		}
+
+		const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/u);
+		if (fenceMatch) {
+			const marker = fenceMatch[1] ?? "";
+			const markerChar = marker[0];
+			if (
+				fence &&
+				markerChar === fence.marker &&
+				marker.length >= fence.length
+			) {
+				fence = null;
+			} else if (!fence) {
+				fence = { marker: markerChar ?? "`", length: marker.length };
+			}
+			continue;
+		}
+
+		if (fence) {
+			continue;
+		}
+
+		const headingMatch = line.match(/^\s{0,3}(#{1,6})\s+(.*)$/u);
+		if (!headingMatch) {
+			continue;
+		}
+
+		const hashes = headingMatch[1] ?? "";
+		const rawText = headingMatch[2] ?? "";
+		const text = rawText.replace(/\s+#+\s*$/u, "").trim();
+		if (!text) {
+			continue;
+		}
+
+		const level = hashes.length;
+		headings.push({
+			level,
+			text,
+			line: index + 1,
+		});
+	}
+
+	return headings;
+}
+
+function selectHeadingsUpToLevel(
+	headings: readonly DocumentHeading[],
+	level: number,
+): string[] {
+	if (Number.isNaN(level) || level <= 0) {
+		return [];
+	}
+
+	return headings
+		.filter((heading) => heading.level <= level)
+		.map((heading) => formatHeading(heading));
+}
+
+function formatHeading(heading: DocumentHeading): string {
+	const hashes = "#".repeat(Math.max(1, Math.min(6, heading.level)));
+	return `${hashes} ${heading.text} (L:${heading.line})`;
 }

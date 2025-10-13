@@ -1,10 +1,10 @@
 ---
 title: "Enhance `list` command"
-status: todo
+status: done
 author: "@stakme"
 tags: [a,b,c]
 created_at: 2025-10-12T06:01:47.605Z
-updated_at: 2025-10-12T06:01:47.606Z
+updated_at: 2025-10-12T09:11:17.445Z
 ---
 
 # Enhance `list` command

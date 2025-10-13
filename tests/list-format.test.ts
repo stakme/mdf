@@ -57,6 +57,36 @@ describe("mdf list --format", () => {
 		}
 	});
 
+	it("interprets escaped newline sequences in format templates", async () => {
+		const tempDir = await setupWorkspace();
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(notesDir, "note.md"),
+			`---\ntitle: Escaped Output\nstatus: done\ntags:\n  - alpha\n  - beta\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const { stdout } = await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"list",
+					"notes",
+					"--format",
+					"[{{f.status}}]\\n{{title}} :: {{tags:\\n}}",
+				],
+				{ cwd: tempDir },
+			);
+
+			expect(stdout.trim()).toBe("[done]\nEscaped Output :: alpha\nbeta");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("reports invalid filter expressions", async () => {
 		const tempDir = await setupWorkspace();
 		const notesDir = path.join(tempDir, "notes");
@@ -130,6 +160,54 @@ describe("mdf list --format", () => {
 
 			expect(stdout.trim()).toBe(
 				`${relativePath}|${path.basename(notePath)}|${absoluteNotePath}|${displayPath}|Lone Note`,
+			);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("renders markdown headings with heading placeholders", async () => {
+		const tempDir = await setupWorkspace();
+		const notesDir = path.join(tempDir, "notes");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		const sharedFrontMatter = `description: Outline note\nauthor: tester\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z\ntags:\n  - docs`;
+
+		const notePath = path.join(notesDir, "note.md");
+		await fs.writeFile(
+			notePath,
+			`---\ntitle: Outline Note\n${sharedFrontMatter}\nstatus: todo\n---\n\n# Outline Note\n\n## Intro\n\n### Deep Dive\n\n#### Appendix\n\nBody text.\n\n\`\`\`\n# Ignored heading\n\`\`\`\n`,
+			"utf8",
+		);
+
+		try {
+			const { stdout: h3Output } = await execa(
+				nodeBinary,
+				[cliPath, "list", "notes", "--format", "{{h3}}"],
+				{ cwd: tempDir },
+			);
+
+			expect(h3Output.trim()).toBe(
+				[
+					"# Outline Note (L:12)",
+					"## Intro (L:14)",
+					"### Deep Dive (L:16)",
+				].join("\n"),
+			);
+
+			const { stdout: h6Output } = await execa(
+				nodeBinary,
+				[cliPath, "list", "notes", "--format", "{{h6:\n}}"],
+				{ cwd: tempDir },
+			);
+
+			expect(h6Output.trim()).toBe(
+				[
+					"# Outline Note (L:12)",
+					"## Intro (L:14)",
+					"### Deep Dive (L:16)",
+					"#### Appendix (L:18)",
+				].join("\n"),
 			);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
