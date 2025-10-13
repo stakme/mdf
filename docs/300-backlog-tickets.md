@@ -12,12 +12,13 @@ In this project, I use `mdf` to track backlog tickets. When I want to add a new
 ticket, I use the `new` command:
 
 ```bash
-$ npx @stakme/mdf new ./TODO
+$ npx @stakme/mdf new  --template backlog ./TODO
 
 TODO/1760332871430.md
 ```
 
-Then I open the file and fill in the content.
+Then you can open the file and fill in the content. Templates will enforce a
+consistent structure to your AI assistants.
 
 ## List tickets
 
