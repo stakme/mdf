@@ -30,7 +30,7 @@ button {
 .article-body {
 	/* Code blocks */
 	& pre {
-		@apply relative overflow-x-auto rounded-xl border border-slate-800/80 bg-transparent shadow-xl shadow-slate-950/40;
+		@apply relative my-4 overflow-x-auto rounded-xl border border-slate-800/80 bg-transparent shadow-xl shadow-slate-950/40;
 	}
 
 	& pre code {
@@ -38,84 +38,8 @@ button {
 		color: inherit;
 	}
 
-	& pre code.hljs {
-	}
-
 	/* Inline code */
 	& :not(pre) > code {
 		@apply rounded bg-slate-800/60 px-1.5 py-0.5 text-sm font-mono text-sky-200;
-	}
-
-	/* Headings */
-	& h1,
-	& h2,
-	& h3,
-	& h4,
-	& h5,
-	& h6 {
-		@apply mb-4 mt-8 font-bold leading-tight text-slate-100;
-	}
-
-	& h1 {
-		@apply text-3xl;
-	}
-
-	& h2 {
-		@apply text-2xl;
-	}
-
-	& h3 {
-		@apply text-xl;
-	}
-
-	/* Paragraphs and text */
-	& p {
-		@apply mb-4 leading-relaxed text-slate-300;
-	}
-
-	/* Lists */
-	& ul,
-	& ol {
-		@apply mb-4 ml-6 space-y-2 text-slate-300;
-	}
-
-	& ul {
-		@apply list-disc;
-	}
-
-	& ol {
-		@apply list-decimal;
-	}
-
-	& li {
-		@apply leading-relaxed;
-	}
-
-	/* Blockquotes */
-	& blockquote {
-		@apply border-l-4 border-slate-700 bg-slate-900/50 my-4 py-2 px-4 italic text-slate-400;
-	}
-
-	/* Horizontal rules */
-	& hr {
-		@apply my-8 border-slate-800;
-	}
-
-	/* Tables */
-	& table {
-		@apply w-full border-collapse text-sm;
-	}
-
-	& th {
-		@apply border border-slate-800 bg-slate-900/50 px-4 py-2 text-left font-semibold text-slate-200;
-	}
-
-	& td {
-		@apply border border-slate-800 px-4 py-2 text-slate-300;
-	}
-
-	/* Images */
-	& img {
-		@apply rounded-lg;
 	}
 }
