@@ -4,7 +4,7 @@ status: done
 author: "@stakme"
 tags: []
 created_at: 2025-09-29T22:27:59.843Z
-updated_at: 2025-09-29T23:19:30Z
+updated_at: 2025-10-13T04:33:22.165Z
 ---
 
 # Introduce `strict` option and ignore invalid markdfm files by default
