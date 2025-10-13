@@ -61,6 +61,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
+		"@tailwindcss/typography": "^0.5.12",
 		"@types/node": "^24.5.2",
 		"execa": "^9.5.2",
 		"tsdown": "^0.5.10",

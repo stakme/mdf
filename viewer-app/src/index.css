@@ -1,3 +1,6 @@
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind plugin directive */
+@plugin "@tailwindcss/typography";
+
 /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind base directive */
 @tailwind base;
 /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind components directive */
@@ -27,16 +30,15 @@ button {
 .article-body {
 	/* Code blocks */
 	& pre {
-		@apply relative my-4 overflow-x-auto rounded-xl border border-slate-800/80 bg-transparent shadow-xl shadow-slate-950/40;
+		@apply relative overflow-x-auto rounded-xl border border-slate-800/80 bg-transparent shadow-xl shadow-slate-950/40;
 	}
 
 	& pre code {
-		@apply block min-w-full whitespace-pre px-5 py-4 text-left text-sm font-mono leading-relaxed;
+		@apply block min-w-full whitespace-pre text-left text-sm font-mono leading-relaxed;
 		color: inherit;
 	}
 
 	& pre code.hljs {
-		@apply px-5 py-4;
 	}
 
 	/* Inline code */
