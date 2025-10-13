@@ -47,7 +47,7 @@ export default defineConfig({
 				status: "todo",
 				tags: ["bug"],
 			},
-			body: (title: string) => \`# \${title}
+			body: ({ title }) => \`# \${title}
 
 ## Summary
 Provide a concise description of the issue.
