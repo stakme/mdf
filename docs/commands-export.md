@@ -10,7 +10,7 @@ chapter: 208
 
 # export <directory>
 
-Produce a static copy of the viewer tailored to the selected files.
+Produce a static copy of the viewer tailored to selected files.
 
 ```bash
 npx @stakme/mdf export TODO \
@@ -18,5 +18,5 @@ npx @stakme/mdf export TODO \
   --output mdf-export
 ```
 
-All matching documents are serialized under `api/documents/<id>/index.json`, and
-referenced assets are copied into `documents/<id>/assets/`.
+Matching documents are serialized under `api/documents/<id>/index.json`, and referenced assets are copied into `documents/<id>/assets/`.
+

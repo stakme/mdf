@@ -10,9 +10,7 @@ chapter: 200
 
 # List of commands
 
-`mdf` ships subcommands that work together to scaffold, inspect, repair, and
-publish Markdown notes. Each command now has its own focused page under
-`commands/<name>`. Run any command with `--help` for the exhaustive option list.
+`mdf` ships subcommands that work together to scaffold, inspect, repair, and publish Markdown notes. Each command has its own focused page under `commands/<name>`. Use `--help` on any command for full options.
 
 ## Command index
 
@@ -25,5 +23,6 @@ publish Markdown notes. Each command now has its own focused page under
 - `update <files...>` — Edit front matter on specific files.
 - `viewer <directory>` — Explore documents locally in a browser UI.
 - `export <directory>` — Produce a static viewer for selected files.
-- `docs [directory]` — Shortcut for GitHub Pages–ready docs export.
+- `docs [directory]` — Shortcut for a GitHub Pages–ready export.
 - `run <alias>` — Execute a configured alias from `.config/mdf.mts`.
+

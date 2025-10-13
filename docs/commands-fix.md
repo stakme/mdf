@@ -10,9 +10,9 @@ chapter: 205
 
 # fix <directory>
 
-Repair schema violations automatically by replaying defaults and CLI overrides
-onto each file.
+Repair schema violations by replaying defaults and CLI overrides onto each file.
 
 ```bash
 npx @stakme/mdf fix TODO --fm status=todo
 ```
+

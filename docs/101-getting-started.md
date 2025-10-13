@@ -10,18 +10,15 @@ chapter: 101
 
 # Getting Started
 
-`mdf 0.x` is designed to get a Markdown knowledge base production-ready in a
-single afternoon. Follow this guide the first time you install the CLI, then
-lean on the recipes and reference docs for day-to-day work.
+`mdf 0.x` helps you take a Markdown knowledge base from zero to production in an afternoon. Use this guide for your first setup, then lean on recipes and reference docs for daily work.
 
-> 💡 Tip: Keep the [Docs Overview](./01K6M8E4A1M4CS4XW7M2MZVQG2.md) open in
-> another tab so you can hop between guides as you explore.
+Tip: Keep the Docs Overview open in another tab so you can jump between guides.
 
 ## Prerequisites
 
-- Node.js 22 or newer.
-- A Git repository (recommended) to track Markdown changes and docs output.
-- A directory, such as `TODO/`, where your Markdown notes will live.
+- Node.js 22 or newer
+- A Git repository (recommended) to track Markdown and generated docs
+- A directory—such as `TODO/`—for your notes
 
 ## Install the CLI
 
@@ -29,7 +26,7 @@ lean on the recipes and reference docs for day-to-day work.
 npm install --save-dev @stakme/mdf
 ```
 
-Add a convenience script to `package.json` if you run the CLI often:
+Add a convenience script to `package.json` if you’ll run it often:
 
 ```json
 {
@@ -39,19 +36,17 @@ Add a convenience script to `package.json` if you run the CLI often:
 }
 ```
 
-Now you can launch commands with `npx @stakme/mdf` or
-`npm run mdf -- <command>`.
+Now invoke commands with `npx @stakme/mdf` or `npm run mdf -- <command>`.
 
-## Scaffold your configuration
+## Scaffold configuration
 
-Create `.config/mdf.mts` with the schema you want to enforce:
+Create `.config/mdf.mts` with a starter schema:
 
 ```bash
 npx @stakme/mdf init
 ```
 
-Edit the generated file to match your workflow. A minimal queue schema might
-look like this:
+Edit the generated file to match your workflow. A minimal queue schema might look like this:
 
 ```ts
 import { defineConfig, z } from "@stakme/mdf/config";
@@ -69,8 +64,7 @@ export default defineConfig({
 
 ## Create your first note
 
-Use `mdf new` to scaffold Markdown that satisfies the schema. Set `status=done`
-for anything you want exported to docs right away.
+Use `mdf new` to scaffold Markdown that satisfies the schema. Set `status=done` for anything you want exported to docs right away.
 
 ```bash
 npx @stakme/mdf new TODO \
@@ -79,44 +73,38 @@ npx @stakme/mdf new TODO \
   --fm vpath=docs/index
 ```
 
-Open the generated file to add Markdown content. The `vpath` determines the
-navigation tree in the viewer and exported site.
+Open the file and add Markdown content. The `vpath` controls navigation in the viewer and static site.
 
 ## Validate the workspace
 
-Before publishing, catch schema drift with:
+Catch schema drift before publishing:
 
 ```bash
 npx @stakme/mdf validate TODO
 ```
 
-Fix issues in place via `npx @stakme/mdf fix TODO` or targeted updates with
-`mdf update`.
+Fix issues in place via `npx @stakme/mdf fix TODO` or make targeted updates with `mdf update`.
 
-## Generate docs when ready
+## Generate docs
 
-The GitHub Pages workflow runs the same steps you can trigger locally:
+The GitHub Pages workflow runs the same steps you can try locally:
 
 ```bash
 npm run build
 npm run docs:generate
 ```
 
-The docs export copies the viewer assets into `/docs`, serializes metadata for
-every `status=done` entry, and rehosts linked assets so the static site works
-without a server.
+The export copies viewer assets into `/docs`, serializes metadata for each `status=done` entry, and rehosts assets so the site works without a server.
 
 ## Preview in the viewer
 
-Before sharing the static site, open the interactive viewer to sanity-check
-navigation, filters, and document rendering:
+Sanity‑check navigation, filters, and rendering before you ship:
 
 ```bash
 npx @stakme/mdf viewer TODO --vpath docs --port 4173
 ```
 
-The viewer mirrors the exported experience, so anything that looks right here
-will look right in production.
+What looks right here will look right in production.
 
 ## Launch checklist
 
@@ -125,7 +113,7 @@ will look right in production.
 - [ ] Validate and fix drift before exporting.
 - [ ] Preview in the viewer, then run `mdf docs` to produce the site.
 
-## What to read next
+## Next steps
 
-Head to the Commands section for command details or open the GitHub Pages
-Automation guide to understand the deployment workflow.
+Head to the Commands section for details, or open the GitHub Pages automation guide to see how deployment works.
+

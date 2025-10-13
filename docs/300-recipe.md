@@ -10,8 +10,7 @@ chapter: 300
 
 # Everyday Recipes
 
-Short, repeatable workflows that help you keep notes fresh and documentation up
-to date.
+Short, repeatable workflows to keep notes fresh and docs up to date.
 
 ## Promote a note to docs
 
@@ -21,8 +20,7 @@ npx @stakme/mdf update ./TODO/<file>.md \
   --fm updated_at
 ```
 
-Add or adjust the `vpath` to place the note inside the docs navigation.
-Regenerate the site with `npm run docs:generate`.
+Add or adjust `vpath` to place the note in the docs navigation, then run `npm run docs:generate`.
 
 ## Reorganize navigation
 
@@ -30,7 +28,7 @@ Regenerate the site with `npm run docs:generate`.
 npx @stakme/mdf update ./TODO/<file>.md --fm vpath=docs/commands/advanced
 ```
 
-Run `mdf list --vpath docs` to confirm the tree looks right before exporting.
+Run `mdf list --vpath docs` to confirm the tree before exporting.
 
 ## Batch retagging
 
@@ -39,8 +37,7 @@ npx @stakme/mdf list TODO --filter "tags~=legacy" --format "{{paths.absolutePath
   | xargs -I{} npx @stakme/mdf update {} --fm tags='["deprecated"]'
 ```
 
-Use the list formatting helpers to emit file paths, then feed them into
-`mdf update` for targeted edits.
+Use list formatting helpers to emit file paths, then feed them into `mdf update`.
 
 ## Capture a regression test idea
 
@@ -52,9 +49,7 @@ npx @stakme/mdf new TODO \
   --fm tags='["test"]'
 ```
 
-Keep unfinished work out of the docs export by leaving `status=todo`. When the
-fix lands, flip the status to `done` and move the `vpath` under `docs/` to
-publish a write-up.
+Leave `status=todo` to keep drafts out of the docs export. Flip to `done` and move the `vpath` under `docs/` when you’re ready to publish.
 
 ## Prepare release notes
 
@@ -65,8 +60,7 @@ npx @stakme/mdf list TODO \
   --format "- {{updated_at}} {{title}}"
 ```
 
-The command gives you a changelog-ready bullet list ordered by the dates in your
-notes. Copy the output into `CHANGELOG.md` and tailor the wording.
+Paste the bullet list into `CHANGELOG.md` and tailor the wording.
 
 ## Clean up stale drafts
 
@@ -77,5 +71,5 @@ npx @stakme/mdf list TODO \
   --format "{{title}} ({{paths.relativePath}})"
 ```
 
-Review dormant work and either finish it or archive the file. Keeping the queue
-short makes it easier to spot docs that are ready to publish.
+Review dormant work and either finish it or archive the file. Keeping the queue short makes it easy to spot notes ready to publish.
+

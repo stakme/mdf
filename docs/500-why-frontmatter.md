@@ -1,5 +1,5 @@
 ---
-title: Why front matter
+title: Why Front Matter
 vpath: /notes
 tags:
   - blog
@@ -8,27 +8,25 @@ draft: false
 chapter: 500
 ---
 
-In a fast‑moving AI era, tools come and go; plain text endures. Markdown files
-with simple front matter remain readable, portable, and diff‑friendly. So it is
-reasonable to invest in a durable language that agents and humans can both work
-with.
+Tools come and go, plain text endures.
 
-Then, why front matter?
+In a fast‑moving AI era, Markdown with a small, predictable front matter block
+stays readable, portable, and easy to diff. It’s worth investing in a format
+that both humans and agents can edit confidently.
 
-A simple but important issue I found with markdown files is that these files
-tend to have meaningful file names and directory structure. Though "meaningful"
-is a nice nature, it is not easy to maintain meaningful and living files
-avoiding breaks and refactoring. It will break any links to the file if the file
-name changes, and it will be unaccessible if we refactor the structure and move
-the file to a different location.
+But we have directories and files with meaningful names. Why front matter?
 
-So, I tried to locate all my notes in a flat structure, and use front matter to
-store the file name and directory structure. This way, I can maintain meaningful
-and living files avoiding breaks and refactoring. This approach is more suitable
-for version control by git.
+Filenames and folder structures often carry meaning. That’s useful until you
+need to rename or reorganize: links break, paths go stale, and refactors become
+risky. Keeping files “meaningful and living” is hard when their meaning is baked
+into the path.
 
-In this situation, I cannot get any information about the file name and
-directory structure from the file name.
+A practical alternative is to store notes in a flat directory and put the
+logical path (and other metadata) in front matter. This decouples the physical
+location from the logical address, so you can refactor freely without breaking
+references. It also plays nicely with Git.
+
+In this setup, on‑disk filenames don’t need to be human‑readable:
 
 ```bash
 % ls ./TODO | head -n 5
@@ -39,8 +37,8 @@ directory structure from the file name.
 01998e6e-5926-7843-a8d8-a4c76d2d8600.md
 ```
 
-It is because `mdf` provides `list` command to list files with specified front
-matter.
+Instead, `mdf` reads front matter and lists files using the fields you care
+about:
 
 ```
 $ npx @stakme/mdf list --format "[{{status}}] {{title}}" ./TODO | head -n5
@@ -51,3 +49,7 @@ $ npx @stakme/mdf list --format "[{{status}}] {{title}}" ./TODO | head -n5
 [done] List output should be accessible paths if `--quiet` is passed
 [todo] Link for Markdown files is not readable
 ```
+
+Front matter lets you preserve meaning without coupling it to the filesystem.
+You keep stable, refactor‑friendly files and gain reliable automation that can
+understand and present your content.

@@ -16,6 +16,5 @@ Execute a named command defined in `.config/mdf.mts`.
 npx @stakme/mdf run todo
 ```
 
-Aliases reduce long command invocations into memorable shortcuts. They also keep
-CI workflows consistent with what developers run locally. See the Configuration
-Guide’s Aliases section for setup and advanced behavior.
+Aliases compress long invocations into memorable shortcuts and keep CI consistent with local usage. See the Configuration Guide for setup details.
+

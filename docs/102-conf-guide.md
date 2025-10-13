@@ -10,14 +10,11 @@ chapter: 102
 
 # Configuration Guide
 
-`.config/mdf.mts` is the source of truth for schema validation, template
-defaults, aliases, and virtual-path behavior. Tuning it correctly keeps your
-Markdown consistent while giving the CLI enough context to automate exports.
+`.config/mdf.mts` defines your schema, template defaults, aliases, and virtual‑path behavior. A good config keeps Markdown consistent and gives the CLI the context it needs to automate exports.
 
 ## Schema basics
 
-Define a Zod object that describes every front matter field you care about. Use
-`.default()` to backfill values when a field is missing.
+Declare a Zod object for every front‑matter field you care about. Use `.default()` to backfill missing values.
 
 ```ts
 import { defineConfig, z } from "@stakme/mdf/config";
@@ -34,56 +31,41 @@ export default defineConfig({
 });
 ```
 
-Multiple schemas can coexist—use `defineSchema` with a `glob` to target
-alternate directories (see the docs schema in this repository).
+You can define multiple schemas with `defineSchema({ glob, schema })` to target different folders.
 
 ## Templates
 
-Templates seed new notes with curated front matter and Markdown content. Each
-template references one of your schemas.
+Templates seed new notes with curated front matter and Markdown. Each template references a schema.
 
 ```ts
 templates: {
   bug_report: {
     schema: "default",
-    frontmatter: {
-      title: "[Bug] Summary",
-      tags: ["bug"],
-    },
+    frontmatter: { title: "[Bug] Summary", tags: ["bug"] },
     body: () => `# [Bug] Summary\n\n## Summary\n`,
   },
 },
 ```
 
-Set `defaultTemplate` to map schema names to the template they should use when
-`mdf new` runs without `--template`.
+Use `defaultTemplate` to tell `mdf new` which template to use when `--template` is omitted.
 
 ```ts
-defaultTemplate: {
-  default: "default",
-  docs: "doc_page",
-},
+defaultTemplate: { default: "default", docs: "doc_page" },
 ```
 
 ## Virtual paths
 
-Configure `virtualPath` with the front matter key that stores navigation routes.
+Map the front‑matter key that stores navigation:
 
 ```ts
-virtualPath: {
-  param: "vpath",
-  separator: "/",
-},
+virtualPath: { param: "vpath", separator: "/" },
 ```
 
-All commands that support virtual-path scoping (viewer, list, export, docs) rely
-on this parameter. Choose URL-safe segments because they become part of the
-exported paths.
+Commands that support virtual‑path scoping (`viewer`, `list`, `export`, `docs`) use this parameter. Choose URL‑safe segments; they become part of exported paths.
 
 ## Aliases
 
-Map friendly names to frequently used commands under the `aliases` key. Aliases
-reduce repetition and are great for CI pipelines.
+Aliases turn long commands into memorable shortcuts and keep CI consistent with local usage.
 
 ```ts
 aliases: {
@@ -92,25 +74,19 @@ aliases: {
 },
 ```
 
-Run them with `mdf run close`.
+Run them with `mdf run <alias>`.
 
 ## Sorting
 
-Each schema can define a `sort` callback that determines document order when
-building the viewer index. A simple ascending sort might use
-`created_at.localeCompare` as in this repository. Customize it to bring the most
-relevant docs to the top.
+Schemas can define a `sort` callback to control ordering in the viewer index. For example, sort by `created_at` or a custom priority.
 
 ## Strictness and parsing
 
-The CLI exposes `--strict` and `--ignore-invalid` flags when loading documents.
-Use them sparingly—keeping the schema accurate and the defaults up to date is
-usually the better long-term fix.
+The CLI exposes `--strict` and `--ignore-invalid`. Prefer accurate schemas and defaults; reserve flags for exceptional cases.
 
-## Evolving the schema
+## Evolving the schema safely
 
-- Bump the config version in README or docs when you add required fields so
-  contributors know to rerun `mdf new`.
-- Add Vitest coverage for new validation logic to keep behavior regression-free.
-- When removing a field, update `templates`, `aliases`, and existing Markdown to
-  avoid validation failures.
+- Document required‑field changes so contributors rerun `mdf new` as needed.
+- Add tests for new validation behavior.
+- When removing a field, update templates, aliases, and existing notes to avoid breakage.
+

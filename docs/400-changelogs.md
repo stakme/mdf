@@ -8,23 +8,15 @@ chapter: 400
 
 # Change logs
 
-An intentional changelog is the heartbeat of every release. Use it to explain
-_why_ a version matters, not just _what_ files changed. The `CHANGELOG.md`
-shipped with the `mdf 0.x` releases follows the
-[Keep a Changelog](https://keepachangelog.com) format so readers can scan for
-features, fixes, and breaking changes in seconds.
+An intentional changelog is the heartbeat of every release. Use it to explain why a version matters—not just what files changed. The `CHANGELOG.md` for `mdf 0.x` follows the [Keep a Changelog](https://keepachangelog.com) format so readers can scan features, fixes, and breaking changes quickly.
 
-> ✍️ **Narrate the impact.** Focus each bullet on the outcome a user gains, then
-> link to docs or guides that help them try the feature immediately.
+Tip: Narrate the impact. Focus each bullet on the outcome a user gets, then link to docs or guides that help them try it immediately.
 
-## Why maintain a living log
+## Why keep a living log
 
-- **Build trust.** Contributors and customers can see momentum and plan their
-  upgrades confidently.
-- **Simplify support.** When someone reports an issue, you can quickly pinpoint
-  the version that introduced (or fixed) it.
-- **Celebrate progress.** Releases become a chance to highlight wins across the
-  team.
+- Build trust: contributors and customers can see momentum and plan upgrades.
+- Simplify support: quickly pinpoint when an issue was introduced—or fixed.
+- Celebrate progress: releases become a chance to highlight wins.
 
 ## Structure to follow
 
@@ -32,41 +24,31 @@ features, fixes, and breaking changes in seconds.
 ## [VERSION] - YYYY-MM-DD
 
 ### Added
-
-- Highlight new capabilities and how to access them.
+- New capabilities and how to access them.
 
 ### Changed
-
-- Capture UX tweaks, renamed flags, or notable behavior adjustments.
+- UX tweaks, renamed flags, or notable behavior adjustments.
 
 ### Deprecated
-
-- Warn about features that will disappear soon and point to replacements.
+- Features that will disappear soon and their replacements.
 
 ### Removed
-
-- Call out anything that is no longer available.
+- Anything eliminated this release.
 
 ### Fixed
-
-- Summarize bugs you resolved and the symptoms they addressed.
+- Bugs and regressions addressed.
 
 ### Security
-
-- Note vulnerabilities, CVE links, or hardening work.
+- Vulnerabilities, CVE links, or hardening work.
 ```
 
-Keep an `[Unreleased]` section at the top so you can jot notes throughout the
-sprint, then move entries under the version header when you cut a release.
+Keep an `[Unreleased]` section at the top so you can jot notes during the sprint. Move entries under the version header when you cut a release.
 
 ## 0.10.0 spotlight
 
-- **Stable CLI toolkit.** Initialization, scaffolding, validation, updating, and
-  automation flow together for production knowledge bases.
-- **Viewer everywhere.** Ship polished docs via the live viewer or a static
-  export without sacrificing navigation or filters.
-- **Release guardrails.** SemVer rules, quality gates, and publishing checklists
-  now live in `AGENTS.md` for every maintainer.
+- Stable CLI toolkit: initialization, scaffolding, validation, updating, and automation now flow together for production knowledge bases.
+- Viewer everywhere: ship polished docs via the live viewer or static export without sacrificing navigation or filters.
+- Release guardrails: SemVer rules, quality gates, and publishing checklists live in `AGENTS.md` for every maintainer.
 
-For future versions, mirror this storytelling style so the changelog reads like
-a product narrative—not just a diff.
+For future versions, mirror this storytelling style so the changelog reads like a product narrative—not a diff.
+
