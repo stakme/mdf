@@ -6,7 +6,15 @@ import {
 	readMarkdownDocument,
 } from "../front-matter.mts";
 import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
-import { sortSchemaDocuments } from "../utils/document-sort.mts";
+import {
+	buildDocumentRoutePath,
+	computeDirectoryRelativePath,
+	resolveDocumentSlug,
+} from "../utils/document-paths.mts";
+import {
+	compareByTitleAndRoutePath,
+	sortSchemaDocuments,
+} from "../utils/document-sort.mts";
 import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
@@ -18,6 +26,7 @@ import {
 	formatDisplayPath,
 	formatRelativePath,
 } from "../utils/path-format.mts";
+import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
 
 export interface ListCommandOptions {
 	cwd: string;
@@ -50,6 +59,8 @@ interface ListDocument {
 	schema: LoadedSchema;
 	segments: string[];
 	label: string;
+	sortTitle: string;
+	routePath: string;
 	headings: DocumentHeading[];
 }
 
@@ -170,9 +181,26 @@ export async function runListCommand(
 		const displayPath = formatDisplayPath(filePath, options.cwd);
 		const relativeDisplayPath = formatRelativePath(filePath, options.cwd);
 		const fileName = path.basename(filePath);
-		const titleValue = frontMatter.title;
-		const title = typeof titleValue === "string" ? titleValue.trim() : "";
-		const labelBase = title.length > 0 ? title : fileName;
+		const directoryRelativePath = computeDirectoryRelativePath(
+			filePath,
+			resolvedDirectory,
+		);
+		const slug = resolveDocumentSlug({
+			frontMatter,
+			relativePath: directoryRelativePath,
+			filePath,
+			cwd: options.cwd,
+			slugField: config.virtualSlug?.param,
+		});
+		const viewerMeta = buildViewerEntryFromRecord(slug, frontMatter, {
+			virtualPathField: virtualPathConfig?.param,
+			virtualPathSeparator: virtualPathConfig?.separator ?? "/",
+		});
+		const routePath = config.virtualSlug
+			? slug
+			: buildDocumentRoutePath(filePath, resolvedDirectory);
+		const sortTitle = viewerMeta.title || fileName;
+		const labelBase = sortTitle.length > 0 ? sortTitle : fileName;
 		const label = `${labelBase} (${displayPath})`;
 
 		documents.push({
@@ -185,14 +213,17 @@ export async function runListCommand(
 			schema: schemaEntry,
 			segments,
 			label,
+			sortTitle,
+			routePath,
 			headings,
 		});
 	}
 
 	const sortedDocuments = sortSchemaDocuments(documents, (a, b) =>
-		a.relativePath.localeCompare(b.relativePath, undefined, {
-			sensitivity: "base",
-		}),
+		compareByTitleAndRoutePath(
+			{ title: a.sortTitle, routePath: a.routePath },
+			{ title: b.sortTitle, routePath: b.routePath },
+		),
 	);
 
 	if (options.quiet) {
@@ -279,9 +310,8 @@ function buildTree(entries: VirtualPathEntry[]): string[] {
 
 function formatTree(root: DirectoryNode): string[] {
 	const lines: string[] = [];
-	const children = sortNodes(root.children);
-	children.forEach((child, index) => {
-		appendNode(child, "", index === children.length - 1, lines);
+	root.children.forEach((child, index) => {
+		appendNode(child, "", index === root.children.length - 1, lines);
 	});
 	return lines;
 }
@@ -297,37 +327,10 @@ function appendNode(
 
 	if (node.type === "dir") {
 		const nextPrefix = prefix + (isLast ? "    " : "│   ");
-		const children = sortNodes(node.children);
-		children.forEach((child, index) => {
-			appendNode(child, nextPrefix, index === children.length - 1, lines);
+		node.children.forEach((child, index) => {
+			appendNode(child, nextPrefix, index === node.children.length - 1, lines);
 		});
 	}
-}
-
-function sortNodes(nodes: TreeNode[]): TreeNode[] {
-	return [...nodes].sort((a, b) => {
-		if (a.type !== b.type) {
-			return a.type === "dir" ? -1 : 1;
-		}
-
-		if (a.type === "file" && b.type === "file") {
-			const orderA = a.order;
-			const orderB = b.order;
-			if (orderA !== undefined || orderB !== undefined) {
-				if (orderA === undefined) {
-					return 1;
-				}
-				if (orderB === undefined) {
-					return -1;
-				}
-				if (orderA !== orderB) {
-					return orderA - orderB;
-				}
-			}
-		}
-
-		return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-	});
 }
 
 function segmentsStartsWith(

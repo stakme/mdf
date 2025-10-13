@@ -188,9 +188,9 @@ export default defineConfig({
 
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
+				"./TODO/todo-a.md",
 				"./TODO/bug.md",
 				"./TODO/nested/note.md",
-				"./TODO/todo-a.md",
 				"./TODO/todo-b.md",
 			]);
 		} finally {

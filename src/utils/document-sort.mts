@@ -52,3 +52,26 @@ export function sortSchemaDocuments<T extends SchemaSortableItem>(
 
 	return withIndex.map((entry) => entry.item);
 }
+
+export interface DocumentTitleRoute {
+	title: string;
+	routePath: string;
+}
+
+export function compareByTitleAndRoutePath(
+	a: DocumentTitleRoute,
+	b: DocumentTitleRoute,
+): number {
+	const titleA = a.title || "";
+	const titleB = b.title || "";
+	const titleResult = titleA.localeCompare(titleB, undefined, {
+		sensitivity: "base",
+	});
+	if (titleResult !== 0) {
+		return titleResult;
+	}
+
+	const routeA = a.routePath || "";
+	const routeB = b.routePath || "";
+	return routeA.localeCompare(routeB, undefined, { sensitivity: "base" });
+}

@@ -13,14 +13,21 @@ import {
 	readMarkdownDocument,
 } from "../front-matter.mts";
 import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
-import { sortSchemaDocuments } from "../utils/document-sort.mts";
+import {
+	buildDocumentRoutePath,
+	computeDirectoryRelativePath,
+	resolveDocumentSlug,
+} from "../utils/document-paths.mts";
+import {
+	compareByTitleAndRoutePath,
+	sortSchemaDocuments,
+} from "../utils/document-sort.mts";
 import { formatErrorMessage } from "../utils/error-message.mts";
 import { collectMarkdownFiles, normalizeExtension } from "../utils/files.mts";
 import {
 	matchesParsedFilter,
 	type ParsedFilter,
 	parseFilterExpression,
-	resolveFilterPath,
 } from "../utils/filters.mts";
 import { logInvalidFileWarnings } from "../utils/invalid-file-warning.mts";
 import { renderDocumentMarkdown } from "../utils/markdown-renderer.mts";
@@ -1201,105 +1208,6 @@ function segmentsStartsWith(
 	return prefix.every((segment, index) => segments[index] === segment);
 }
 
-function createSlug(relativePath: string): string {
-	const normalized = relativePath.replaceAll("\\", "/");
-	return normalized.replace(/\.[^.]+$/u, "");
-}
-
-interface ResolveDocumentSlugOptions {
-	frontMatter: Record<string, unknown>;
-	relativePath: string;
-	filePath: string;
-	cwd: string;
-	slugField?: string;
-}
-
-function resolveDocumentSlug(options: ResolveDocumentSlugOptions): string {
-	const fallback = createSlug(options.relativePath);
-	const slugField = options.slugField?.trim();
-	if (!slugField) {
-		return fallback;
-	}
-
-	const slugSegments = slugField
-		.split(".")
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
-
-	if (slugSegments.length === 0) {
-		return fallback;
-	}
-
-	const raw = resolveFilterPath(options.frontMatter, slugSegments);
-	if (raw === undefined || raw === null) {
-		return fallback;
-	}
-
-	if (typeof raw !== "string") {
-		throw new MdfError(
-			"INVALID_VIRTUAL_SLUG_VALUE",
-			`Front matter field "${slugField}" must be a string in ${formatDisplayPath(options.filePath, options.cwd)}`,
-		);
-	}
-
-	return normalizeSlugFieldValue(raw, slugField, options.filePath, options.cwd);
-}
-
-function normalizeSlugFieldValue(
-	raw: string,
-	fieldName: string,
-	filePath: string,
-	cwd: string,
-): string {
-	const normalized = raw.replace(/\\/gu, "/").trim();
-	if (!normalized) {
-		throw new MdfError(
-			"INVALID_VIRTUAL_SLUG_VALUE",
-			`Front matter field "${fieldName}" must be a non-empty string in ${formatDisplayPath(filePath, cwd)}`,
-		);
-	}
-
-	const segments = normalized
-		.split("/")
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
-
-	if (segments.length === 0) {
-		if (normalized === "/") {
-			return "/";
-		}
-
-		throw new MdfError(
-			"INVALID_VIRTUAL_SLUG_VALUE",
-			`Front matter field "${fieldName}" must be a non-empty string in ${formatDisplayPath(filePath, cwd)}`,
-		);
-	}
-
-	for (const segment of segments) {
-		if (segment === "." || segment === "..") {
-			throw new MdfError(
-				"INVALID_VIRTUAL_SLUG_VALUE",
-				`Front matter field "${fieldName}" cannot contain "." or ".." segments in ${formatDisplayPath(filePath, cwd)}`,
-			);
-		}
-	}
-
-	return segments.join("/");
-}
-
-function computeDirectoryRelativePath(
-	filePath: string,
-	rootDirectory: string,
-): string {
-	const relative =
-		path.relative(rootDirectory, filePath) || path.basename(filePath);
-	let normalized = relative.replaceAll("\\", "/");
-	while (normalized.startsWith("./")) {
-		normalized = normalized.slice(2);
-	}
-	return normalized;
-}
-
 function computeWorkspaceRelativePath(
 	filePath: string,
 	workspaceRoot: string,
@@ -1324,21 +1232,6 @@ function computeWorkspaceRelativePath(
 	}
 
 	return normalized || null;
-}
-
-function buildDocumentRoutePath(
-	filePath: string,
-	rootDirectory: string,
-): string {
-	const relativeToRoot = path.relative(rootDirectory, filePath);
-	const normalized = relativeToRoot.replaceAll("\\", "/");
-	const withoutExtension = normalized.replace(/\.[^.]+$/u, "");
-	const trimmed = withoutExtension.trim();
-	if (!trimmed) {
-		const fallback = path.basename(filePath, path.extname(filePath));
-		return fallback.trim() || "/";
-	}
-	return trimmed;
 }
 
 function encodeDocumentId(relativePath: string): string {
@@ -1399,18 +1292,10 @@ function determineContentType(filePath: string): string {
 }
 
 function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
-	const titleA = a.meta.title || "";
-	const titleB = b.meta.title || "";
-	const titleResult = titleA.localeCompare(titleB, undefined, {
-		sensitivity: "base",
-	});
-	if (titleResult !== 0) {
-		return titleResult;
-	}
-
-	return a.meta.routePath.localeCompare(b.meta.routePath, undefined, {
-		sensitivity: "base",
-	});
+	return compareByTitleAndRoutePath(
+		{ title: a.meta.title, routePath: a.meta.routePath },
+		{ title: b.meta.title, routePath: b.meta.routePath },
+	);
 }
 
 function sanitizeViewerFrontMatter(
