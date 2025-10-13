@@ -30,6 +30,7 @@ import {
 } from "../utils/path-format.mts";
 import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
 import { buildNavigationTree } from "../viewer/navigation.mts";
+import { normalizeViewerRoutePathKey } from "../viewer/route-path.mts";
 import type {
 	ViewerCommandOptions,
 	ViewerContext,
@@ -300,6 +301,13 @@ export async function prepareViewerContext(
 		compareViewerDocuments(a.document, b.document),
 	);
 	const documents = sortedEntries.map((entry) => entry.document);
+	const routePathMap = new Map<string, ViewerDocument>();
+	for (const document of documents) {
+		const routeKey = normalizeViewerRoutePathKey(document.meta.routePath);
+		if (routeKey) {
+			routePathMap.set(routeKey, document);
+		}
+	}
 	const documentOrder = new Map(
 		documents.map((doc, index) => [doc.id, index] as const),
 	);
@@ -322,6 +330,7 @@ export async function prepareViewerContext(
 		headerOptions,
 		documents,
 		documentMap,
+		routePathMap,
 		navigation,
 		defaultDocument,
 		frontMatterIndex,
@@ -386,6 +395,53 @@ export async function createViewerApp(
 	const reloadListeners = new Set<() => boolean>();
 	const enableHotReload = options?.enableHotReload !== false;
 
+	const resolveDocumentByIdentifier = (
+		context: ViewerContext,
+		rawIdentifier: string | null,
+	): ViewerDocument | null => {
+		if (!rawIdentifier) {
+			return null;
+		}
+
+		const attempt = (value: string): ViewerDocument | null => {
+			const trimmed = value.trim();
+			if (trimmed.length === 0) {
+				return null;
+			}
+
+			const byId = context.documentMap.get(trimmed);
+			if (byId) {
+				return byId;
+			}
+
+			const routeKey = normalizeViewerRoutePathKey(trimmed);
+			if (!routeKey) {
+				return null;
+			}
+
+			return context.routePathMap.get(routeKey) ?? null;
+		};
+
+		const directMatch = attempt(rawIdentifier);
+		if (directMatch) {
+			return directMatch;
+		}
+
+		try {
+			const decoded = decodeURIComponent(rawIdentifier);
+			if (decoded !== rawIdentifier) {
+				const decodedMatch = attempt(decoded);
+				if (decodedMatch) {
+					return decodedMatch;
+				}
+			}
+		} catch {
+			// Ignore malformed URI sequences and fall back to the original identifier.
+		}
+
+		return null;
+	};
+
 	if (options?.accessLog) {
 		app.use("*", async (c, next) => {
 			const start = Date.now();
@@ -432,7 +488,10 @@ export async function createViewerApp(
 
 	const handleRawDocumentRequest = (c: Context) => {
 		const context = getContext();
-		const document = context.documentMap.get(c.req.param("id"));
+		const document = resolveDocumentByIdentifier(
+			context,
+			c.req.param("identifier"),
+		);
 		if (!document) {
 			return c.json({ error: "Not Found" }, 404);
 		}
@@ -442,9 +501,9 @@ export async function createViewerApp(
 		});
 	};
 
-	app.get("/documents/:id/index.md", handleRawDocumentRequest);
-	app.get("/documents/:id/raw", handleRawDocumentRequest);
-	app.get("/documents/:id/raw.md", handleRawDocumentRequest);
+	app.get("/documents/:identifier{.+}/index.md", handleRawDocumentRequest);
+	app.get("/documents/:identifier{.+}/raw", handleRawDocumentRequest);
+	app.get("/documents/:identifier{.+}/raw.md", handleRawDocumentRequest);
 
 	const handleFrontMatterIndexRequest = (c: Context) => {
 		const context = getContext();
@@ -494,9 +553,12 @@ export async function createViewerApp(
 		handleFrontMatterValueRequest,
 	);
 
-	app.get("/documents/:id/assets/:assetPath{.+}", async (c) => {
+	app.get("/documents/:identifier{.+}/assets/:assetPath{.+}", async (c) => {
 		const context = getContext();
-		const document = context.documentMap.get(c.req.param("id"));
+		const document = resolveDocumentByIdentifier(
+			context,
+			c.req.param("identifier"),
+		);
 		if (!document) {
 			return c.json({ error: "Not Found" }, 404);
 		}

@@ -13,6 +13,42 @@ import { NavigationSelect, NavigationTree } from "./components/Navigation";
 import { fetchJson } from "./utils/fetchJson";
 import { buildDocumentHash, parseRoute, type Route } from "./utils/routes";
 
+function normalizeRoutePath(routePath: string | undefined): string | null {
+	if (!routePath) {
+		return null;
+	}
+
+	const trimmed = routePath.trim();
+	if (trimmed.length === 0) {
+		return null;
+	}
+
+	const withoutSlashes = trimmed.replace(/^\/+|\/+$/gu, "");
+	if (withoutSlashes.length === 0) {
+		return null;
+	}
+
+	return withoutSlashes;
+}
+
+function buildMarkdownHref(
+	routePath: string | undefined,
+	fallbackId: string,
+): string {
+	const normalized = normalizeRoutePath(routePath);
+	if (normalized) {
+		const encoded = normalized
+			.split("/")
+			.map((segment) => encodeURIComponent(segment))
+			.join("/");
+		if (encoded.length > 0) {
+			return `/documents/${encoded}/index.md`;
+		}
+	}
+
+	return `/documents/${encodeURIComponent(fallbackId)}/index.md`;
+}
+
 export default function App(): JSX.Element {
 	const [context, setContext] = useState<ViewerContextPayload | null>(null);
 	const [route, setRoute] = useState<Route>(parseRoute());
@@ -273,7 +309,10 @@ export default function App(): JSX.Element {
 	const toolbarButtonDefaultState =
 		"border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:text-white";
 	const rawDocumentHref = activeDocument
-		? `/documents/${encodeURIComponent(activeDocument.id)}/index.md`
+		? buildMarkdownHref(
+				documentIdToRoutePath.get(activeDocument.id),
+				activeDocument.id,
+			)
 		: null;
 
 	const copyButtonLabel =

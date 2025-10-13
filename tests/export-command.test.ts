@@ -55,12 +55,20 @@ export default defineConfig({
 			const contextPayload = JSON.parse(
 				await fs.readFile(contextPath, "utf8"),
 			) as {
-				documents: Array<{ id: string; meta: { title?: string } }>;
+				documents: Array<{
+					id: string;
+					meta: { title?: string; routePath?: string };
+				}>;
 				defaultDocumentId: string | null;
 			};
 			expect(contextPayload.documents).toHaveLength(1);
 			expect(contextPayload.documents[0]?.id).toBe(documentId);
 			expect(contextPayload.documents[0]?.meta.title).toBe("Second");
+			const routePath = contextPayload.documents[0]?.meta.routePath;
+			expect(routePath).toBeDefined();
+			if (!routePath) {
+				throw new Error("Expected exported document to include a route path");
+			}
 			expect(contextPayload.defaultDocumentId).toBe(documentId);
 
 			const documentPayload = JSON.parse(
@@ -106,14 +114,35 @@ export default defineConfig({
 				documentId,
 				"raw.md",
 			);
+			const readableSegments = routePath.split("/");
+			const expectedReadableIndexPath = path.join(
+				outputDir,
+				"documents",
+				...readableSegments,
+				"index.md",
+			);
+			const expectedReadableRawPath = path.join(
+				outputDir,
+				"documents",
+				...readableSegments,
+				"raw.md",
+			);
 			expect(exportedDocument.rawPaths).toEqual([
 				expectedRawIndexPath,
 				expectedRawFilePath,
+				expectedReadableIndexPath,
+				expectedReadableRawPath,
 			]);
 			await expect(fs.readFile(expectedRawIndexPath, "utf8")).resolves.toBe(
 				secondSource,
 			);
 			await expect(fs.readFile(expectedRawFilePath, "utf8")).resolves.toBe(
+				secondSource,
+			);
+			await expect(
+				fs.readFile(expectedReadableIndexPath, "utf8"),
+			).resolves.toBe(secondSource);
+			await expect(fs.readFile(expectedReadableRawPath, "utf8")).resolves.toBe(
 				secondSource,
 			);
 			await expect(

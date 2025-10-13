@@ -130,15 +130,29 @@ export default defineConfig({
 			expect(rootHtml).toContain('<div id="root"></div>');
 			expect(rootHtml).not.toContain("cdn.tailwindcss.com");
 
-			const rawResponse = await app.request(
-				`http://localhost/documents/${encodeURIComponent(doc.id)}/index.md`,
+			const readableRoute = doc.meta.routePath
+				.split("/")
+				.map((segment) => encodeURIComponent(segment))
+				.join("/");
+			const readableResponse = await app.request(
+				`http://localhost/documents/${readableRoute}/index.md`,
 			);
-			expect(rawResponse.status).toBe(200);
-			expect(rawResponse.headers.get("content-type")).toContain(
+			expect(readableResponse.status).toBe(200);
+			expect(readableResponse.headers.get("content-type")).toContain(
 				"text/markdown",
 			);
-			const rawMarkdown = await rawResponse.text();
-			expect(rawMarkdown).toBe(alphaSource);
+			const readableMarkdown = await readableResponse.text();
+			expect(readableMarkdown).toBe(alphaSource);
+
+			const legacyResponse = await app.request(
+				`http://localhost/documents/${encodeURIComponent(doc.id)}/index.md`,
+			);
+			expect(legacyResponse.status).toBe(200);
+			expect(legacyResponse.headers.get("content-type")).toContain(
+				"text/markdown",
+			);
+			const legacyMarkdown = await legacyResponse.text();
+			expect(legacyMarkdown).toBe(alphaSource);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

@@ -1,6 +1,6 @@
 ---
 title: Link for Markdown files is not readable
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-12T02:32:31.188Z

@@ -5,6 +5,7 @@ import {
 	type MarkdownDocumentAssetReference,
 	renderDocumentMarkdownWithAssets,
 } from "../utils/markdown-renderer.mts";
+import { normalizeViewerRoutePathKey } from "../viewer/route-path.mts";
 import {
 	buildViewerContextPayload,
 	buildViewerDocumentPayload,
@@ -146,11 +147,39 @@ export async function runExportCommand(
 		await fs.writeFile(rawIndexPath, document.raw, "utf8");
 		await fs.writeFile(rawFilePath, document.raw, "utf8");
 
+		const rawPaths = [rawIndexPath, rawFilePath];
+
+		const readableRouteKey = normalizeViewerRoutePathKey(
+			document.meta.routePath,
+		);
+		if (readableRouteKey) {
+			const readableSegments = toSafePathSegments(readableRouteKey);
+			if (readableSegments) {
+				const readableDirectory = path.join(
+					resolvedOutputDirectory,
+					"documents",
+					...readableSegments,
+				);
+				await fs.mkdir(readableDirectory, { recursive: true });
+				const readableIndexPath = path.join(readableDirectory, "index.md");
+				const readableRawPath = path.join(readableDirectory, "raw.md");
+				await fs.writeFile(readableIndexPath, document.raw, "utf8");
+				await fs.writeFile(readableRawPath, document.raw, "utf8");
+				rawPaths.push(readableIndexPath, readableRawPath);
+			} else {
+				appendWarning(
+					warnings,
+					document.filePath,
+					`Could not export readable markdown path for "${document.meta.routePath}" because it contains unsupported path segments.`,
+				);
+			}
+		}
+
 		exportedDocuments.push({
 			id: document.id,
 			sourcePath: document.filePath,
 			dataPath: documentDataPath,
-			rawPaths: [rawIndexPath, rawFilePath],
+			rawPaths,
 			assetPaths: copiedAssets,
 		});
 	}
@@ -245,7 +274,7 @@ async function exportDocumentAssets(
 			collectionRoot,
 		);
 		if (!resolvedSource) {
-			addAssetWarning(
+			appendWarning(
 				warnings,
 				documentPath,
 				`Skipped asset "${asset.originalPath}" because it resolves outside of the collection directory.`,
@@ -257,7 +286,7 @@ async function exportDocumentAssets(
 		try {
 			stats = await fs.stat(resolvedSource);
 		} catch (error) {
-			addAssetWarning(
+			appendWarning(
 				warnings,
 				documentPath,
 				`Failed to access asset "${asset.originalPath}": ${formatAccessError(error)}`,
@@ -266,7 +295,7 @@ async function exportDocumentAssets(
 		}
 
 		if (!stats.isFile()) {
-			addAssetWarning(
+			appendWarning(
 				warnings,
 				documentPath,
 				`Asset "${asset.originalPath}" is not a file.`,
@@ -276,7 +305,7 @@ async function exportDocumentAssets(
 
 		const targetPath = path.resolve(documentAssetsRoot, asset.encodedPath);
 		if (!isPathWithinRoot(targetPath, documentOutputRoot)) {
-			addAssetWarning(
+			appendWarning(
 				warnings,
 				documentPath,
 				`Skipping asset "${asset.originalPath}" because the rewritten path escapes the export directory.`,
@@ -340,7 +369,7 @@ function isPathWithinRoot(targetPath: string, rootDirectory: string): boolean {
 	);
 }
 
-function addAssetWarning(
+function appendWarning(
 	warnings: InvalidFileWarning[],
 	documentPath: string,
 	message: string,

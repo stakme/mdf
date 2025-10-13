@@ -75,6 +75,7 @@ export interface ViewerContext {
 	headerOptions: ViewerHeaderOption[];
 	documents: ViewerDocument[];
 	documentMap: Map<string, ViewerDocument>;
+	routePathMap: Map<string, ViewerDocument>;
 	navigation: ViewerNavigationDirectory;
 	defaultDocument: ViewerDocument | null;
 	frontMatterIndex: ViewerFrontMatterIndex;
