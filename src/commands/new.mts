@@ -21,6 +21,7 @@ export interface NewCommandOptions {
 	frontMatterInputs: string[];
 	now?: Date;
 	template?: string;
+	fileName?: string;
 }
 
 export interface NewCommandResult {
@@ -80,6 +81,8 @@ export async function runNewCommand(
 		directory: resolvedDirectory,
 		now,
 		template,
+		schema: schemaEntry,
+		providedFileName: options.fileName,
 	});
 	return { filePath, frontMatter: parsed };
 }
@@ -89,9 +92,12 @@ async function writeMarkdownFile(params: {
 	data: Record<string, unknown>;
 	directory: string;
 	now: Date;
+	schema: LoadedSchema;
 	template?: TemplateDefinition<Record<string, unknown>>;
+	providedFileName?: string;
 }): Promise<string> {
-	const { config, data, directory, now, template } = params;
+	const { config, data, directory, now, schema, template, providedFileName } =
+		params;
 
 	await fs.mkdir(directory, { recursive: true });
 
@@ -102,6 +108,8 @@ async function writeMarkdownFile(params: {
 		directory,
 		extension,
 		now,
+		schema,
+		providedFileName,
 	});
 	const fullPath = path.join(directory, fileName);
 
@@ -129,8 +137,46 @@ async function determineFileName(params: {
 	directory: string;
 	extension: string;
 	now: Date;
+	schema: LoadedSchema;
+	providedFileName?: string;
 }): Promise<string> {
-	const { config, data, directory, extension, now } = params;
+	const { config, data, directory, extension, now, schema, providedFileName } =
+		params;
+
+	if (providedFileName !== undefined) {
+		if (typeof providedFileName !== "string") {
+			throw new MdfError(
+				"INVALID_FILE_NAME",
+				"Provided file name must be a string",
+			);
+		}
+		const trimmed = providedFileName.trim();
+		if (!trimmed) {
+			throw new MdfError(
+				"INVALID_FILE_NAME",
+				"Provided file name must be a non-empty string",
+			);
+		}
+		return appendExtensionIfMissing(trimmed, extension);
+	}
+
+	if (schema.filenameGenerator) {
+		const generated = await schema.filenameGenerator(data);
+		if (typeof generated !== "string") {
+			throw new MdfError(
+				"INVALID_FILE_NAME",
+				`Schema filenameGenerator for "${schema.name}" must return a string`,
+			);
+		}
+		const trimmed = generated.trim();
+		if (!trimmed) {
+			throw new MdfError(
+				"INVALID_FILE_NAME",
+				`Schema filenameGenerator for "${schema.name}" must return a non-empty string`,
+			);
+		}
+		return appendExtensionIfMissing(trimmed, extension);
+	}
 
 	if (config.fileName) {
 		const provided = await config.fileName({ data, directory, now });

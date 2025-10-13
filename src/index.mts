@@ -19,6 +19,7 @@ export type {
 	SchemaDefinition,
 	SchemaDefinitionInput,
 	SchemaEntryInput,
+	SchemaFilenameGenerator,
 	SchemaRecordInput,
 	TemplateBodyResolver,
 	TemplateConfigEntry,

@@ -1,6 +1,6 @@
 ---
 title: Customizing filename in `new` command
-status: todo
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-12T08:17:30.185Z

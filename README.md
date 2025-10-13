@@ -7,7 +7,8 @@ Define the front matter schema you expect, scaffold new notes from templates,
 audit and repair existing files, and even browse them with an interactive viewer
 — all from one CLI.
 
-> **Version status:** We're continuing in the `0.x` series (latest: `0.10.0`) while we collect more feedback before committing to a 1.0 release.
+> **Version status:** We're continuing in the `0.x` series (latest: `0.10.0`)
+> while we collect more feedback before committing to a 1.0 release.
 
 This tool does not enforce any rules on the content of your Markdown files. You
 can define any schema, organize your files in any way, and use any template to
@@ -110,12 +111,12 @@ export default defineConfig({
   new notes.
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
+- Define schemas with `defineSchema({ filenameGenerator })` when you want each
+  entry's parsed front matter to determine the file name automatically.
 - `aliases` (optional) map friendly names to frequently used CLI command
   fragments for `mdf run`.
 - `virtualPath` (optional) enables features like tree views and the viewer; set
   `param` to the field that holds paths.
-- `idGenerator` (optional) chooses the auto ID format for filenames when not
-  using `fileName` (`ulid` or `uuid`).
 
 ### Templates and overrides
 
@@ -129,6 +130,9 @@ mdf new notes --template meeting --fm tags=sync --fm attendees="Ada, Lin"
 Templates layer their front matter on top of schema defaults, while
 `--fm key=value` flags win last. Array fields support JSON-style values
 (`["release","planning"]`) or repeated flags.
+
+Pass `--filename <name>` to override the generated file name for a specific
+note. Omit the extension and `.md` will be appended automatically.
 
 ## List, filter, and automate
 

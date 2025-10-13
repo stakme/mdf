@@ -35,6 +35,31 @@ describe("mdf new", () => {
 		}
 	});
 
+	it("uses an explicit file name when provided via CLI", async () => {
+		const tempDir = await setupWorkspace();
+		try {
+			await execa(
+				nodeBinary,
+				[
+					cliPath,
+					"new",
+					"notes",
+					"--filename",
+					"custom-note",
+					"--fm",
+					"title=Named entry",
+				],
+				{ cwd: tempDir },
+			);
+
+			const notesDir = path.join(tempDir, "notes");
+			const entries = await fs.readdir(notesDir);
+			expect(entries).toEqual(["custom-note.md"]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("uses UUID file names when configured", async () => {
 		const tempDir = await setupWorkspace({
 			config: `import { defineConfig, z } from "@stakme/mdf/config";
@@ -65,6 +90,46 @@ export default defineConfig({
 			}
 
 			expect(firstEntry).toMatch(UUID_FILE_PATTERN);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("generates file names using a schema filenameGenerator", async () => {
+		const tempDir = await setupWorkspace({
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+const noteSchema = z.object({
+        title: z.string(),
+        created_at: z.string().datetime().default(() => new Date().toISOString()),
+        updated_at: z.string().datetime().default(() => new Date().toISOString()),
+});
+
+export default defineConfig({
+        schema: {
+                notes: defineSchema({
+                        glob: "**",
+                        schema: noteSchema,
+                        filenameGenerator: (data) =>
+                                data.title.toLowerCase().replace(/\\s+/g, "-"),
+                }),
+        },
+        defaultSchema: "notes",
+});`,
+		});
+
+		try {
+			await execa(
+				nodeBinary,
+				[cliPath, "new", "notes", "--fm", "title=Schema Named"],
+				{ cwd: tempDir },
+			);
+
+			const notesDir = path.join(tempDir, "notes");
+			const entries = await fs.readdir(notesDir);
+			expect(entries).toHaveLength(1);
+			const [fileName] = entries;
+			expect(fileName).toBe("schema-named.md");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

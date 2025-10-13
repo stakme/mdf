@@ -7,6 +7,10 @@ export type DocumentSort<TData = Record<string, unknown>> = (
 
 export type IdGeneratorName = "uuid" | "ulid";
 
+export type SchemaFilenameGenerator<TData> = (
+	data: TData,
+) => string | Promise<string>;
+
 export interface DefaultsContext {
 	now: Date;
 }
@@ -60,6 +64,7 @@ export interface SchemaDefinitionInput<
 	schema: TSchema;
 	sort?: DocumentSort<z.infer<TSchema>>;
 	visibleFields?: readonly string[];
+	filenameGenerator?: SchemaFilenameGenerator<z.infer<TSchema>>;
 }
 
 export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny>

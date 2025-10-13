@@ -69,12 +69,20 @@ function createProgram(version: string): Command {
 			collectFrontMatter,
 			[] as string[],
 		)
+		.option(
+			"--filename <name>",
+			"Explicit file name to use for the generated Markdown file",
+		)
 		.option("--template <name>", "Template name defined in the config file")
 		.argument("<directory>", "Target directory for the Markdown file")
 		.action(
 			async (
 				directory: string,
-				command: { fm?: string[]; template?: string },
+				command: {
+					fm?: string[];
+					template?: string;
+					filename?: string;
+				},
 			) => {
 				try {
 					const fmInputs = command.fm ?? [];
@@ -83,6 +91,7 @@ function createProgram(version: string): Command {
 						directory,
 						frontMatterInputs: fmInputs,
 						template: command.template,
+						fileName: command.filename,
 					});
 
 					const relative =

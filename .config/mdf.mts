@@ -12,7 +12,7 @@ export default defineConfig({
                 docs: defineSchema({
                         glob: "docs/**",
                         schema: z.object({
-                                title: z.string().min(1).default("title"),
+                                title: z.string().min(1),
                                 description: z.string().optional(),
                                 vpath: z.string().min(1).default("/"),
                                 date: z.iso.date().optional(),
@@ -22,6 +22,7 @@ export default defineConfig({
                         }),
                         sort: (a, b) => a.chapter - b.chapter,
                         visibleFields: ["tags"],
+						filenameGenerator: (fm) => `${fm.title}.md`,
                 }),
 		default: defineSchema({
 			glob: "**",
@@ -35,6 +36,7 @@ export default defineConfig({
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
 			}),
 			sort: (a, b) => a.created_at.localeCompare(b.created_at),
+			filenameGenerator: () => `${Date.now()}.md`,
 		}),
 	},
 	virtualPath:{param:"vpath",separator:"/"},

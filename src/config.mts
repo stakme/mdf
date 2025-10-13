@@ -12,6 +12,7 @@ import type {
 	LoadedSchema,
 	LoadedVirtualPathConfig,
 	MdfConfig,
+	SchemaFilenameGenerator,
 	VirtualSlugConfig,
 } from "./types.mts";
 
@@ -761,6 +762,11 @@ function normalizeSchemaEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, name, configPath),
+		filenameGenerator: normalizeFilenameGenerator(
+			record.filenameGenerator,
+			name,
+			configPath,
+		),
 		visibleFields: normalizeVisibleFields(
 			record.visibleFields,
 			name,
@@ -830,6 +836,11 @@ function normalizeSchemaRecordEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, trimmedName, configPath),
+		filenameGenerator: normalizeFilenameGenerator(
+			record.filenameGenerator,
+			trimmedName,
+			configPath,
+		),
 		visibleFields: normalizeVisibleFields(
 			record.visibleFields,
 			trimmedName,
@@ -895,6 +906,24 @@ function normalizeVisibleFields(
 	});
 
 	return normalized;
+}
+
+function normalizeFilenameGenerator(
+	value: unknown,
+	schemaName: string,
+	configPath: string,
+): SchemaFilenameGenerator<unknown> | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (typeof value !== "function") {
+		throw new Error(
+			`Schema entry "${schemaName}" in ${configPath} must define "filenameGenerator" as a function when provided`,
+		);
+	}
+
+	return value as SchemaFilenameGenerator<unknown>;
 }
 
 function finalizeSchemaEntries(
@@ -999,6 +1028,8 @@ function mergeSchemaDefinitions(
 			schema: mergedSchema,
 			glob: entry.glob ?? existing.glob,
 			sort: entry.sort ?? existing.sort,
+			filenameGenerator: entry.filenameGenerator ?? existing.filenameGenerator,
+			visibleFields: entry.visibleFields ?? existing.visibleFields,
 		});
 	}
 
