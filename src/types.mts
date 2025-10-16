@@ -5,7 +5,6 @@ export type DocumentSort<TData = Record<string, unknown>> = (
 	b: TData,
 ) => number;
 
-
 export type SchemaFilenameGenerator<TData> = (
 	data: TData,
 ) => string | Promise<string>;

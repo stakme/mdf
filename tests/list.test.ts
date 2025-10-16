@@ -240,9 +240,70 @@ export default defineConfig({
 			const lines = stdout.trim().split("\n");
 			expect(lines).toEqual([
 				"./notes",
-				"├── backlog",
-				"│   └── With Path (./notes/with.md)",
-				"└── Root Path (./notes/root.md)",
+				"├── Root Path (./notes/root.md)",
+				"└── backlog",
+				"    └── With Path (./notes/with.md)",
+			]);
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("preserves viewer ordering for mixed root files and directories", async () => {
+		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+
+export default defineConfig({
+        schema: z.object({
+                title: z.string(),
+                vpath: z.string().optional(),
+                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                author: z.string(),
+                tags: z.array(z.string()).default(() => []),
+                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+        }),
+        virtualPath: {
+                param: "vpath",
+                separator: "/",
+        },
+});`;
+
+		const tempDir = await setupWorkspace({ config: configSource });
+		const notesDir = path.join(tempDir, "TODO");
+		await fs.mkdir(notesDir, { recursive: true });
+
+		const sharedFrontMatter = `status: todo\nauthor: tester\ntags: []\ncreated_at: 2025-09-27T00:00:00.000Z\nupdated_at: 2025-09-27T00:00:00.000Z`;
+
+		await fs.writeFile(
+			path.join(notesDir, "alpha.md"),
+			`---\ntitle: Alpha doc\nvpath: \n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "commands.md"),
+			`---\ntitle: Commands doc\nvpath: commands\n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
+
+		await fs.writeFile(
+			path.join(notesDir, "zulu.md"),
+			`---\ntitle: Zulu doc\nvpath: \n${sharedFrontMatter}\n---\n`,
+			"utf8",
+		);
+
+		try {
+			const { stdout } = await execa(nodeBinary, [cliPath, "list", "TODO"], {
+				cwd: tempDir,
+			});
+
+			const lines = stdout.trim().split("\n");
+			expect(lines).toEqual([
+				"./TODO",
+				"├── Alpha doc (./TODO/alpha.md)",
+				"├── commands",
+				"│   └── Commands doc (./TODO/commands.md)",
+				"└── Zulu doc (./TODO/zulu.md)",
 			]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });

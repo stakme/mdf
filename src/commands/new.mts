@@ -7,11 +7,11 @@ import { loadConfig } from "../config.mts";
 import { MdfError } from "../errors.mts";
 import { parseFrontMatterInputs } from "../front-matter-inputs.mts";
 import type {
-    DefaultsValue,
-    LoadedConfig,
-    LoadedSchema,
-    TemplateBodyContext,
-    TemplateDefinition,
+	DefaultsValue,
+	LoadedConfig,
+	LoadedSchema,
+	TemplateBodyContext,
+	TemplateDefinition,
 } from "../types.mts";
 
 export interface NewCommandOptions {
