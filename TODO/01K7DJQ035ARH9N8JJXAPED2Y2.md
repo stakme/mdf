@@ -1,10 +1,10 @@
 ---
-title: "Static export"
-status: todo
+title: Static export
+status: done
 author: "@stakme"
 tags: []
 created_at: 2025-10-13T01:24:45.312Z
-updated_at: 2025-10-13T01:24:45.312Z
+updated_at: 2025-10-16T09:58:21.014Z
 ---
 
 # Static export
@@ -20,3 +20,7 @@ html files from markdfm too.
 ### export command
 
 - Modify `export` command to export static html files instead of current viewer
+
+## Note
+
+I found this task is not easy to implement. I will close this task for now.
