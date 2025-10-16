@@ -12,7 +12,10 @@ import type {
 	LoadedVirtualPathConfig,
 	MdfConfig,
 	RepoConfig,
-	SchemaFilenameGenerator,
+	SchemaFieldResolver,
+	SchemaFilenameResolver,
+	SchemaVirtualPathResolver,
+	SchemaVirtualSlugResolver,
 	VirtualSlugConfig,
 } from "./types.mts";
 
@@ -792,8 +795,21 @@ function normalizeSchemaEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, name, configPath),
-		filenameGenerator: normalizeFilenameGenerator(
-			record.filenameGenerator,
+		filename: normalizeSchemaResolver<SchemaFilenameResolver<unknown>>(
+			record.filename,
+			"filename",
+			name,
+			configPath,
+		),
+		vpath: normalizeSchemaResolver<SchemaVirtualPathResolver<unknown>>(
+			record.vpath,
+			"vpath",
+			name,
+			configPath,
+		),
+		vslug: normalizeSchemaResolver<SchemaVirtualSlugResolver<unknown>>(
+			record.vslug,
+			"vslug",
 			name,
 			configPath,
 		),
@@ -866,8 +882,21 @@ function normalizeSchemaRecordEntry(
 		schema,
 		glob: typeof glob === "string" ? glob : undefined,
 		sort: normalizeSortFunction(record.sort, trimmedName, configPath),
-		filenameGenerator: normalizeFilenameGenerator(
-			record.filenameGenerator,
+		filename: normalizeSchemaResolver<SchemaFilenameResolver<unknown>>(
+			record.filename,
+			"filename",
+			trimmedName,
+			configPath,
+		),
+		vpath: normalizeSchemaResolver<SchemaVirtualPathResolver<unknown>>(
+			record.vpath,
+			"vpath",
+			trimmedName,
+			configPath,
+		),
+		vslug: normalizeSchemaResolver<SchemaVirtualSlugResolver<unknown>>(
+			record.vslug,
+			"vslug",
 			trimmedName,
 			configPath,
 		),
@@ -938,22 +967,25 @@ function normalizeVisibleFields(
 	return normalized;
 }
 
-function normalizeFilenameGenerator(
+function normalizeSchemaResolver<
+	TResolver extends SchemaFieldResolver<unknown>,
+>(
 	value: unknown,
+	optionName: string,
 	schemaName: string,
 	configPath: string,
-): SchemaFilenameGenerator<unknown> | undefined {
+): TResolver | undefined {
 	if (value === undefined) {
 		return undefined;
 	}
 
 	if (typeof value !== "function") {
 		throw new Error(
-			`Schema entry "${schemaName}" in ${configPath} must define "filenameGenerator" as a function when provided`,
+			`Schema entry "${schemaName}" in ${configPath} must define "${optionName}" as a function when provided`,
 		);
 	}
 
-	return value as SchemaFilenameGenerator<unknown>;
+	return value as TResolver;
 }
 
 function finalizeSchemaEntries(
@@ -1058,7 +1090,9 @@ function mergeSchemaDefinitions(
 			schema: mergedSchema,
 			glob: entry.glob ?? existing.glob,
 			sort: entry.sort ?? existing.sort,
-			filenameGenerator: entry.filenameGenerator ?? existing.filenameGenerator,
+			filename: entry.filename ?? existing.filename,
+			vpath: entry.vpath ?? existing.vpath,
+			vslug: entry.vslug ?? existing.vslug,
 			visibleFields: entry.visibleFields ?? existing.visibleFields,
 		});
 	}

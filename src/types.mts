@@ -5,9 +5,13 @@ export type DocumentSort<TData = Record<string, unknown>> = (
 	b: TData,
 ) => number;
 
-export type SchemaFilenameGenerator<TData> = (
+export type SchemaFieldResolver<TData> = (
 	data: TData,
 ) => string | Promise<string>;
+
+export type SchemaFilenameResolver<TData> = SchemaFieldResolver<TData>;
+export type SchemaVirtualPathResolver<TData> = SchemaFieldResolver<TData>;
+export type SchemaVirtualSlugResolver<TData> = SchemaFieldResolver<TData>;
 
 export interface DefaultsContext {
 	now: Date;
@@ -62,7 +66,9 @@ export interface SchemaDefinitionInput<
 	schema: TSchema;
 	sort?: DocumentSort<z.infer<TSchema>>;
 	visibleFields?: readonly string[];
-	filenameGenerator?: SchemaFilenameGenerator<z.infer<TSchema>>;
+	filename?: SchemaFilenameResolver<z.infer<TSchema>>;
+	vpath?: SchemaVirtualPathResolver<z.infer<TSchema>>;
+	vslug?: SchemaVirtualSlugResolver<z.infer<TSchema>>;
 }
 
 export interface SchemaDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny>

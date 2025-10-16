@@ -1,5 +1,11 @@
 import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
+function slugify(input: string): string {
+	const normalized = input.trim().toLowerCase();
+	const slug = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+	return slug || "untitled";
+}
+
 export default defineConfig({
 	aliases: {
 		todo: `list --filter "status=todo" ./TODO`,
@@ -22,13 +28,14 @@ export default defineConfig({
 			}),
 			sort: (a, b) => a.chapter - b.chapter,
 			visibleFields: ["tags"],
-			filenameGenerator: (fm) => `${fm.title}.md`,
+			filename: (fm) => `${fm.title}.md`,
+			vpath: () => "/",
+			vslug: (fm) => slugify(fm.title),
 		}),
 		default: defineSchema({
 			glob: "**",
 			schema: z.object({
 				title: z.string(),
-				vpath: z.string().optional(),
 				status: z.enum(["todo", "in_progress", "done"]).default("todo"),
 				author: z.string().optional(),
 				tags: z.array(z.string()).default(() => []),
@@ -36,7 +43,9 @@ export default defineConfig({
 				updated_at: z.iso.datetime().default(() => new Date().toISOString()),
 			}),
 			sort: (a, b) => a.created_at.localeCompare(b.created_at),
-			filenameGenerator: () => `${Date.now()}.md`,
+			filename: () => `${Date.now()}.md`,
+			vpath: () => "/",
+			vslug: (fm) => slugify(fm.title),
 		}),
 	},
 	virtualPath: { param: "vpath", separator: "/" },
@@ -60,7 +69,6 @@ export default defineConfig({
 			schema: "default",
 			frontmatter: {
 				title: "[Bug] Brief summary",
-				vpath: "bug_reports",
 				status: "todo",
 				tags: ["bug"],
 			},

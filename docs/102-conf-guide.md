@@ -31,7 +31,7 @@ import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 - `z` is Zod (with `z.iso.date()`, `z.iso.datetime()`, etc.).
 - `defineConfig` returns its argument, aiding IntelliSense and type checking.
 - `defineSchema` lets you attach schema‑level options like `glob`, `sort`,
-  `visibleFields`, and `filenameGenerator` alongside a Zod object.
+  `visibleFields`, `filename`, `vpath`, and `vslug` alongside a Zod object.
 
 ## Quick examples
 
@@ -60,14 +60,18 @@ export default defineConfig({
       schema: z.object({
         title: z.string().min(1),
         description: z.string().optional(),
-        vpath: z.string().default("/"),
+        vpath: z.string().min(1).optional(),
+        vslug: z.string().min(1).optional(),
         draft: z.boolean().default(false),
         chapter: z.number().default(0),
         tags: z.array(z.string()).default(() => []),
       }),
       sort: (a, b) => a.chapter - b.chapter,
       visibleFields: ["tags"],
-      filenameGenerator: (fm) => `${fm.title}.md`,
+      filename: (fm) => `${fm.title}.md`,
+      vpath: (fm) => fm.vpath?.trim() || "/",
+      vslug: (fm) =>
+        (fm.vslug?.trim() || fm.title).toLowerCase().replace(/\s+/g, "-"),
     }),
     defineSchema({
       name: "default",
@@ -75,6 +79,7 @@ export default defineConfig({
       schema: z.object({
         title: z.string(),
         vpath: z.string().optional(),
+        vslug: z.string().optional(),
         status: z.enum(["todo", "in_progress", "done"]).default("todo"),
         author: z.string().optional(),
         tags: z.array(z.string()).default(() => []),
@@ -82,6 +87,10 @@ export default defineConfig({
         updated_at: z.iso.datetime().default(() => new Date().toISOString()),
       }),
       sort: (a, b) => a.created_at.localeCompare(b.created_at),
+      filename: () => `${Date.now()}.md`,
+      vpath: (fm) => fm.vpath?.trim() || fm.status || "todo",
+      vslug: (fm) =>
+        (fm.vslug?.trim() || fm.title || "").toLowerCase().replace(/\s+/g, "-"),
     }),
   ],
   defaultSchema: ["docs", "default"],
@@ -112,7 +121,7 @@ What the front matter must look like. Three shapes are supported:
 
 - A single Zod object: `schema: z.object({...})`
 - An array of entries:
-  `schema: [defineSchema({ name, glob?, schema, sort?, visibleFields?, filenameGenerator? }), ...]`
+  `schema: [defineSchema({ name, glob?, schema, sort?, visibleFields?, filename?, vpath?, vslug? }), ...]`
 - A record of named entries:
   - `schema: { notes: z.object({...}), docs: defineSchema({ schema: z.object({...}), glob: "docs/**" }) }`
 
@@ -129,9 +138,15 @@ Entry fields (when using `defineSchema` or record entries as objects):
   stable title/route order.
 - `visibleFields` (string[]): Optional allow‑list of front‑matter keys to
   display in the viewer’s sidebar details.
-- `filenameGenerator` ((data) => string | Promise<string>): Compute the filename
-  from parsed front matter when creating files that target this schema. The
+- `filename` ((data) => string | Promise<string>): Compute the filename from
+  parsed front matter when creating files that target this schema. The
   configured `extension` is appended if missing.
+- `vpath` ((data) => string | Promise<string>): Generate or normalize the
+  virtual path stored under `virtualPath.param` when the field is empty. Return
+  the path segments joined with the configured separator (default `/`).
+- `vslug` ((data) => string | Promise<string>): Generate or normalize the slug
+  stored under `virtualSlug.param` when the field is empty. Return a non‑empty
+  string identifying the document’s route.
 
 ### `defaultSchema`
 
@@ -163,11 +178,11 @@ matter) and returning a string.
 
 Project‑wide filename generator when creating new files. Receives
 `{ data, directory, now }`. Used only if the CLI `--filename` flag is not
-provided and the active schema definition does not define `filenameGenerator`.
+provided and the active schema definition does not define `filename`.
 
 Filename precedence when running `mdf new`:
 
-1. CLI `--filename` > 2) schema `filenameGenerator` > 3) config `fileName` > 4)
+1. CLI `--filename` > 2) schema `filename` > 3) config `fileName` > 4)
    time‑based ID (`ulid` by default or `uuid` if configured). The `extension` is
    appended if missing.
 
@@ -247,7 +262,8 @@ with these rules:
 - `schema`: Entries merge by name. If both sides are Zod objects, their shapes
   merge (Zod `.merge`). If the local side provides a non‑object Zod type, it
   overrides the base. Per‑entry options (`glob`, `sort`, `visibleFields`,
-  `filenameGenerator`) fall back to the base when omitted in the local file.
+  `filename`, `vpath`, `vslug`) fall back to the base when omitted in the local
+  file.
 - `defaultSchema`/priority: The local value wins. When provided as an array, it
   becomes the priority order; the last element is the default.
 - `defaults`, `content`, `fileName`, `extension`, `virtualPath`, `virtualSlug`,

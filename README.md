@@ -111,8 +111,8 @@ export default defineConfig({
   new notes.
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
-- Define schemas with `defineSchema({ filenameGenerator })` when you want each
-  entry's parsed front matter to determine the file name automatically.
+- Define schemas with `defineSchema({ filename, vpath, vslug })` when you want
+  parsed front matter to set file names, virtual paths, or slugs automatically.
 - `aliases` (optional) map friendly names to frequently used CLI command
   fragments for `mdf run`.
 - `virtualPath` (optional) enables features like tree views and the viewer; set

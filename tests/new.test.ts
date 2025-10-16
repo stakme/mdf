@@ -33,6 +33,51 @@ describe("mdf new", () => {
 		}
 	});
 
+	it("applies schema vpath and vslug generators when not provided", async () => {
+		const tempDir = await setupWorkspace({
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
+
+const noteSchema = z.object({
+        title: z.string(),
+        section: z.string().default("notes"),
+        vpath: z.string().optional(),
+        vslug: z.string().optional(),
+});
+
+export default defineConfig({
+        schema: {
+                notes: defineSchema({
+                        glob: "**",
+                        schema: noteSchema,
+                        vpath: (data) => \`\${data.section}/\${data.title.toLowerCase().replace(/\\s+/g, "-")}\`,
+                        vslug: (data) => data.title.toLowerCase().replace(/\\s+/g, "-"),
+                }),
+        },
+        defaultSchema: "notes",
+        virtualPath: { param: "vpath", separator: "/" },
+        virtualSlug: { param: "vslug" },
+});`,
+		});
+
+		try {
+			const { stdout } = await execa(
+				nodeBinary,
+				[cliPath, "new", "notes", "--fm", "title=Virtual Note"],
+				{ cwd: tempDir },
+			);
+
+			const relativePath = stdout.trim();
+			const createdFile = path.join(tempDir, relativePath);
+			const content = await fs.readFile(createdFile, "utf8");
+			const { frontMatter } = parseFrontMatter(content);
+
+			expect(frontMatter.vpath).toBe("notes/virtual-note");
+			expect(frontMatter.vslug).toBe("virtual-note");
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("uses an explicit file name when provided via CLI", async () => {
 		const tempDir = await setupWorkspace();
 		try {
@@ -60,7 +105,7 @@ describe("mdf new", () => {
 
 	// idGenerator config option removed; ULID remains the fixed fallback.
 
-	it("generates file names using a schema filenameGenerator", async () => {
+	it("generates file names using a schema filename option", async () => {
 		const tempDir = await setupWorkspace({
 			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
@@ -75,7 +120,7 @@ export default defineConfig({
                 notes: defineSchema({
                         glob: "**",
                         schema: noteSchema,
-                        filenameGenerator: (data) =>
+                        filename: (data) =>
                                 data.title.toLowerCase().replace(/\\s+/g, "-"),
                 }),
         },
