@@ -5,7 +5,6 @@ export type DocumentSort<TData = Record<string, unknown>> = (
 	b: TData,
 ) => number;
 
-export type IdGeneratorName = "uuid" | "ulid";
 
 export type SchemaFilenameGenerator<TData> = (
 	data: TData,
@@ -177,7 +176,6 @@ export interface MdfConfig<
 	defaultTemplate?: DefaultTemplateConfig<TSchemaRecord>;
 	virtualPath?: VirtualPathConfig;
 	virtualSlug?: VirtualSlugConfig;
-	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
 	repo?: RepoConfig;
 }
@@ -201,5 +199,4 @@ export interface LoadedConfig<
 	path: string;
 	virtualPath?: LoadedVirtualPathConfig;
 	virtualSlug?: VirtualSlugConfig;
-	idGenerator: IdGeneratorName;
 }

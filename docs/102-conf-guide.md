@@ -216,11 +216,6 @@ Control the viewer route for each document.
   `docs/getting-started`. When absent, the route falls back to the normalized
   file name.
 
-### `idGenerator`
-
-Choose the fallback ID used for filenames when no other strategy applies:
-`"ulid"` (default) or `"uuid"`.
-
 ### `aliases`
 
 Shortcuts for `mdf run` that expand to full CLI invocations. Must be a map of
@@ -256,13 +251,13 @@ with these rules:
 - `defaultSchema`/priority: The local value wins. When provided as an array, it
   becomes the priority order; the last element is the default.
 - `defaults`, `content`, `fileName`, `extension`, `virtualPath`, `virtualSlug`,
-  `idGenerator`, `repo`: The local value wins when provided; otherwise the base
+  `repo`: The local value wins when provided; otherwise the base
   value is kept.
 - `templates`: Shallow merge by template name (local wins on conflicts).
 - `defaultTemplate`: Shallow merge by schema name (local wins on conflicts).
 - `aliases`: Shallow merge by alias name (local wins on conflicts).
 
-Example local override that adds a default author and switches IDs to UUIDs:
+Example local override that adds a default author:
 
 ```ts
 // .config/mdf.local.mts
@@ -270,7 +265,6 @@ import { defineConfig, z } from "@stakme/mdf/config";
 
 export default defineConfig({
   schema: z.object({ author: z.string().default("@stakme") }),
-  idGenerator: "uuid",
 });
 ```
 
@@ -310,7 +304,6 @@ Body content precedence:
   `virtualPath.separator`, when provided, must be a non‑empty string.
 - `virtualSlug.param`, when provided, must resolve to a non‑empty string
   (dot‑notation allowed). Values cannot include `.` or `..` segments.
-- `idGenerator` must be `"ulid"` or `"uuid"`.
 - `aliases` must map non‑empty strings to non‑empty strings.
 - `repo.icon` must be `"github"` or `"gitlab"`; `repo.url` must be a non‑empty
   string.

@@ -10,8 +10,6 @@ import {
 } from "./helpers";
 
 const ULID_FILE_PATTERN = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}\.md$/u;
-const UUID_FILE_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.md$/u;
 
 describe("mdf new", () => {
 	it("generates ULID-based file names by default", async () => {
@@ -60,40 +58,7 @@ describe("mdf new", () => {
 		}
 	});
 
-	it("uses UUID file names when configured", async () => {
-		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/mdf/config";
-
-export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                description: z.string(),
-                author: z.string(),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-                tags: z.array(z.string()).default(() => []),
-        }),
-        idGenerator: "uuid",
-});`,
-		});
-		try {
-			await execa(nodeBinary, [cliPath, "new", "notes"], {
-				cwd: tempDir,
-			});
-
-			const notesDir = path.join(tempDir, "notes");
-			const entries = await fs.readdir(notesDir);
-			expect(entries).toHaveLength(1);
-			const [firstEntry] = entries;
-			if (!firstEntry) {
-				throw new Error("Expected the command to create a file");
-			}
-
-			expect(firstEntry).toMatch(UUID_FILE_PATTERN);
-		} finally {
-			await fs.rm(tempDir, { recursive: true, force: true });
-		}
-	});
+	// idGenerator config option removed; ULID remains the fixed fallback.
 
 	it("generates file names using a schema filenameGenerator", async () => {
 		const tempDir = await setupWorkspace({

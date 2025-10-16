@@ -7,7 +7,6 @@ import ts from "typescript";
 import { defineConfig, defineSchema, z } from "./index.mts";
 import type {
 	DocumentSort,
-	IdGeneratorName,
 	LoadedConfig,
 	LoadedSchema,
 	LoadedVirtualPathConfig,
@@ -172,7 +171,6 @@ interface NormalizedConfig
 	defaultTemplate?: Record<string, string>;
 	virtualPath?: LoadedVirtualPathConfig;
 	virtualSlug?: VirtualSlugConfig;
-	idGenerator?: IdGeneratorName;
 	aliases?: Record<string, string>;
 }
 
@@ -199,7 +197,6 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 
 	const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
 	const virtualSlug = normalizeVirtualSlug(record.virtualSlug, configPath);
-	const idGenerator = normalizeIdGenerator(record.idGenerator, configPath);
 	const aliases = normalizeAliases(record.aliases, configPath);
 	const defaultTemplate = normalizeDefaultTemplates(
 		record.defaultTemplate,
@@ -212,7 +209,6 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	delete clone.defaultSchema;
 	delete clone.virtualPath;
 	delete clone.virtualSlug;
-	delete clone.idGenerator;
 	delete clone.aliases;
 	delete clone.defaultTemplate;
 	delete clone.repo;
@@ -228,7 +224,6 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 		defaultTemplate,
 		virtualPath,
 		virtualSlug,
-		idGenerator,
 		aliases,
 		repo,
 	};
@@ -452,23 +447,6 @@ function normalizeVirtualSlug(
 	return { param: trimmed };
 }
 
-function normalizeIdGenerator(
-	input: unknown,
-	configPath: string,
-): IdGeneratorName | undefined {
-	if (input === undefined) {
-		return undefined;
-	}
-
-	if (input === "uuid" || input === "ulid") {
-		return input;
-	}
-
-	throw new Error(
-		`mdf config at ${configPath} must define "idGenerator" as either "ulid" or "uuid" when provided`,
-	);
-}
-
 function mergeConfigs(
 	base: NormalizedConfig,
 	override: NormalizedConfig,
@@ -501,7 +479,6 @@ function mergeConfigs(
 		),
 		virtualPath: override.virtualPath ?? base.virtualPath,
 		virtualSlug: override.virtualSlug ?? base.virtualSlug,
-		idGenerator: override.idGenerator ?? base.idGenerator,
 		aliases: mergeAliases(base.aliases, override.aliases),
 		repo: override.repo ?? base.repo,
 	};
@@ -636,7 +613,6 @@ function finalizeConfig(
 			return schemaLookup.get(name);
 		},
 		path: configPath,
-		idGenerator: config.idGenerator ?? "ulid",
 		aliases: config.aliases ? { ...config.aliases } : undefined,
 	};
 }
