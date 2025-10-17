@@ -145,6 +145,7 @@ export async function prepareViewerContext(
 	const headerOptions = buildViewerHeaderOptions(options);
 
 	const collected: ViewerDocumentEntry[] = [];
+	const slugIndex = new Map<string, { filePath: string }>();
 	const warnings: InvalidFileWarning[] = [];
 	for (const filePath of files) {
 		const warningMessages: string[] = [];
@@ -237,6 +238,19 @@ export async function prepareViewerContext(
 			options.cwd,
 		);
 		const slug = virtualFields.slug;
+		const existingSlugEntry = slugIndex.get(slug);
+		if (existingSlugEntry) {
+			throw new MdfError(
+				"VIEWER_DUPLICATE_SLUG",
+				[
+					`Multiple documents resolved to the same virtual slug "${slug}"`,
+					`First document: ${formatDisplayPath(existingSlugEntry.filePath, options.cwd)}`,
+					`Second document: ${formatDisplayPath(filePath, options.cwd)}`,
+				].join("\n"),
+			);
+		}
+		slugIndex.set(slug, { filePath });
+
 		const meta = buildViewerEntryFromRecord(slug, frontMatter, {
 			virtualPath: virtualFields.virtualPath,
 		});

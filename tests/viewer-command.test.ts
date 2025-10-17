@@ -119,6 +119,39 @@ describe("viewer command", () => {
 		}
 	});
 
+	it("throws when documents resolve to duplicate slugs", async () => {
+		const tempDir = await setupWorkspace({ config: BASE_CONFIG });
+		const docsDir = path.join(tempDir, "docs");
+		await fs.mkdir(docsDir, { recursive: true });
+
+		await fs.writeFile(
+			path.join(docsDir, "one.md"),
+			`---\ntitle: One\nslug: shared\n---\n# One`,
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(docsDir, "two.md"),
+			`---\ntitle: Two\nslug: shared\n---\n# Two`,
+			"utf8",
+		);
+
+		try {
+			await expect(
+				prepareViewerContext({
+					cwd: tempDir,
+					directory: "docs",
+				}),
+			).rejects.toMatchObject({
+				code: "VIEWER_DUPLICATE_SLUG",
+				message: expect.stringContaining(
+					'Multiple documents resolved to the same virtual slug "shared"',
+				),
+			});
+		} finally {
+			await fs.rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
 	it("includes repository metadata in prepared context", async () => {
 		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
