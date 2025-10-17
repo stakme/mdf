@@ -31,6 +31,7 @@ import {
 	formatRelativePath,
 } from "../utils/path-format.mts";
 import {
+	type ComputedVirtualFields,
 	computeVirtualFields,
 	splitVirtualPath,
 } from "../utils/virtual-fields.mts";
@@ -195,11 +196,10 @@ export async function prepareViewerContext(
 			continue;
 		}
 
-		let rawVirtualPath: string | null;
 		const workspaceRelativePath = formatRelativePath(filePath, options.cwd);
 		const schemaEntry = config.getSchemaForRelativePath(workspaceRelativePath);
 
-		let virtualFields;
+		let virtualFields: ComputedVirtualFields;
 		try {
 			virtualFields = await computeVirtualFields({
 				schema: schemaEntry,
@@ -256,7 +256,6 @@ export async function prepareViewerContext(
 
 		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
 			frontMatter,
-			config,
 			schemaEntry.visibleFields,
 		);
 		const visibleFields = schemaEntry.visibleFields

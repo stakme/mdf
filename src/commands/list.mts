@@ -157,7 +157,6 @@ export async function runListCommand(
 		const displayPath = formatDisplayPath(filePath, options.cwd);
 		const relativeDisplayPath = formatRelativePath(filePath, options.cwd);
 		const fileName = path.basename(filePath);
-		const directoryRelativePath = virtualFields.relativePath;
 		const slug = virtualFields.slug;
 		const viewerMeta = buildViewerEntryFromRecord(slug, frontMatter, {
 			virtualPath: virtualFields.virtualPath,

@@ -121,15 +121,7 @@ interface ResolveVirtualSlugOptions {
 async function resolveVirtualSlugValue(
 	options: ResolveVirtualSlugOptions,
 ): Promise<string> {
-	const {
-		schema,
-		context,
-		frontMatter,
-		filePath,
-		rootDirectory,
-		cwd,
-		relativePath,
-	} = options;
+	const { schema, context, frontMatter, filePath, cwd, relativePath } = options;
 	if (!schema.vslug) {
 		return resolveDocumentSlug({
 			frontMatter,
