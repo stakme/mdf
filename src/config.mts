@@ -9,14 +9,11 @@ import type {
 	DocumentSort,
 	LoadedConfig,
 	LoadedSchema,
-	LoadedVirtualPathConfig,
 	MdfConfig,
 	RepoConfig,
-	SchemaFieldResolver,
 	SchemaFilenameResolver,
 	SchemaVirtualPathResolver,
 	SchemaVirtualSlugResolver,
-	VirtualSlugConfig,
 } from "./types.mts";
 
 const packageRequire = Module.createRequire(
@@ -164,16 +161,11 @@ function evaluateCommonJs(source: string, filename: string): unknown {
 }
 
 interface NormalizedConfig
-	extends Omit<
-		MdfConfig,
-		"schema" | "defaultSchema" | "virtualPath" | "virtualSlug" | "aliases"
-	> {
+	extends Omit<MdfConfig, "schema" | "defaultSchema" | "aliases"> {
 	schemas: readonly LoadedSchema[];
 	defaultSchema: string;
 	schemaPriority?: readonly string[];
 	defaultTemplate?: Record<string, string>;
-	virtualPath?: LoadedVirtualPathConfig;
-	virtualSlug?: VirtualSlugConfig;
 	aliases?: Record<string, string>;
 }
 
@@ -198,8 +190,6 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 		configPath,
 	);
 
-	const virtualPath = normalizeVirtualPath(record.virtualPath, configPath);
-	const virtualSlug = normalizeVirtualSlug(record.virtualSlug, configPath);
 	const aliases = normalizeAliases(record.aliases, configPath);
 	const defaultTemplate = normalizeDefaultTemplates(
 		record.defaultTemplate,
@@ -210,23 +200,16 @@ function normalizeConfig(value: unknown, configPath: string): NormalizedConfig {
 	const clone = { ...record } as Record<string, unknown>;
 	delete clone.schema;
 	delete clone.defaultSchema;
-	delete clone.virtualPath;
-	delete clone.virtualSlug;
 	delete clone.aliases;
 	delete clone.defaultTemplate;
 	delete clone.repo;
 
 	return {
-		...(clone as Omit<
-			MdfConfig,
-			"schema" | "defaultSchema" | "virtualPath" | "aliases"
-		>),
+		...(clone as Omit<MdfConfig, "schema" | "defaultSchema" | "aliases">),
 		schemas: definitions,
 		defaultSchema: defaultName,
 		schemaPriority: priority,
 		defaultTemplate,
-		virtualPath,
-		virtualSlug,
 		aliases,
 		repo,
 	};
@@ -369,87 +352,6 @@ function normalizeRepo(
 	};
 }
 
-function normalizeVirtualPath(
-	input: unknown,
-	configPath: string,
-): LoadedVirtualPathConfig | undefined {
-	if (input === undefined) {
-		return undefined;
-	}
-
-	if (!input || typeof input !== "object") {
-		throw new Error(
-			`mdf config at ${configPath} must define "virtualPath" as an object when provided`,
-		);
-	}
-
-	const record = input as Record<string, unknown>;
-	const param = record.param;
-	if (typeof param !== "string" || !param.trim()) {
-		throw new Error(
-			`mdf config at ${configPath} must define virtualPath.param as a non-empty string`,
-		);
-	}
-
-	const separatorInput = record.separator;
-	if (separatorInput === undefined) {
-		return {
-			param: param.trim(),
-			separator: "/",
-		};
-	}
-
-	if (typeof separatorInput !== "string") {
-		throw new Error(
-			`mdf config at ${configPath} must define virtualPath.separator as a string when provided`,
-		);
-	}
-
-	const separator = separatorInput.trim();
-	if (!separator) {
-		throw new Error(
-			`mdf config at ${configPath} must define virtualPath.separator as a non-empty string when provided`,
-		);
-	}
-
-	return {
-		param: param.trim(),
-		separator,
-	};
-}
-
-function normalizeVirtualSlug(
-	input: unknown,
-	configPath: string,
-): VirtualSlugConfig | undefined {
-	if (input === undefined) {
-		return undefined;
-	}
-
-	if (!input || typeof input !== "object") {
-		throw new Error(
-			`mdf config at ${configPath} must define "virtualSlug" as an object when provided`,
-		);
-	}
-
-	const record = input as Record<string, unknown>;
-	const param = record.param;
-	if (typeof param !== "string") {
-		throw new Error(
-			`mdf config at ${configPath} must define virtualSlug.param as a string when provided`,
-		);
-	}
-
-	const trimmed = param.trim();
-	if (!trimmed) {
-		throw new Error(
-			`mdf config at ${configPath} must define virtualSlug.param as a non-empty string`,
-		);
-	}
-
-	return { param: trimmed };
-}
-
 function mergeConfigs(
 	base: NormalizedConfig,
 	override: NormalizedConfig,
@@ -480,8 +382,6 @@ function mergeConfigs(
 			base.defaultTemplate,
 			override.defaultTemplate,
 		),
-		virtualPath: override.virtualPath ?? base.virtualPath,
-		virtualSlug: override.virtualSlug ?? base.virtualSlug,
 		aliases: mergeAliases(base.aliases, override.aliases),
 		repo: override.repo ?? base.repo,
 	};
@@ -968,7 +868,7 @@ function normalizeVisibleFields(
 }
 
 function normalizeSchemaResolver<
-	TResolver extends SchemaFieldResolver<unknown>,
+	TResolver extends (...args: readonly unknown[]) => unknown,
 >(
 	value: unknown,
 	optionName: string,

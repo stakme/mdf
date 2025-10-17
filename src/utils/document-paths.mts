@@ -41,7 +41,7 @@ export function resolveDocumentSlug(
 		);
 	}
 
-	return normalizeSlugFieldValue(raw, slugField, options.filePath, options.cwd);
+	return normalizeVirtualSlugValue(raw, slugField, options.filePath, options.cwd);
 }
 
 export function buildDocumentRoutePath(
@@ -77,7 +77,7 @@ function createSlug(relativePath: string): string {
 	return normalized.replace(/\.[^.]+$/u, "");
 }
 
-function normalizeSlugFieldValue(
+export function normalizeVirtualSlugValue(
 	raw: string,
 	fieldName: string,
 	filePath: string,

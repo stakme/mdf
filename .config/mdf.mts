@@ -29,8 +29,8 @@ export default defineConfig({
 			sort: (a, b) => a.chapter - b.chapter,
 			visibleFields: ["tags"],
 			filename: (fm) => `${fm.title}.md`,
-			vpath: () => "/",
-			vslug: (fm) => slugify(fm.title),
+			vpath: ({ fm }) => fm.vpath,
+			vslug: ({ fm }) => slugify(fm.title),
 		}),
 		default: defineSchema({
 			glob: "**",
@@ -45,11 +45,9 @@ export default defineConfig({
 			sort: (a, b) => a.created_at.localeCompare(b.created_at),
 			filename: () => `${Date.now()}.md`,
 			vpath: () => "/",
-			vslug: (fm) => slugify(fm.title),
+			vslug: ({ fm }) => slugify(fm.title),
 		}),
 	},
-	virtualPath: { param: "vpath", separator: "/" },
-	virtualSlug: { param: "vslug" },
 	defaultSchema: ["docs", "default"],
 
 	templates: {

@@ -7,17 +7,20 @@ import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("mdf export", () => {
 	it("builds a static viewer for filtered documents", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                status: z.enum(["draft", "published"]).default("draft"),
-                vpath: z.string(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                status: z.enum(["draft", "published"]).default("draft"),
+                                vpath: z.string(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -165,17 +168,20 @@ export default defineConfig({
 	});
 
 	it("runs through the CLI and reports the viewer summary", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                status: z.enum(["draft", "published"]).default("draft"),
-                vpath: z.string(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                status: z.enum(["draft", "published"]).default("draft"),
+                                vpath: z.string(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -229,16 +235,19 @@ export default defineConfig({
 	});
 
 	it("includes repository metadata when repo options are passed", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -289,17 +298,20 @@ export default defineConfig({
 	});
 
 	it("uses configured virtual slugs for document routes", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                slug: z.string(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                slug: z.string(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
         virtualSlug: {
                 param: "slug",
         },

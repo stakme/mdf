@@ -9,17 +9,19 @@ import { setupWorkspace } from "./helpers";
 
 describe("viewer options", () => {
 	it("disables hot reload script and /events when reload is off", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    vpath: z.string().optional(),
-  }),
-  virtualPath: {
-    param: "vpath",
-    separator: "/",
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        vpath: z.string().optional(),
+      }),
+      vpath: ({ fm }) => fm.vpath ?? "/",
+    }),
   },
+  defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -52,17 +54,19 @@ export default defineConfig({
 	});
 
 	it("logs an access line when accessLog is enabled", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    vpath: z.string().optional(),
-  }),
-  virtualPath: {
-    param: "vpath",
-    separator: "/",
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        vpath: z.string().optional(),
+      }),
+      vpath: ({ fm }) => fm.vpath ?? "/",
+    }),
   },
+  defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -105,18 +109,20 @@ export default defineConfig({
 	});
 
 	it("omits the virtual path field from viewer front matter", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    status: z.string().optional(),
-    vpath: z.string().optional(),
-  }),
-  virtualPath: {
-    param: "vpath",
-    separator: "/",
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        status: z.string().optional(),
+        vpath: z.string().optional(),
+      }),
+      vpath: ({ fm }) => fm.vpath ?? "/",
+    }),
   },
+  defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -156,21 +162,23 @@ export default defineConfig({
 	});
 
 	it("strips nested virtual path fields from viewer front matter", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    status: z.string().optional(),
-    meta: z.object({
-      vpath: z.string().optional(),
-      owner: z.string().optional(),
-    }).optional(),
-  }),
-  virtualPath: {
-    param: "meta.vpath",
-    separator: "/",
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        status: z.string().optional(),
+        meta: z.object({
+          vpath: z.string().optional(),
+          owner: z.string().optional(),
+        }).optional(),
+      }),
+      vpath: ({ fm }) => fm.meta?.vpath ?? "/",
+    }),
   },
+  defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });

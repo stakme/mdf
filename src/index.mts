@@ -12,7 +12,6 @@ export type {
 	DefaultSchemaConfig,
 	DefaultTemplateConfig,
 	DocumentSort,
-	LoadedVirtualPathConfig,
 	MdfConfig,
 	MdfConfigWithRecord,
 	RepoConfig,
@@ -21,15 +20,14 @@ export type {
 	SchemaDefinition,
 	SchemaDefinitionInput,
 	SchemaEntryInput,
-	SchemaFieldResolver,
 	SchemaFilenameResolver,
 	SchemaRecordInput,
 	SchemaVirtualPathResolver,
+	SchemaVirtualResolverContext,
 	SchemaVirtualSlugResolver,
 	TemplateBodyResolver,
 	TemplateConfigEntry,
 	TemplatesConfig,
-	VirtualPathConfig,
 } from "./types.mts";
 
 export function defineSchema<TSchema extends z.ZodTypeAny>(

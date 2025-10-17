@@ -7,11 +7,6 @@ import {
 } from "../front-matter.mts";
 import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
 import {
-	buildDocumentRoutePath,
-	computeDirectoryRelativePath,
-	resolveDocumentSlug,
-} from "../utils/document-paths.mts";
-import {
 	compareByTitleAndRoutePath,
 	sortSchemaDocuments,
 } from "../utils/document-sort.mts";
@@ -26,6 +21,10 @@ import {
 	formatDisplayPath,
 	formatRelativePath,
 } from "../utils/path-format.mts";
+import {
+	computeVirtualFields,
+	splitVirtualPath,
+} from "../utils/virtual-fields.mts";
 import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
 
 export interface ListCommandOptions {
@@ -97,17 +96,6 @@ export async function runListCommand(
 		);
 	}
 
-	const needsVirtualPath =
-		(!options.format && !options.quiet) || Boolean(options.virtualPathPrefix);
-	const virtualPathConfig = config.virtualPath;
-
-	if (needsVirtualPath && !virtualPathConfig) {
-		throw new MdfError(
-			"VIRTUAL_PATH_NOT_CONFIGURED",
-			`Virtual path configuration not found in ${formatDisplayPath(config.path, options.cwd)}. Define virtualPath.param in the config file.`,
-		);
-	}
-
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const files = await collectMarkdownFiles(resolvedDirectory, extension);
 	if (!files.length) {
@@ -118,13 +106,9 @@ export async function runListCommand(
 	}
 
 	const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
-	const prefixSegments =
-		options.virtualPathPrefix && virtualPathConfig
-			? splitVirtualPath(
-					options.virtualPathPrefix,
-					virtualPathConfig.separator ?? "/",
-				)
-			: undefined;
+	const prefixSegments = options.virtualPathPrefix
+		? splitVirtualPath(options.virtualPathPrefix)
+		: undefined;
 
 	const template = options.format;
 	const warnings: InvalidFileWarning[] = [];
@@ -153,52 +137,32 @@ export async function runListCommand(
 			continue;
 		}
 
-		let segments: string[] = [];
-		if (virtualPathConfig) {
-			const rawVirtualPath = frontMatter[virtualPathConfig.param];
-
-			if (rawVirtualPath === undefined || rawVirtualPath === null) {
-				segments = [];
-			} else if (typeof rawVirtualPath === "string") {
-				segments = splitVirtualPath(
-					rawVirtualPath,
-					virtualPathConfig.separator ?? "/",
-				);
-			} else {
-				throw new MdfError(
-					"INVALID_VIRTUAL_PATH_VALUE",
-					`Front matter field "${virtualPathConfig.param}" must be a string in ${formatDisplayPath(filePath, options.cwd)}`,
-				);
-			}
-
-			if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
-				continue;
-			}
-		}
-
 		const relativePath = path.relative(options.cwd, filePath);
 		const schemaEntry = config.getSchemaForRelativePath(relativePath);
+		const virtualFields = await computeVirtualFields({
+			schema: schemaEntry,
+			frontMatter,
+			filePath,
+			rootDirectory: resolvedDirectory,
+			cwd: options.cwd,
+		});
+
+		if (
+			prefixSegments &&
+			!segmentsStartsWith(virtualFields.virtualPathSegments, prefixSegments)
+		) {
+			continue;
+		}
+
 		const displayPath = formatDisplayPath(filePath, options.cwd);
 		const relativeDisplayPath = formatRelativePath(filePath, options.cwd);
 		const fileName = path.basename(filePath);
-		const directoryRelativePath = computeDirectoryRelativePath(
-			filePath,
-			resolvedDirectory,
-		);
-		const slug = resolveDocumentSlug({
-			frontMatter,
-			relativePath: directoryRelativePath,
-			filePath,
-			cwd: options.cwd,
-			slugField: config.virtualSlug?.param,
-		});
+		const directoryRelativePath = virtualFields.relativePath;
+		const slug = virtualFields.slug;
 		const viewerMeta = buildViewerEntryFromRecord(slug, frontMatter, {
-			virtualPathField: virtualPathConfig?.param,
-			virtualPathSeparator: virtualPathConfig?.separator ?? "/",
+			virtualPath: virtualFields.virtualPath,
 		});
-		const routePath = config.virtualSlug
-			? slug
-			: buildDocumentRoutePath(filePath, resolvedDirectory);
+		const routePath = slug;
 		const sortTitle = viewerMeta.title || fileName;
 		const labelBase = sortTitle.length > 0 ? sortTitle : fileName;
 		const label = `${labelBase} (${displayPath})`;
@@ -211,7 +175,7 @@ export async function runListCommand(
 			fileName,
 			frontMatter,
 			schema: schemaEntry,
-			segments,
+			segments: [...virtualFields.virtualPathSegments],
 			label,
 			sortTitle,
 			routePath,
@@ -258,18 +222,6 @@ export async function runListCommand(
 	const directoryHeader = formatDisplayPath(resolvedDirectory, options.cwd);
 	const lines = tree.length > 0 ? [directoryHeader, ...tree] : tree;
 	return { lines, warnings };
-}
-
-function splitVirtualPath(value: string, separator: string): string[] {
-	const normalized = value.trim();
-	if (!normalized) {
-		return [];
-	}
-
-	return normalized
-		.split(separator)
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
 }
 
 function buildTree(entries: VirtualPathEntry[]): string[] {

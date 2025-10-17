@@ -84,8 +84,8 @@ so the exported site can host local screenshots or diagrams alongside each note.
 
 The output directory defaults to `mdf-export`, but you can provide your own path
 with `--output`. The export reuses `--strict` and `--ignore-invalid` flags to
-match the viewer's parsing behavior, and it requires a `virtualPath` definition
-in your config just like the live viewer.
+match the viewer's parsing behavior. Virtual paths are computed the same way as
+the live viewer, using your schema resolvers or each document's directory.
 
 ## Configuration
 
@@ -93,30 +93,37 @@ in your config just like the live viewer.
 your schema with Zod and optional helpers:
 
 ```ts
-import { defineConfig, z } from "@stakme/mdf/config";
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    created_at: z.iso.datetime().default(() => new Date().toISOString()),
-    updated_at: z.iso.datetime().default(() => new Date().toISOString()),
-    status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-    tags: z.array(z.string()).default(() => []),
-  }),
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        created_at: z.iso.datetime().default(() => new Date().toISOString()),
+        updated_at: z.iso.datetime().default(() => new Date().toISOString()),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+        tags: z.array(z.string()).default(() => []),
+        section: z.string().optional(),
+      }),
+      vpath: ({ fm }) => (fm.section ? `/${fm.section}` : "/"),
+      vslug: ({ fm, relativePath }) =>
+        (fm.slug ?? relativePath).replace(/\\.md$/u, ""),
+    }),
+  },
+  defaultSchema: "default",
 });
 ```
 
-- `schema` must be a Zod object describing your front matter.
+- `schema` must be a Zod object describing your front matter. Use
+  `defineSchema` to attach helpers such as `filename`, `vpath`, or `vslug`
+  resolvers to a schema entry.
 - `defaults` sets automatic fallback values for fields you omit when creating
   new notes.
 - `content` (optional) can generate the Markdown body from template data.
 - `fileName` (optional) lets you compute the file name from front matter values.
-- Define schemas with `defineSchema({ filename, vpath, vslug })` when you want
-  parsed front matter to set file names, virtual paths, or slugs automatically.
 - `aliases` (optional) map friendly names to frequently used CLI command
   fragments for `mdf run`.
-- `virtualPath` (optional) enables features like tree views and the viewer; set
-  `param` to the field that holds paths.
 
 ### Templates and overrides
 
@@ -148,9 +155,9 @@ mdf list notes \
   --format "[{{status}}] {{title}} ({{tags:, }})"
 ```
 
-- `mdf list` shows a virtual-path tree by default. Configure `virtualPath.param`
-  in your config and pass `--vpath <prefix>` to narrow the tree to matching
-  paths.
+- `mdf list` shows a virtual-path tree by default. Pass `--vpath <prefix>` to
+  narrow the tree; paths come from your schema's `vpath` resolver or the
+  document's directory when no resolver is defined.
 - Provide `--filter` expressions with `=` (or `:`), `~=`, `^=`, or `$=`
   operators for exact, substring, prefix, or suffix matching. Arrays match when
   **any** element satisfies the filter.
@@ -165,17 +172,20 @@ Store your favorite command combinations in the config and run them with a short
 name:
 
 ```ts
-import { defineConfig, z } from "@stakme/mdf/config";
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    status: z.enum(["todo", "in_progress", "done"]),
-    vpath: z.string(),
-  }),
-  virtualPath: {
-    param: "vpath",
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]),
+        vpath: z.string().optional(),
+      }),
+      vpath: ({ fm }) => fm.vpath ?? "/",
+    }),
   },
+  defaultSchema: "default",
   aliases: {
     todo: 'list --filter "status=todo" ./TODO',
   },
@@ -229,7 +239,8 @@ Explore your notes in a local web UI:
 mdf viewer ./docs --vpath blog --filter "status=done" --port 4173
 ```
 
-- Requires `virtualPath.param` in your config (for navigation).
+- Navigation groups documents by their computed virtual path. Customize this by
+  defining a schema `vpath` resolver.
 - Supports the same filter expressions as `mdf list`.
 - Prints the local URL on start (defaults to `http://127.0.0.1:4173`).
 - Troubleshooting: add `--access-log` to print per-request access logs.

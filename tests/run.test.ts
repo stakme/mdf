@@ -6,18 +6,20 @@ import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("mdf run", () => {
 	it("executes a configured alias with quoted arguments", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "done"]).default("todo"),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "done"]).default("todo"),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
         aliases: {
                 todo: 'list --filter "status=todo" ./TODO',
         },
@@ -52,7 +54,7 @@ export default defineConfig({
 	});
 
 	it("informs the user when an alias is not defined", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -78,7 +80,7 @@ export default defineConfig({
 	});
 
 	it("reports alias cycles to prevent infinite recursion", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

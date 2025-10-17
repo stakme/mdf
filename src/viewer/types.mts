@@ -89,8 +89,6 @@ export interface ViewerContext {
 	navigation: ViewerNavigationDirectory;
 	defaultDocument: ViewerDocument | null;
 	frontMatterIndex: ViewerFrontMatterIndex;
-	virtualPathParam: string;
-	virtualPathSeparator: string;
 	warnings: InvalidFileWarning[];
 	repo: ViewerRepoLink | null;
 }
@@ -131,10 +129,6 @@ export interface ViewerContextPayload {
 	documents: ViewerDocumentSummary[];
 	defaultDocumentId: string | null;
 	frontMatter: ViewerFrontMatterFieldPayload[];
-	virtualPath: {
-		param: string;
-		separator: string;
-	};
 	warnings: InvalidFileWarning[];
 	repo: ViewerRepoLink | null;
 }

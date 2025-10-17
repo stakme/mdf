@@ -14,11 +14,6 @@ import {
 } from "../front-matter.mts";
 import type { InvalidFileWarning, LoadedSchema } from "../types.mts";
 import {
-	buildDocumentRoutePath,
-	computeDirectoryRelativePath,
-	resolveDocumentSlug,
-} from "../utils/document-paths.mts";
-import {
 	compareByTitleAndRoutePath,
 	sortSchemaDocuments,
 } from "../utils/document-sort.mts";
@@ -35,6 +30,10 @@ import {
 	formatDisplayPath,
 	formatRelativePath,
 } from "../utils/path-format.mts";
+import {
+	computeVirtualFields,
+	splitVirtualPath,
+} from "../utils/virtual-fields.mts";
 import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
 import { buildNavigationTree } from "../viewer/navigation.mts";
 import { normalizeViewerRoutePathKey } from "../viewer/route-path.mts";
@@ -135,21 +134,12 @@ export async function prepareViewerContext(
 		);
 	}
 
-	const virtualPathConfig = config.virtualPath;
-	if (!virtualPathConfig) {
-		throw new MdfError(
-			"VIRTUAL_PATH_NOT_CONFIGURED",
-			`Virtual path configuration not found in ${formatDisplayPath(config.path, options.cwd)}. Define virtualPath.param in the config file.`,
-		);
-	}
-
 	const extension = normalizeExtension(config.extension ?? ".md");
 	const files = await collectMarkdownFiles(resolvedDirectory, extension);
 
 	const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
-	const separator = virtualPathConfig.separator ?? "/";
-	const prefixSegments = options.virtualPathPrefix?.length
-		? splitVirtualPathInput(options.virtualPathPrefix, separator)
+	const prefixSegments = options.virtualPathPrefix
+		? splitVirtualPath(options.virtualPathPrefix)
 		: undefined;
 	const headerOptions = buildViewerHeaderOptions(options);
 
@@ -206,15 +196,18 @@ export async function prepareViewerContext(
 		}
 
 		let rawVirtualPath: string | null;
-		let segments: string[];
+		const workspaceRelativePath = formatRelativePath(filePath, options.cwd);
+		const schemaEntry = config.getSchemaForRelativePath(workspaceRelativePath);
+
+		let virtualFields;
 		try {
-			({ rawVirtualPath, segments } = extractVirtualPath(
+			virtualFields = await computeVirtualFields({
+				schema: schemaEntry,
 				frontMatter,
-				virtualPathConfig.param,
-				separator,
 				filePath,
-				options.cwd,
-			));
+				rootDirectory: resolvedDirectory,
+				cwd: options.cwd,
+			});
 		} catch (error) {
 			if (options.strict) {
 				throw error;
@@ -226,57 +219,44 @@ export async function prepareViewerContext(
 				continue;
 			}
 
-			rawVirtualPath = null;
-			segments = [];
-		}
-
-		if (prefixSegments && !segmentsStartsWith(segments, prefixSegments)) {
 			flushWarnings();
 			continue;
 		}
 
-		const workspaceRelativePath = formatRelativePath(filePath, options.cwd);
-		const directoryRelativePath = computeDirectoryRelativePath(
-			filePath,
-			resolvedDirectory,
-		);
+		if (
+			prefixSegments &&
+			!segmentsStartsWith(virtualFields.virtualPathSegments, prefixSegments)
+		) {
+			flushWarnings();
+			continue;
+		}
+
+		const directoryRelativePath = virtualFields.relativePath;
 		const repoRelativePath = computeWorkspaceRelativePath(
 			filePath,
 			options.cwd,
 		);
-		const slug = resolveDocumentSlug({
-			frontMatter,
-			relativePath: directoryRelativePath,
-			filePath,
-			cwd: options.cwd,
-			slugField: config.virtualSlug?.param,
-		});
+		const slug = virtualFields.slug;
 		const meta = buildViewerEntryFromRecord(slug, frontMatter, {
-			virtualPathField: virtualPathConfig.param,
-			virtualPathSeparator: separator,
+			virtualPath: virtualFields.virtualPath,
 		});
-		const routePath = config.virtualSlug
-			? slug
-			: buildDocumentRoutePath(filePath, resolvedDirectory);
+		const routePath = slug;
 
 		const id = encodeDocumentId(directoryRelativePath);
 		const html = renderDocumentMarkdown(document.body, meta.title, {
 			assetBaseUrl: buildDocumentAssetBaseUrl(id),
 		});
 		const navigationSegments = buildNavigationSegments({
-			virtualSegments: segments,
-			rawVirtualPath,
+			virtualSegments: virtualFields.virtualPathSegments,
+			virtualPathSource: virtualFields.virtualPathSource,
 			slug,
 			filePath,
 			rootDirectory: resolvedDirectory,
 		});
 
-		const schemaEntry = config.getSchemaForRelativePath(workspaceRelativePath);
-
 		const sanitizedFrontMatter = sanitizeViewerFrontMatter(
 			frontMatter,
-			virtualPathConfig.param,
-			config.virtualSlug?.param,
+			config,
 			schemaEntry.visibleFields,
 		);
 		const visibleFields = schemaEntry.visibleFields
@@ -292,7 +272,7 @@ export async function prepareViewerContext(
 			slug,
 			meta: {
 				...meta,
-				virtualPath: rawVirtualPath ?? meta.virtualPath,
+				virtualPath: virtualFields.virtualPath,
 				routePath,
 			},
 			frontMatter: sanitizedFrontMatter,
@@ -300,7 +280,7 @@ export async function prepareViewerContext(
 			html,
 			markdown: document.body,
 			raw: document.raw,
-			virtualPathSegments: segments,
+			virtualPathSegments: virtualFields.virtualPathSegments,
 			navigationSegments,
 		};
 
@@ -334,10 +314,7 @@ export async function prepareViewerContext(
 	});
 	const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
 	const defaultDocument = documents[0] ?? null;
-	const frontMatterIndex = buildFrontMatterIndex(
-		documents,
-		virtualPathConfig.param,
-	);
+	const frontMatterIndex = buildFrontMatterIndex(documents);
 	const repoLink = resolveViewerRepoLink(
 		options.repoUrl,
 		options.repoIcon,
@@ -355,8 +332,6 @@ export async function prepareViewerContext(
 		navigation,
 		defaultDocument,
 		frontMatterIndex,
-		virtualPathParam: virtualPathConfig.param,
-		virtualPathSeparator: separator,
 		warnings,
 		repo: repoLink,
 	};
@@ -726,10 +701,6 @@ export function buildViewerContextPayload(
 		frontMatter: context.frontMatterIndex.fields.map((field) =>
 			buildViewerFrontMatterFieldPayload(field),
 		),
-		virtualPath: {
-			param: context.virtualPathParam,
-			separator: context.virtualPathSeparator,
-		},
 		warnings: context.warnings.map((warning) => ({
 			filePath: warning.filePath,
 			messages: [...warning.messages],
@@ -1092,46 +1063,9 @@ function matchesAllFilters(
 	return filters.every((filter) => matchesParsedFilter(frontMatter, filter));
 }
 
-function extractVirtualPath(
-	frontMatter: Record<string, unknown>,
-	param: string,
-	separator: string,
-	filePath: string,
-	cwd: string,
-): { rawVirtualPath: string | null; segments: string[] } {
-	const raw = frontMatter[param];
-	if (raw === undefined || raw === null) {
-		return { rawVirtualPath: null, segments: [] };
-	}
-
-	if (typeof raw !== "string") {
-		throw new MdfError(
-			"INVALID_VIRTUAL_PATH_VALUE",
-			`Front matter field "${param}" must be a string in ${formatDisplayPath(filePath, cwd)}`,
-		);
-	}
-
-	const trimmed = raw.trim();
-	if (!trimmed) {
-		return { rawVirtualPath: null, segments: [] };
-	}
-
-	return {
-		rawVirtualPath: trimmed,
-		segments: splitVirtualPathInput(trimmed, separator),
-	};
-}
-
-function splitVirtualPathInput(value: string, separator: string): string[] {
-	return value
-		.split(separator)
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
-}
-
 interface BuildNavigationSegmentsOptions {
 	virtualSegments: string[];
-	rawVirtualPath: string | null;
+	virtualPathSource: "schema" | "default";
 	slug: string;
 	filePath: string;
 	rootDirectory: string;
@@ -1140,7 +1074,7 @@ interface BuildNavigationSegmentsOptions {
 function buildNavigationSegments(
 	options: BuildNavigationSegmentsOptions,
 ): string[] {
-	const { virtualSegments, rawVirtualPath, slug } = options;
+	const { virtualSegments, virtualPathSource, slug } = options;
 	if (virtualSegments.length > 0) {
 		const segments = [...virtualSegments];
 		const leaf = deriveSlugLeaf(slug);
@@ -1151,7 +1085,7 @@ function buildNavigationSegments(
 		return segments;
 	}
 
-	if (rawVirtualPath !== null) {
+	if (virtualPathSource === "schema") {
 		return [];
 	}
 
@@ -1300,22 +1234,8 @@ function compareViewerDocuments(a: ViewerDocument, b: ViewerDocument): number {
 
 function sanitizeViewerFrontMatter(
 	frontMatter: Record<string, unknown>,
-	virtualPathField: string,
-	slugField: string | undefined,
 	visibleFields?: readonly string[],
 ): Record<string, unknown> {
-	const pathSegments = virtualPathField
-		.split(".")
-		.map((segment) => segment.trim())
-		.filter((segment) => segment.length > 0);
-
-	const slugSegments = slugField
-		? slugField
-				.split(".")
-				.map((segment) => segment.trim())
-				.filter((segment) => segment.length > 0)
-		: [];
-
 	const enforceVisibility = visibleFields !== undefined;
 	const visibleSet = new Set(
 		(visibleFields ?? [])
@@ -1328,12 +1248,6 @@ function sanitizeViewerFrontMatter(
 		if (enforceVisibility && !visibleSet.has(key)) {
 			continue;
 		}
-		if (pathSegments.length === 1 && key === pathSegments[0]) {
-			continue;
-		}
-		if (slugSegments.length === 1 && key === slugSegments[0]) {
-			continue;
-		}
 
 		const cloned = cloneFrontMatterValue(value);
 		if (!isVisibleFrontMatterValue(cloned)) {
@@ -1343,19 +1257,13 @@ function sanitizeViewerFrontMatter(
 		sanitized[key] = cloned;
 	}
 
-	if (pathSegments.length === 1) {
-		sanitized[pathSegments[0]] = undefined;
-		delete sanitized[pathSegments[0]];
-	} else if (pathSegments.length > 1) {
-		removeNestedPath(sanitized, pathSegments);
-	}
-
 	for (const key of Object.keys(sanitized)) {
 		if (!isVisibleFrontMatterValue(sanitized[key])) {
 			delete sanitized[key];
 		}
 	}
 
+	pruneVirtualMetadata(sanitized);
 	return sanitized;
 }
 
@@ -1412,37 +1320,31 @@ function isVisibleFrontMatterValue(value: unknown): boolean {
 	return true;
 }
 
-function removeNestedPath(
-	target: Record<string, unknown>,
-	segments: readonly string[],
-): void {
-	if (segments.length === 0) {
-		return;
-	}
+const VIRTUAL_METADATA_KEYS = new Set(["vpath", "vslug", "slug"]);
 
-	const [head, ...rest] = segments;
-	if (head === undefined) {
-		return;
-	}
+function pruneVirtualMetadata(record: Record<string, unknown>): void {
+	for (const key of Object.keys(record)) {
+		const value = record[key];
+		if (VIRTUAL_METADATA_KEYS.has(key)) {
+			delete record[key];
+			continue;
+		}
 
-	const current = target[head];
-	if (current === undefined) {
-		return;
-	}
+		if (Array.isArray(value)) {
+			for (const entry of value) {
+				if (isPlainRecord(entry)) {
+					pruneVirtualMetadata(entry);
+				}
+			}
+			continue;
+		}
 
-	if (rest.length === 0) {
-		delete target[head];
-		return;
-	}
-
-	if (!isPlainRecord(current)) {
-		return;
-	}
-
-	removeNestedPath(current, rest);
-
-	if (Object.keys(current).length === 0) {
-		delete target[head];
+		if (isPlainRecord(value)) {
+			pruneVirtualMetadata(value);
+			if (Object.keys(value).length === 0) {
+				delete record[key];
+			}
+		}
 	}
 }
 
@@ -1457,19 +1359,17 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function buildFrontMatterIndex(
 	documents: readonly ViewerDocument[],
-	virtualPathField: string,
 ): ViewerFrontMatterIndex {
 	const fieldBuckets = new Map<string, Map<string, ViewerDocument[]>>();
+	const virtualPathField = "vpath";
 
 	for (const document of documents) {
-		if (virtualPathField.length > 0) {
-			addFrontMatterValue(
-				fieldBuckets,
-				virtualPathField,
-				document.meta.virtualPath,
-				document,
-			);
-		}
+		addFrontMatterValue(
+			fieldBuckets,
+			virtualPathField,
+			document.meta.virtualPath,
+			document,
+		);
 
 		for (const [field, rawValue] of Object.entries(document.frontMatter)) {
 			addFrontMatterValue(fieldBuckets, field, rawValue, document);

@@ -49,13 +49,17 @@ export default defineConfig({
                 notes: defineSchema({
                         glob: "**",
                         schema: noteSchema,
-                        vpath: (data) => \`\${data.section}/\${data.title.toLowerCase().replace(/\\s+/g, "-")}\`,
-                        vslug: (data) => data.title.toLowerCase().replace(/\\s+/g, "-"),
+                        vpath: ({ fm }) => {
+                                const rawTitle = fm.title ?? "note";
+                                return \`\${fm.section}/\${String(rawTitle).toLowerCase().replace(/\\s+/g, "-")}\`;
+                        },
+                        vslug: ({ fm }) => {
+                                const rawTitle = fm.title ?? "note";
+                                return String(rawTitle).toLowerCase().replace(/\\s+/g, "-");
+                        },
                 }),
         },
         defaultSchema: "notes",
-        virtualPath: { param: "vpath", separator: "/" },
-        virtualSlug: { param: "vslug" },
 });`,
 		});
 
@@ -71,8 +75,8 @@ export default defineConfig({
 			const content = await fs.readFile(createdFile, "utf8");
 			const { frontMatter } = parseFrontMatter(content);
 
-			expect(frontMatter.vpath).toBe("notes/virtual-note");
-			expect(frontMatter.vslug).toBe("virtual-note");
+			expect(frontMatter).not.toHaveProperty("vpath");
+			expect(frontMatter).not.toHaveProperty("vslug");
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -268,7 +272,7 @@ export default defineConfig({
 
 	it("applies schema overrides from a local config file", async () => {
 		const tempDir = await setupWorkspace({
-			localConfig: `import { defineConfig, z } from "@stakme/mdf/config";
+			localConfig: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({
@@ -370,7 +374,7 @@ export default defineConfig({
 
 	it("uses directory-specific schema definitions when configured", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/mdf/config";
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 const backlogSchema = z.object({
         title: z.string(),
@@ -440,7 +444,7 @@ export default defineConfig({
 
 	it("uses template-specific schema definitions when provided", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/mdf/config";
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 const defaultSchema = z.object({
         title: z.string(),
@@ -684,7 +688,7 @@ export default defineConfig({
 
 	it("applies the configured default template when not specified", async () => {
 		const tempDir = await setupWorkspace({
-			config: `import { defineConfig, z } from "@stakme/mdf/config";
+			config: `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: z.object({

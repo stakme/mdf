@@ -22,6 +22,7 @@ export default defineConfig({
                                 draft: z.boolean().default(false),
                                 author: z.string().optional(),
                         }),
+                        vpath: ({ fm }) => fm.vpath,
                 },
                 {
                         name: "default",
@@ -35,13 +36,10 @@ export default defineConfig({
                                 created_at: z.iso.datetime().default(() => new Date().toISOString()),
                                 updated_at: z.iso.datetime().default(() => new Date().toISOString()),
                         }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
                 },
         ],
         defaultSchema: "default",
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
-        },
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -92,13 +90,10 @@ export default defineConfig({
                                 status: z.enum(["todo", "in_progress", "done"]).default("todo"),
                                 vpath: z.string().optional(),
                         }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
                 }),
         },
         defaultSchema: "default",
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
-        },
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });

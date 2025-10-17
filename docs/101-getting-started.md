@@ -34,16 +34,21 @@ Edit the generated file to match your workflow. A minimal schema might look like
 this:
 
 ```ts
-import { defineConfig, z } from "@stakme/mdf/config";
+import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-  schema: z.object({
-    title: z.string(),
-    status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-    vpath: z.string().optional(),
-    tags: z.array(z.string()).default(() => []),
-  }),
-  virtualPath: { param: "vpath" },
+  schema: {
+    default: defineSchema({
+      schema: z.object({
+        title: z.string(),
+        status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+        tags: z.array(z.string()).default(() => []),
+        section: z.string().optional(),
+      }),
+      vpath: ({ fm }) => (fm.section ? `/${fm.section}` : "/"),
+    }),
+  },
+  defaultSchema: "default",
 });
 ```
 
@@ -59,7 +64,7 @@ any default values with `--fm` flags (fm is an abbreviation for frontmatter).
 npx @stakme/mdf new TODO \
   --fm title="Docs Overview" \
   --fm status=done \
-  --fm vpath=docs/index
+  --fm section=docs
 ```
 
 Open the file and edit the Markdown content.

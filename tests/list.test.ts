@@ -6,22 +6,24 @@ import { cliPath, nodeBinary, setupWorkspace } from "./helpers";
 
 describe("mdf list", () => {
 	it("renders a virtual path tree for markdown files", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -69,22 +71,24 @@ export default defineConfig({
 	});
 
 	it("filters entries by virtual path prefix", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -127,22 +131,24 @@ export default defineConfig({
 	});
 
 	it("prints only document ids when quiet flag is provided", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -199,21 +205,24 @@ export default defineConfig({
 	});
 
 	it("places files without a virtual path at the root level", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string().optional(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string().optional(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -250,22 +259,24 @@ export default defineConfig({
 	});
 
 	it("preserves viewer ordering for mixed root files and directories", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string().optional(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string().optional(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -311,22 +322,24 @@ export default defineConfig({
 	});
 
 	it("filters entries using front matter values", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -369,16 +382,19 @@ export default defineConfig({
 	});
 
 	it("warns and ignores invalid markdown files by default", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string().optional(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string().optional(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -417,16 +433,19 @@ export default defineConfig({
 	});
 
 	it("fails in strict mode when encountering invalid markdown files", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string().optional(),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string().optional(),
+                        }),
+                        vpath: ({ fm }) => fm.vpath ?? "/",
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -456,23 +475,25 @@ export default defineConfig({
 		"supports loose, prefix, and suffix filter operators",
 		{ timeout: 15000 },
 		async () => {
-			const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+			const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.string(),
-                category: z.string(),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
-                separator: "/",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.string(),
+                                category: z.string(),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 			const tempDir = await setupWorkspace({ config: configSource });
@@ -600,21 +621,24 @@ export default defineConfig({
 	});
 
 	it("fails when a markdown file is missing the virtual path field", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
-        schema: z.object({
-                title: z.string(),
-                vpath: z.string(),
-                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-                author: z.string(),
-                tags: z.array(z.string()).default(() => []),
-                created_at: z.string().datetime().default(() => new Date().toISOString()),
-                updated_at: z.string().datetime().default(() => new Date().toISOString()),
-        }),
-        virtualPath: {
-                param: "vpath",
+        schema: {
+                default: defineSchema({
+                        schema: z.object({
+                                title: z.string(),
+                                vpath: z.string(),
+                                status: z.enum(["todo", "in_progress", "done"]).default("todo"),
+                                author: z.string(),
+                                tags: z.array(z.string()).default(() => []),
+                                created_at: z.string().datetime().default(() => new Date().toISOString()),
+                                updated_at: z.string().datetime().default(() => new Date().toISOString()),
+                        }),
+                        vpath: ({ fm }) => fm.vpath,
+                }),
         },
+        defaultSchema: "default",
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });
@@ -636,7 +660,7 @@ export default defineConfig({
 			).rejects.toMatchObject({
 				exitCode: 1,
 				stderr: expect.stringContaining(
-					'Front matter field "vpath" must be a string',
+					'Schema vpath for "default" must return a string',
 				),
 			});
 		} finally {
@@ -645,7 +669,7 @@ export default defineConfig({
 	});
 
 	it("sorts formatted output using schema-defined comparator", async () => {
-		const configSource = `import { defineConfig, z } from "@stakme/mdf/config";
+		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
         schema: {

@@ -72,12 +72,8 @@ What actually happened.
 ## Additional Context
 Logs, screenshots, or notes.
 \`,
-		},
 	},
-	virtualPath: {
-		param: "vpath",
-		separator: "/",
-	}
+}
 });
 `;
 

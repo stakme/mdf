@@ -14,9 +14,11 @@ Front matter powers navigation and automation in `mdf`. Here’s how filters, vi
 
 ## Virtual paths
 
-- Set the parameter in `.config/mdf.mts` under `virtualPath.param` (for example, `vpath`).
-- Use `/` to build hierarchies like `docs/getting-started/installation`.
-- `mdf list`, `mdf viewer`, and `mdf docs --vpath docs` scope results to entries whose virtual path starts with that prefix. The tree mirrors the segments.
+- Use a schema `vpath` resolver to compute paths from front matter and metadata.
+- Without a resolver, `mdf` falls back to each document’s directory (e.g.,
+  `docs/getting-started/installation`).
+- `mdf list`, `mdf viewer`, and `mdf docs --vpath docs` scope results to entries
+  whose virtual path starts with that prefix. The tree mirrors the segments.
 
 ## Filters
 
@@ -52,4 +54,3 @@ npx @stakme/mdf docs TODO \
 ```
 
 The command above publishes completed notes tagged `release` under `docs/releases`.
-

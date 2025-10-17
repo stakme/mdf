@@ -5,13 +5,23 @@ export type DocumentSort<TData = Record<string, unknown>> = (
 	b: TData,
 ) => number;
 
-export type SchemaFieldResolver<TData> = (
+export type SchemaFilenameResolver<TData> = (
 	data: TData,
 ) => string | Promise<string>;
 
-export type SchemaFilenameResolver<TData> = SchemaFieldResolver<TData>;
-export type SchemaVirtualPathResolver<TData> = SchemaFieldResolver<TData>;
-export type SchemaVirtualSlugResolver<TData> = SchemaFieldResolver<TData>;
+export interface SchemaVirtualResolverContext<TData> {
+	fm: TData;
+	filename: string;
+	relativePath: string;
+}
+
+export type SchemaVirtualPathResolver<TData> = (
+	context: SchemaVirtualResolverContext<TData>,
+) => string | Promise<string>;
+
+export type SchemaVirtualSlugResolver<TData> = (
+	context: SchemaVirtualResolverContext<TData>,
+) => string | Promise<string>;
 
 export interface DefaultsContext {
 	now: Date;
@@ -45,19 +55,6 @@ export interface TemplateDefinition<TData> {
 export type TemplateBodyResolver<TData> =
 	| string
 	| ((context: TemplateBodyContext<TData>) => string | Promise<string>);
-
-export interface VirtualPathConfig {
-	param: string;
-	separator?: string;
-}
-
-export interface LoadedVirtualPathConfig extends VirtualPathConfig {
-	separator: string;
-}
-
-export interface VirtualSlugConfig {
-	param: string;
-}
 
 export interface SchemaDefinitionInput<
 	TSchema extends z.ZodTypeAny = z.ZodTypeAny,
@@ -179,8 +176,6 @@ export interface MdfConfig<
 	extension?: string;
 	templates?: TemplatesConfig<TSchemaRecord>;
 	defaultTemplate?: DefaultTemplateConfig<TSchemaRecord>;
-	virtualPath?: VirtualPathConfig;
-	virtualSlug?: VirtualSlugConfig;
 	aliases?: Record<string, string>;
 	repo?: RepoConfig;
 }
@@ -202,6 +197,4 @@ export interface LoadedConfig<
 	getSchemaForRelativePath(relativePath: string): LoadedSchema;
 	getSchemaByName(name: string): LoadedSchema | undefined;
 	path: string;
-	virtualPath?: LoadedVirtualPathConfig;
-	virtualSlug?: VirtualSlugConfig;
 }

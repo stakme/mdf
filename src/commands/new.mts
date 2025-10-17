@@ -114,8 +114,6 @@ async function writeMarkdownFile(params: {
 
 	await ensureUniquePath(fullPath);
 
-	await applySchemaVirtualFields({ config, data, schema });
-
 	const frontMatterBlock = YAML.stringify(data, { lineWidth: 0 }).trimEnd();
 	const content = await resolveContent(config, template, data, now);
 
@@ -216,66 +214,6 @@ async function ensureUniquePath(filePath: string): Promise<void> {
 	}
 
 	throw new MdfError("FILE_EXISTS", `File already exists at ${filePath}`);
-}
-
-async function applySchemaVirtualFields(params: {
-	config: LoadedConfig;
-	data: Record<string, unknown>;
-	schema: LoadedSchema;
-}): Promise<void> {
-	const { config, data, schema } = params;
-
-	const virtualPathField = config.virtualPath?.param;
-	if (virtualPathField && schema.vpath) {
-		const current = data[virtualPathField];
-		if (
-			current === undefined ||
-			current === null ||
-			(typeof current === "string" && !current.trim())
-		) {
-			const resolved = await schema.vpath(data);
-			if (typeof resolved !== "string") {
-				throw new MdfError(
-					"INVALID_VIRTUAL_PATH_VALUE",
-					`Schema vpath for "${schema.name}" must return a string`,
-				);
-			}
-			const trimmed = resolved.trim();
-			if (!trimmed) {
-				throw new MdfError(
-					"INVALID_VIRTUAL_PATH_VALUE",
-					`Schema vpath for "${schema.name}" must return a non-empty string`,
-				);
-			}
-			data[virtualPathField] = trimmed;
-		}
-	}
-
-	const virtualSlugField = config.virtualSlug?.param;
-	if (virtualSlugField && schema.vslug) {
-		const current = data[virtualSlugField];
-		if (
-			current === undefined ||
-			current === null ||
-			(typeof current === "string" && !current.trim())
-		) {
-			const resolved = await schema.vslug(data);
-			if (typeof resolved !== "string") {
-				throw new MdfError(
-					"INVALID_VIRTUAL_SLUG_VALUE",
-					`Schema vslug for "${schema.name}" must return a string`,
-				);
-			}
-			const trimmed = resolved.trim();
-			if (!trimmed) {
-				throw new MdfError(
-					"INVALID_VIRTUAL_SLUG_VALUE",
-					`Schema vslug for "${schema.name}" must return a non-empty string`,
-				);
-			}
-			data[virtualSlugField] = trimmed;
-		}
-	}
 }
 
 async function pathExists(filePath: string): Promise<boolean> {

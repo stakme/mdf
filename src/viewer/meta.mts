@@ -18,8 +18,8 @@ interface EntryLike {
 }
 
 export interface BuildViewerEntryOptions {
+	virtualPath?: string | null;
 	virtualPathField?: string;
-	virtualPathSeparator?: string;
 }
 
 const DEFAULT_FIELD_CANDIDATES: Record<string, readonly string[]> = {
@@ -42,6 +42,10 @@ export function buildViewerEntryFromRecord(
 	opts: BuildViewerEntryOptions,
 ): ViewerMeta {
 	const fieldParam = resolveVirtualPathField(opts.virtualPathField);
+	const providedVirtualPath =
+		typeof opts.virtualPath === "string"
+			? opts.virtualPath.trim()
+			: null;
 
 	const title =
 		coerceString(
@@ -69,7 +73,10 @@ export function buildViewerEntryFromRecord(
 		resolveByCandidates(data, getFieldCandidates("updatedAt")),
 	);
 
-	const rawVirtualPath = resolveByCandidates(data, [fieldParam]);
+	const rawVirtualPath =
+		providedVirtualPath && providedVirtualPath.length > 0
+			? providedVirtualPath
+			: resolveByCandidates(data, [fieldParam]);
 	const coercedVirtualPath = coerceString(rawVirtualPath);
 	const virtualPath = coercedVirtualPath ?? slug;
 	const slugParts = slugSegments(slug);
