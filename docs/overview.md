@@ -90,6 +90,6 @@ $ npx @stakme/mdf viewer ./docs
 
 You can find more details in the following pages:
 
-- [Getting Started](/#/200-getting-started): how to install and use mdf.
-- [Why Front matter](/#/500-why-frontmatter): the reason why I choose front
-  matter and create this project.
+- [Getting Started](/#/getting-started): how to install and use mdf.
+- [Why Front matter](/#/why-frontmatter): the reason why I choose front matter
+  and create this project.

@@ -407,7 +407,9 @@ export default function App(): JSX.Element {
 			<header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm">
 				<div className="mx-auto flex w-full flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
 					<div>
-						<h1 className="text-xl font-bold tracking-tight">mdf viewer</h1>
+						<a href="/#/">
+							<h1 className="text-xl font-bold tracking-tight">mdf viewer</h1>
+						</a>
 					</div>
 					{headerOptions.length > 0 && (
 						<div className="flex flex-wrap gap-2 text-xs">

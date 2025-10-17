@@ -11,7 +11,7 @@ chapter: 209
 # append <note> <files...>
 
 Collect supporting files for a note, move them into an assets folder, and append
-Markdown image references—automatically.
+Markdown image references automatically.
 
 ```bash
 npx @stakme/mdf append docs/100-overview.md diagram-sketch.png wireframe.jpg

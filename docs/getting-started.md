@@ -55,6 +55,10 @@ export default defineConfig({
 You can define multiple schemas in a single config file for different paths. For
 details, see the [Configuration Guide](/#/102-conf-guide) section.
 
+Our project's config file is visible in the
+[repo](https://github.com/stakme/markdfm/blob/main/.config/mdf.mts) as an
+example.
+
 ## Create your first note
 
 Use `mdf new` to scaffold Markdown that satisfies the schema. You can override

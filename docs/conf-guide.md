@@ -45,7 +45,6 @@ export default defineConfig({
     vpath: z.string().optional(),
     tags: z.array(z.string()).default(() => []),
   }),
-  virtualPath: { param: "vpath" },
 });
 ```
 
@@ -94,8 +93,7 @@ export default defineConfig({
     }),
   ],
   defaultSchema: ["docs", "default"],
-  virtualPath: { param: "vpath", separator: "/" },
-  virtualSlug: { param: "vslug" },
+
   templates: {
     backlog: {
       schema: "default",
@@ -153,11 +151,11 @@ Entry fields (when using `defineSchema` or record entries as objects):
 Controls the default and, optionally, resolution priority when multiple schemas
 exist.
 
-- String: `defaultSchema: "docs"` — that schema is both default and last in
+- String: `defaultSchema: "docs"`. That schema is both default and last in
   priority.
-- String array: `defaultSchema: ["docs", "default"]` — order sets priority
-  (first wins when `glob` patterns overlap), and the last item becomes the
-  default schema.
+- String array: `defaultSchema: ["docs", "default"]`. Order sets priority (first
+  wins when `glob` patterns overlap), and the last item becomes the default
+  schema.
 
 Errors if names are unknown, duplicated, or the array does not end with the
 default.
@@ -267,8 +265,7 @@ with these rules:
 - `defaultSchema`/priority: The local value wins. When provided as an array, it
   becomes the priority order; the last element is the default.
 - `defaults`, `content`, `fileName`, `extension`, `virtualPath`, `virtualSlug`,
-  `repo`: The local value wins when provided; otherwise the base
-  value is kept.
+  `repo`: The local value wins when provided; otherwise the base value is kept.
 - `templates`: Shallow merge by template name (local wins on conflicts).
 - `defaultTemplate`: Shallow merge by schema name (local wins on conflicts).
 - `aliases`: Shallow merge by alias name (local wins on conflicts).
@@ -326,11 +323,6 @@ Body content precedence:
 
 ## Real‑world reference
 
-This project’s own config demonstrates many features: see `.config/mdf.mts`.
-Local overrides (when present) go in `.config/mdf.local.mts` and are merged as
-described above.
-
----
-
-If you have a unique workflow that isn’t covered here, open an issue or propose
-a template—configs are intentionally flexible and schema‑first.
+[This project’s own config](https://github.com/stakme/markdfm/blob/main/.config/mdf.mts)
+demonstrates many features: see `.config/mdf.mts`. Local overrides (when
+present) go in `.config/mdf.local.mts` and are merged as described above.
