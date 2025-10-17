@@ -1,6 +1,6 @@
 ---
 title: list
-vpath: commands
+vpath: commands/Access Content
 tags:
   - cli
   - reference
@@ -19,13 +19,17 @@ npx @stakme/mdf list TODO \
   --format "[{{status}}] {{title}}"
 ```
 
-`--format` swaps the tree view for templated one‑line summaries. Dot notation targets nested fields. The `f.` prefix disambiguates front‑matter keys from placeholders like `{{relpath}}`, `{{filename}}`, or `{{file}}`.
+`--format` swaps the tree view for templated one‑line summaries. Dot notation
+targets nested fields. The `f.` prefix disambiguates front‑matter keys from
+placeholders like `{{relpath}}`, `{{filename}}`, or `{{file}}`.
 
 ```bash
 npx @stakme/mdf list TODO --format "[{{f.status}}] {{relpath}}"
 ```
 
-Heading placeholders expose the Markdown outline. Use `{{h1}}`–`{{h6}}` to pull headings up to that depth. Headings join with newlines by default; provide a separator to override it.
+Heading placeholders expose the Markdown outline. Use `{{h1}}`–`{{h6}}` to pull
+headings up to that depth. Headings join with newlines by default; provide a
+separator to override it.
 
 ```bash
 npx @stakme/mdf list --format "[{{f.title}}] {{relpath}}\n{{h3}}" ./TODO
@@ -38,4 +42,3 @@ npx @stakme/mdf list --format "[{{f.title}}] {{relpath}}\n{{h3}}" ./TODO
 ## So I will create... (L:17)
 ### list command (L:19)
 ```
-

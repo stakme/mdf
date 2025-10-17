@@ -1,6 +1,6 @@
 ---
 title: new
-vpath: commands
+vpath: commands/Manage Files
 tags:
   - cli
   - reference
@@ -20,4 +20,3 @@ npx @stakme/mdf new TODO \
 ```
 
 Combine templates with `--fm` overrides for repeatable structures.
-

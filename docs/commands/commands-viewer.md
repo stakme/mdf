@@ -1,6 +1,6 @@
 ---
 title: viewer
-vpath: commands
+vpath: commands/Access Content
 tags:
   - cli
   - reference
@@ -19,4 +19,3 @@ npx @stakme/mdf viewer TODO \
 ```
 
 The viewer is what `mdf export` and `mdf docs` package into a static site.
-

@@ -1,18 +1,18 @@
 ---
 title: validate
-vpath: commands
+vpath: commands/Maintain Schema
 tags:
   - cli
   - reference
 draft: false
-chapter: 204
+chapter: 202
 ---
 
 # validate <directory>
 
-Check every file against the schema. Exits non‑zero on problems so CI can block merges.
+Check every file against the schema. Exits non‑zero on problems so CI can block
+merges.
 
 ```bash
 npx @stakme/mdf validate TODO
 ```
-

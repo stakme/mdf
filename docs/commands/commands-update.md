@@ -1,11 +1,11 @@
 ---
 title: update
-vpath: commands
+vpath: commands/Manage Files
 tags:
   - cli
   - reference
 draft: false
-chapter: 206
+chapter: 216
 ---
 
 # update <files...>
@@ -19,4 +19,3 @@ npx @stakme/mdf update ./TODO/01ABC.md \
 ```
 
 Omitting a value (as with `updated_at`) regenerates it using the schema default.
-
