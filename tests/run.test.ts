@@ -16,7 +16,7 @@ export default defineConfig({
                                 vpath: z.string(),
                                 status: z.enum(["todo", "done"]).default("todo"),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",

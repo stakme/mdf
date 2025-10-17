@@ -18,7 +18,7 @@ export default defineConfig({
         title: z.string(),
         vpath: z.string().optional(),
       }),
-      vpath: ({ fm }) => fm.vpath ?? "/",
+      vpath: (context) => context.fm.vpath ?? "/",
     }),
   },
   defaultSchema: "default",
@@ -63,7 +63,7 @@ export default defineConfig({
         title: z.string(),
         vpath: z.string().optional(),
       }),
-      vpath: ({ fm }) => fm.vpath ?? "/",
+      vpath: (context) => context.fm.vpath ?? "/",
     }),
   },
   defaultSchema: "default",
@@ -119,7 +119,7 @@ export default defineConfig({
         status: z.string().optional(),
         vpath: z.string().optional(),
       }),
-      vpath: ({ fm }) => fm.vpath ?? "/",
+      vpath: (context) => context.fm.vpath ?? "/",
     }),
   },
   defaultSchema: "default",
@@ -175,7 +175,7 @@ export default defineConfig({
           owner: z.string().optional(),
         }).optional(),
       }),
-      vpath: ({ fm }) => fm.meta?.vpath ?? "/",
+      vpath: (context) => context.fm.meta?.vpath ?? "/",
     }),
   },
   defaultSchema: "default",
@@ -209,7 +209,7 @@ export default defineConfig({
 				| undefined;
 			expect(meta).not.toHaveProperty("vpath");
 
-			const vpathField = context.frontMatterIndex.fieldMap.get("meta.vpath");
+			const vpathField = context.frontMatterIndex.fieldMap.get("vpath");
 			const values = vpathField?.values.map((entry) => entry.value) ?? [];
 			expect(values).toContain("docs/note");
 		} finally {

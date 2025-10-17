@@ -30,7 +30,7 @@ export default defineConfig({
 			visibleFields: ["tags"],
 			filename: (fm) => `${fm.title}.md`,
 			vpath: ({ fm }) => fm.vpath,
-			vslug: ({ fm }) => slugify(fm.title),
+			vslug: ({ filename }) => slugify(filename),
 		}),
 		default: defineSchema({
 			glob: "**",

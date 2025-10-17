@@ -17,7 +17,7 @@ export default defineConfig({
                                 status: z.enum(["draft", "published"]).default("draft"),
                                 vpath: z.string(),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -178,7 +178,7 @@ export default defineConfig({
                                 status: z.enum(["draft", "published"]).default("draft"),
                                 vpath: z.string(),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -244,7 +244,7 @@ export default defineConfig({
                                 title: z.string(),
                                 vpath: z.string(),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -308,13 +308,11 @@ export default defineConfig({
                                 vpath: z.string(),
                                 slug: z.string(),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
+                        vslug: (context) => context.fm.slug,
                 }),
         },
         defaultSchema: "default",
-        virtualSlug: {
-                param: "slug",
-        },
 });`;
 
 		const tempDir = await setupWorkspace({ config: configSource });

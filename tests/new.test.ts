@@ -49,12 +49,12 @@ export default defineConfig({
                 notes: defineSchema({
                         glob: "**",
                         schema: noteSchema,
-                        vpath: ({ fm }) => {
-                                const rawTitle = fm.title ?? "note";
-                                return \`\${fm.section}/\${String(rawTitle).toLowerCase().replace(/\\s+/g, "-")}\`;
+                        vpath: (context) => {
+                                const rawTitle = context.fm.title ?? "note";
+                                return \`\${context.fm.section}/\${String(rawTitle).toLowerCase().replace(/\\s+/g, "-")}\`;
                         },
-                        vslug: ({ fm }) => {
-                                const rawTitle = fm.title ?? "note";
+                        vslug: (context) => {
+                                const rawTitle = context.fm.title ?? "note";
                                 return String(rawTitle).toLowerCase().replace(/\\s+/g, "-");
                         },
                 }),

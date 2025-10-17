@@ -21,9 +21,19 @@ export default defineConfig({
                                 vpath: z.string().optional(),
                                 slug: z.string().optional(),
                         }),
-                        vpath: ({ fm }) => fm.vpath ?? (fm.section ? \`/\\${fm.section}\` : "/"),
-                        vslug: ({ fm, relativePath }) => {
-                                const base = fm.slug ?? relativePath;
+                        vpath: (context) => {
+                                const raw = typeof context.fm.vpath === "string" ? context.fm.vpath.trim() : "";
+                                if (raw.length > 0) {
+                                        return raw;
+                                }
+                                const section = typeof context.fm.section === "string" ? context.fm.section.trim() : "";
+                                return section.length > 0 ? "/" + section : "/";
+                        },
+                        vslug: (context) => {
+                                const relative = typeof context.relativePath === "string"
+                                        ? context.relativePath.replace(/^\\.\\/+/, "")
+                                        : context.relativePath;
+                                const base = context.fm.slug ?? relative;
                                 return String(base).replace(/\\.md$/u, "").replace(/\\\\/g, "/");
                         },
                 }),
@@ -55,12 +65,13 @@ describe("viewer command", () => {
 				filters: ["status=todo"],
 				virtualPathPrefix: "guides",
 			});
+			expect(context.warnings).toEqual([]);
 
 			expect(context.documents).toHaveLength(1);
 			const document = context.documents[0];
 			expect(document.meta.title).toBe("Alpha");
 			expect(document.meta.virtualPath).toBe("/guides");
-			expect(document.meta.routePath).toBe("docs/alpha");
+			expect(document.meta.routePath).toBe("alpha");
 
 			const payload = buildViewerContextPayload(context);
 			expect(payload.headerOptions).toEqual([
@@ -94,12 +105,14 @@ describe("viewer command", () => {
 			expect(document.frontMatter).toEqual({
 				title: "Article",
 				extra: "keep me",
+				section: "knowledge",
 			});
 
 			const payload = buildViewerDocumentPayload(document);
 			expect(payload.frontMatter).toEqual({
 				title: "Article",
 				extra: "keep me",
+				section: "knowledge",
 			});
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });

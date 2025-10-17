@@ -1235,9 +1235,12 @@ function sanitizeViewerFrontMatter(
 	frontMatter: Record<string, unknown>,
 	visibleFields?: readonly string[],
 ): Record<string, unknown> {
-	const enforceVisibility = visibleFields !== undefined;
+	const normalizedVisibleFields = Array.isArray(visibleFields)
+		? visibleFields
+		: [];
+	const enforceVisibility = normalizedVisibleFields.length > 0;
 	const visibleSet = new Set(
-		(visibleFields ?? [])
+		normalizedVisibleFields
 			.map((field) => field.trim())
 			.filter((field) => field.length > 0),
 	);

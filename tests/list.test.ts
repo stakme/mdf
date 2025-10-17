@@ -20,7 +20,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -85,7 +85,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -145,7 +145,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -219,7 +219,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath ?? "/",
+                        vpath: (context) => context.fm.vpath ?? "/",
                 }),
         },
         defaultSchema: "default",
@@ -273,7 +273,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath ?? "/",
+                        vpath: (context) => context.fm.vpath ?? "/",
                 }),
         },
         defaultSchema: "default",
@@ -336,7 +336,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -391,7 +391,7 @@ export default defineConfig({
                                 title: z.string(),
                                 vpath: z.string().optional(),
                         }),
-                        vpath: ({ fm }) => fm.vpath ?? "/",
+                        vpath: (context) => context.fm.vpath ?? "/",
                 }),
         },
         defaultSchema: "default",
@@ -442,7 +442,7 @@ export default defineConfig({
                                 title: z.string(),
                                 vpath: z.string().optional(),
                         }),
-                        vpath: ({ fm }) => fm.vpath ?? "/",
+                        vpath: (context) => context.fm.vpath ?? "/",
                 }),
         },
         defaultSchema: "default",
@@ -490,7 +490,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
@@ -606,15 +606,14 @@ export default defineConfig({
 		);
 
 		try {
-			await expect(
-				execa(nodeBinary, [cliPath, "list", "notes"], {
-					cwd: tempDir,
-					reject: true,
-				}),
-			).rejects.toMatchObject({
-				exitCode: 1,
-				stderr: expect.stringContaining("Virtual path configuration not found"),
+			const result = await execa(nodeBinary, [cliPath, "list", "notes"], {
+				cwd: tempDir,
 			});
+
+			expect(result.stdout.trim().split("\n")).toEqual([
+				"./notes",
+				"└── Lone Note (./notes/note.md)",
+			]);
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}
@@ -635,7 +634,7 @@ export default defineConfig({
                                 created_at: z.string().datetime().default(() => new Date().toISOString()),
                                 updated_at: z.string().datetime().default(() => new Date().toISOString()),
                         }),
-                        vpath: ({ fm }) => fm.vpath,
+                        vpath: (context) => context.fm.vpath,
                 }),
         },
         defaultSchema: "default",
