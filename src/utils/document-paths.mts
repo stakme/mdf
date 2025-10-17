@@ -41,7 +41,12 @@ export function resolveDocumentSlug(
 		);
 	}
 
-	return normalizeVirtualSlugValue(raw, slugField, options.filePath, options.cwd);
+	return normalizeVirtualSlugValue(
+		raw,
+		slugField,
+		options.filePath,
+		options.cwd,
+	);
 }
 
 export function buildDocumentRoutePath(

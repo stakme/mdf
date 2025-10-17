@@ -2,9 +2,9 @@ import path from "node:path";
 import { MdfError } from "../errors.mts";
 import type { LoadedSchema, SchemaVirtualResolverContext } from "../types.mts";
 import {
-	resolveDocumentSlug,
 	computeDirectoryRelativePath,
 	normalizeVirtualSlugValue,
+	resolveDocumentSlug,
 } from "./document-paths.mts";
 
 export const DEFAULT_VIRTUAL_PATH_SEPARATOR = "/";
@@ -47,9 +47,7 @@ export async function computeVirtualFields(
 		.slice(0, -1)
 		.filter((segment) => segment.length > 0);
 	const defaultVirtualPath =
-		defaultSegments.length === 0
-			? "/"
-			: `/${defaultSegments.join("/")}`;
+		defaultSegments.length === 0 ? "/" : `/${defaultSegments.join("/")}`;
 
 	const virtualPath = await resolveVirtualPathValue({
 		schema,
@@ -123,8 +121,15 @@ interface ResolveVirtualSlugOptions {
 async function resolveVirtualSlugValue(
 	options: ResolveVirtualSlugOptions,
 ): Promise<string> {
-	const { schema, context, frontMatter, filePath, rootDirectory, cwd, relativePath } =
-		options;
+	const {
+		schema,
+		context,
+		frontMatter,
+		filePath,
+		rootDirectory,
+		cwd,
+		relativePath,
+	} = options;
 	if (!schema.vslug) {
 		return resolveDocumentSlug({
 			frontMatter,

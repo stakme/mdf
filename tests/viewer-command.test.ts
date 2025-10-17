@@ -91,10 +91,16 @@ describe("viewer command", () => {
 
 			expect(context.documents).toHaveLength(1);
 			const document = context.documents[0];
-			expect(document.frontMatter).toEqual({ title: "Article", extra: "keep me" });
+			expect(document.frontMatter).toEqual({
+				title: "Article",
+				extra: "keep me",
+			});
 
 			const payload = buildViewerDocumentPayload(document);
-			expect(payload.frontMatter).toEqual({ title: "Article", extra: "keep me" });
+			expect(payload.frontMatter).toEqual({
+				title: "Article",
+				extra: "keep me",
+			});
 		} finally {
 			await fs.rm(tempDir, { recursive: true, force: true });
 		}

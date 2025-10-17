@@ -43,9 +43,7 @@ export function buildViewerEntryFromRecord(
 ): ViewerMeta {
 	const fieldParam = resolveVirtualPathField(opts.virtualPathField);
 	const providedVirtualPath =
-		typeof opts.virtualPath === "string"
-			? opts.virtualPath.trim()
-			: null;
+		typeof opts.virtualPath === "string" ? opts.virtualPath.trim() : null;
 
 	const title =
 		coerceString(
