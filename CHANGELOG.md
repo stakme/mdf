@@ -22,6 +22,13 @@ Keep a Changelog style so entries are grouped by category.
 
 ### Security
 
+## [0.11.0] - 2025-10-17
+
+### Changed
+
+- Opened the repository to the public alongside refreshed docs for first-time
+  visitors.
+
 ## [0.10.0] - 2025-09-30
 
 ### Added
