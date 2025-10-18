@@ -15,9 +15,12 @@ Explore notes, apply filters, and render custom output.
 ```bash
 npx @stakme/mdf list TODO \
   --filter "status=done" \
-  --vpath docs \
+  --filter "vpath ^= docs" \
   --format "[{{status}}] {{title}}"
 ```
+
+`--filter` narrows results by exact (`=`), substring (`~=`), prefix (`^=`), or
+suffix (`$=`) matches. Arrays match when any element satisfies the condition.
 
 `--format` swaps the tree view for templated one‑line summaries. Dot notation
 targets nested fields. The `f.` prefix disambiguates front‑matter keys from

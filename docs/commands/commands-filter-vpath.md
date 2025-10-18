@@ -17,8 +17,11 @@ Front matter powers navigation and automation in `mdf`. Here’s how filters, vi
 - Use a schema `vpath` resolver to compute paths from front matter and metadata.
 - Without a resolver, `mdf` falls back to each document’s directory (e.g.,
   `docs/getting-started/installation`).
-- `mdf list`, `mdf viewer`, and `mdf docs --vpath docs` scope results to entries
-  whose virtual path starts with that prefix. The tree mirrors the segments.
+- `mdf list` scopes results by combining `--filter` expressions, including
+  prefix matches such as `--filter "vpath ^= docs"`. The tree mirrors the
+  segments of matching documents.
+- `mdf viewer` and `mdf docs --vpath docs` accept a `--vpath` option to limit
+  navigation to a virtual-path prefix.
 
 ## Filters
 

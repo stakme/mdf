@@ -148,19 +148,20 @@ tools:
 
 ```bash
 mdf list notes
-mdf list --vpath backlog notes
+mdf list notes --filter "vpath ^= backlog"
 mdf list notes \
   --filter "status=todo" \
   --filter "tags~=feature" \
   --format "[{{status}}] {{title}} ({{tags:, }})"
 ```
 
-- `mdf list` shows a virtual-path tree by default. Pass `--vpath <prefix>` to
-  narrow the tree; paths come from your schema's `vpath` resolver or the
-  document's directory when no resolver is defined.
+- `mdf list` renders a tree using each document's virtual path; without a schema
+  override, that mirrors the on-disk directory layout.
 - Provide `--filter` expressions with `=` (or `:`), `~=`, `^=`, or `$=`
   operators for exact, substring, prefix, or suffix matching. Arrays match when
   **any** element satisfies the filter.
+- Filters inspect front matter fields. Define a `vpath` field in your schema or
+  front matter before using `--filter "vpath ^= …"`.
 - Target nested front matter fields with dot notation, such as `project.status`.
 - Supply `--format` to bypass the tree and render each match with `{{field}}`
   placeholders. Use helpers like `{{tags:, }}` to join arrays or

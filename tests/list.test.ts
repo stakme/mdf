@@ -70,7 +70,7 @@ export default defineConfig({
 		}
 	});
 
-	it("filters entries by virtual path prefix", async () => {
+	it("filters entries by virtual path using filter expressions", async () => {
 		const configSource = `import { defineConfig, defineSchema, z } from "@stakme/mdf/config";
 
 export default defineConfig({
@@ -112,7 +112,7 @@ export default defineConfig({
 		try {
 			const { stdout } = await execa(
 				nodeBinary,
-				[cliPath, "list", "--vpath", "backlog/feature", "TODO"],
+				[cliPath, "list", "--filter", "vpath ^= backlog/feature", "TODO"],
 				{
 					cwd: tempDir,
 				},

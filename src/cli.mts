@@ -252,10 +252,9 @@ function createProgram(version: string): Command {
 	program
 		.command("list")
 		.description("List Markdown files using virtual paths")
-		.option("--vpath <prefix>", "Filter entries by virtual path prefix")
 		.option(
 			"-f, --filter <expression>",
-			"Filter expression supporting =, ~=, ^=, $= operators",
+			"Filter expression supporting = (exact), ~= (substring), ^= (prefix), $= (suffix) operators",
 			collectFilters,
 			[] as string[],
 		)
@@ -270,7 +269,6 @@ function createProgram(version: string): Command {
 			async (
 				directory: string,
 				command: {
-					vpath?: string;
 					filter?: string[];
 					format?: string;
 					strict?: boolean;
@@ -282,7 +280,6 @@ function createProgram(version: string): Command {
 					const result = await runListCommand({
 						cwd: process.cwd(),
 						directory,
-						virtualPathPrefix: command.vpath,
 						filters,
 						format: command.format,
 						strict: command.strict === true,

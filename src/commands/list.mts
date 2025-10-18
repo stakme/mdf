@@ -21,16 +21,12 @@ import {
 	formatDisplayPath,
 	formatRelativePath,
 } from "../utils/path-format.mts";
-import {
-	computeVirtualFields,
-	splitVirtualPath,
-} from "../utils/virtual-fields.mts";
+import { computeVirtualFields } from "../utils/virtual-fields.mts";
 import { buildViewerEntryFromRecord } from "../viewer/meta.mts";
 
 export interface ListCommandOptions {
 	cwd: string;
 	directory: string;
-	virtualPathPrefix?: string;
 	filters?: readonly string[];
 	format?: string;
 	strict?: boolean;
@@ -106,9 +102,6 @@ export async function runListCommand(
 	}
 
 	const parsedFilters = (options.filters ?? []).map(parseFilterExpression);
-	const prefixSegments = options.virtualPathPrefix
-		? splitVirtualPath(options.virtualPathPrefix)
-		: undefined;
 
 	const template = options.format;
 	const warnings: InvalidFileWarning[] = [];
@@ -146,13 +139,6 @@ export async function runListCommand(
 			rootDirectory: resolvedDirectory,
 			cwd: options.cwd,
 		});
-
-		if (
-			prefixSegments &&
-			!segmentsStartsWith(virtualFields.virtualPathSegments, prefixSegments)
-		) {
-			continue;
-		}
 
 		const displayPath = formatDisplayPath(filePath, options.cwd);
 		const relativeDisplayPath = formatRelativePath(filePath, options.cwd);
@@ -282,21 +268,6 @@ function appendNode(
 			appendNode(child, nextPrefix, index === node.children.length - 1, lines);
 		});
 	}
-}
-
-function segmentsStartsWith(
-	segments: readonly string[],
-	prefix: readonly string[],
-): boolean {
-	if (prefix.length === 0) {
-		return true;
-	}
-
-	if (segments.length < prefix.length) {
-		return false;
-	}
-
-	return prefix.every((segment, index) => segments[index] === segment);
 }
 
 interface TemplateContext {
