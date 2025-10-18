@@ -28,7 +28,7 @@ jobs:
       - run: node dist/cli.mjs run build_docs
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: mdf-export
 
   deploy:
     needs: build
